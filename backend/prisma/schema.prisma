@@ -1,0 +1,973 @@
+// Rehobot Choir — Prisma schema
+// Phase 1 (SRS v1.0)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// USER
+// ------------------------------------------------------------
+
+enum UserRole {
+  MEMBER
+  LEADER
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DELETED
+}
+
+model User {
+  id            String     @id @default(cuid())
+  phone         String     @unique
+  email         String?    @unique
+  passwordHash  String
+  role          UserRole   @default(MEMBER)
+  status        UserStatus @default(PENDING)
+
+  mustChangePassword Boolean @default(false)
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  lastActiveAt  DateTime?
+  deletedAt     DateTime?
+
+  sessions      Session[]
+  accountLock   AccountLock?
+  memberProfile MemberProfile?
+
+  eventRsvps    EventRSVP[]
+  notifications Notification[]
+  createdEvents Event[]           @relation("CreatedEvents")
+  createdAnnouncements Announcement[] @relation("CreatedAnnouncements")
+
+  attendanceRecords      AttendanceRecord[] @relation("AttendanceRecords")
+  attendanceRecordedBy   AttendanceRecord[] @relation("AttendanceRecordedBy")
+
+  createdSongs       Song[]           @relation("CreatedSongs")
+  songFavorites      SongFavorite[]
+  zemaMemberships    ZemaMembership[] @relation("ZemaMember")
+  zemaAssigned       ZemaMembership[] @relation("ZemaAssignedBy")
+  songSubmissions    SongSubmission[] @relation("SongSubmissions")
+  
+    chatMemberships      ConversationMember[]
+  chatMessages         ChatMessage[]
+  chatReactions        MessageReaction[]
+  chatPins             MessagePin[]
+  chatReportsMade      MessageReport[]      @relation("ReportsMade")
+  chatReportsResolved  MessageReport[]      @relation("ReportsResolved")
+  chatReadStates       ChatReadState[]
+  chatGroupsManaged    ChatGroup[]          @relation("GroupManager")
+  chatGroupsCreated    ChatGroup[]          @relation("GroupCreatedBy")
+
+  birthdayPosts         BirthdayPost[]         @relation("BirthdayPosts")
+  birthdayComments      BirthdayComment[]      @relation("BirthdayComments")
+  birthdayCommentLikes  BirthdayCommentLike[]  @relation("BirthdayCommentLikes")
+  birthdayReactions     BirthdayReaction[]     @relation("BirthdayReactions")
+
+    submittedMemories Memory[] @relation("SubmittedMemories")
+  reviewedMemories  Memory[] @relation("ReviewedMemories")
+    submittedQuotes DailyQuote[] @relation("SubmittedQuotes")
+      pushTokens            PushToken[]
+  notificationPreference NotificationPreference?
+
+  @@index([status])
+  @@index([role])
+  @@map("users")
+}
+
+// ------------------------------------------------------------
+// SESSION
+// ------------------------------------------------------------
+
+model Session {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshTokenHash String
+  deviceLabel   String?
+  createdAt     DateTime  @default(now())
+  revokedAt     DateTime?
+  lastUsedAt    DateTime?
+
+  @@index([userId])
+  @@index([userId, revokedAt])
+  @@map("sessions")
+}
+
+// ------------------------------------------------------------
+// ACCOUNT LOCK
+// ------------------------------------------------------------
+
+model AccountLock {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  failedAttempts Int      @default(0)
+  lockedUntil    DateTime?
+  lastFailedAt   DateTime?
+  updatedAt      DateTime @updatedAt
+
+  @@map("account_locks")
+}
+
+// ------------------------------------------------------------
+// REGISTRATION
+// ------------------------------------------------------------
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model RegistrationApplication {
+  id            String            @id @default(cuid())
+
+  fullName      String
+  phone         String
+  email         String
+  passwordHash  String
+  profilePhotoUrl String
+  profilePhotoPublicId String
+  gender        String
+  dateOfBirth   DateTime
+  emergencyContactName  String
+  emergencyContactPhone String
+  joiningDate   DateTime?
+
+  status        ApplicationStatus @default(PENDING)
+  rejectionReason String?
+  reviewedByUserId String?
+  reviewedAt    DateTime?
+
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([phone])
+  @@index([status])
+  @@map("registration_applications")
+}
+
+// ------------------------------------------------------------
+// MEMBER PROFILE
+// ------------------------------------------------------------
+
+model MemberProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName           String
+  gender             String
+  dateOfBirth        DateTime
+  emergencyContactName  String
+  emergencyContactPhone String
+  joiningDate        DateTime?
+  profilePhotoUrl    String
+  profilePhotoPublicId String
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("member_profiles")
+}
+
+// ------------------------------------------------------------
+// EVENTS
+// ------------------------------------------------------------
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  DELETED
+}
+
+model Event {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  location    String?
+  date        DateTime
+
+  coverImageUrl      String?
+  coverImagePublicId String?
+
+  status      EventStatus @default(DRAFT)
+
+  createdByUserId String?
+  createdBy       User?   @relation("CreatedEvents", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  publishedAt DateTime?
+  deletedAt   DateTime?
+
+  attachments   EventAttachment[]
+  announcements Announcement[]
+  rsvps         EventRSVP[]
+
+  @@index([status, date])
+  @@index([date])
+  @@map("events")
+}
+
+model EventAttachment {
+  id              String   @id @default(cuid())
+  eventId         String
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  imageUrl        String
+  imagePublicId   String
+
+  createdAt       DateTime @default(now())
+
+  @@index([eventId])
+  @@map("event_attachments")
+}
+
+enum RsvpResponse {
+  GOING
+  MAYBE
+  NOT_GOING
+}
+
+model EventRSVP {
+  id         String       @id @default(cuid())
+  eventId    String
+  event      Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  response   RsvpResponse
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@map("event_rsvps")
+}
+
+// ------------------------------------------------------------
+// ATTENDANCE
+// ------------------------------------------------------------
+
+enum GatheringType {
+  TUESDAY_ZEMA
+  THURSDAY_CHOIR
+  SATURDAY_CHOIR
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+model AttendanceRecord {
+  id          String            @id @default(cuid())
+
+  memberId    String
+  member      User              @relation("AttendanceRecords", fields: [memberId], references: [id], onDelete: Cascade)
+
+  gathering   GatheringType
+  date        DateTime
+  status      AttendanceStatus
+  lockedAt    DateTime?
+
+  recordedByUserId String?
+  recordedBy       User?        @relation("AttendanceRecordedBy", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([memberId, gathering, date])
+  @@index([gathering, date])
+  @@index([memberId])
+  @@map("attendance_records")
+}
+
+// ------------------------------------------------------------
+// ANNOUNCEMENTS
+// ------------------------------------------------------------
+
+enum AnnouncementStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  DELETED
+}
+
+model Announcement {
+  id          String              @id @default(cuid())
+  title       String
+  message     String
+
+  publishAt   DateTime            @default(now())
+  status      AnnouncementStatus  @default(DRAFT)
+
+  imageUrl        String?
+  imagePublicId   String?
+
+  eventId     String?
+  event       Event?              @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  createdByUserId String?
+  createdBy       User?           @relation("CreatedAnnouncements", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  deletedAt   DateTime?
+
+  songs       AnnouncementSong[]
+
+  @@index([status, publishAt])
+  @@index([publishAt])
+  @@map("announcements")
+}
+
+model AnnouncementSong {
+  id             String        @id @default(cuid())
+  announcementId String
+  announcement   Announcement  @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  songId         String
+  songTitle      String
+
+  createdAt      DateTime      @default(now())
+
+  @@index([announcementId])
+  @@map("announcement_songs")
+}
+
+// ------------------------------------------------------------
+// NOTIFICATIONS
+// ------------------------------------------------------------
+
+enum NotificationType {
+  ANNOUNCEMENT
+  EVENT_REMINDER
+  CHAT_MESSAGE
+  BIRTHDAY
+  SONG_PUBLISHED
+  MEMORY_PUBLISHED
+  LEADERSHIP_CHANGE
+  DAILY_QUOTE
+}
+
+model Notification {
+  id          String            @id @default(cuid())
+  recipientId String
+  recipient   User              @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  type        NotificationType
+  title       String
+  body        String?
+
+  relatedEntityType String?
+  relatedEntityId   String?
+
+  createdAt   DateTime          @default(now())
+  readAt      DateTime?
+  expiresAt   DateTime?
+
+  @@index([recipientId, readAt])
+  @@index([recipientId, createdAt])
+  @@map("notifications")
+}
+
+// ------------------------------------------------------------
+// SONGS / ZEMA
+// ------------------------------------------------------------
+
+model SongCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  songs     Song[]
+
+  @@map("song_categories")
+}
+
+enum SongStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  RETURNED
+  UNPUBLISHED
+  DELETED
+}
+
+model Song {
+  id            String      @id @default(cuid())
+
+  title         String
+  lyrics        String?
+  audioUrl      String?
+  audioPublicId String?
+  youtubeUrl    String?
+
+  categoryId    String?
+  category      SongCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  status        SongStatus  @default(DRAFT)
+
+  dateAdded     DateTime    @default(now())
+  publishedAt   DateTime?
+  updatedAt     DateTime    @updatedAt
+
+  createdByUserId String?
+  createdBy       User?     @relation("CreatedSongs", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  favorites     SongFavorite[]
+  submissions   SongSubmission[]
+
+  @@index([status, dateAdded])
+  @@index([categoryId])
+  @@map("songs")
+}
+
+model SongFavorite {
+  id        String   @id @default(cuid())
+  songId    String
+  song      Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([songId, userId])
+  @@index([userId])
+  @@map("song_favorites")
+}
+
+model ZemaMembership {
+  id          String   @id @default(cuid())
+
+  userId      String
+  user        User     @relation("ZemaMember", fields: [userId], references: [id], onDelete: Cascade)
+
+  assignedByUserId String?
+  assignedBy       User?   @relation("ZemaAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
+
+  assignedAt  DateTime @default(now())
+  removedAt   DateTime?
+
+  @@index([userId])
+  @@index([userId, removedAt])
+  @@map("zema_memberships")
+}
+
+enum SubmissionStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  RETURNED
+}
+
+model SongSubmission {
+  id         String            @id @default(cuid())
+
+  songId     String
+  song       Song              @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  submittedByUserId String
+  submittedBy       User      @relation("SongSubmissions", fields: [submittedByUserId], references: [id], onDelete: Cascade)
+
+  status     SubmissionStatus  @default(DRAFT)
+  returnReason String?
+
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  reviewedAt DateTime?
+
+  @@index([status])
+  @@index([submittedByUserId])
+  @@map("song_submissions")
+}
+
+
+
+// ------------------------------------------------------------
+// MEMORIES (SRS 14)
+// ------------------------------------------------------------
+
+enum MemoryStatus {
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  DELETED
+}
+
+enum MemoryMediaType {
+  PHOTO
+  AUDIO
+  YOUTUBE
+}
+
+model Memory {
+  id          String        @id @default(cuid())
+
+  title       String
+  description String?
+  date        DateTime
+
+  status      MemoryStatus  @default(PENDING_REVIEW)
+  rejectionReason String?
+  publishedAt DateTime?
+
+  submittedByUserId String?
+  submittedBy       User?   @relation("SubmittedMemories", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+
+  reviewedByUserId  String?
+  reviewedBy        User?   @relation("ReviewedMemories", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt        DateTime?
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  media       MemoryMedia[]
+
+  @@index([status, date])
+  @@index([date])
+  @@index([status, publishedAt])
+  @@map("memories")
+}
+
+model MemoryMedia {
+  id        String          @id @default(cuid())
+
+  memoryId  String
+  memory    Memory          @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+
+  type      MemoryMediaType
+
+  // For PHOTO / AUDIO
+  storageUrl      String?
+  storagePublicId String?
+
+  // For YOUTUBE
+  youtubeUrl      String?
+
+  createdAt DateTime        @default(now())
+
+  @@index([memoryId])
+  @@map("memory_media")
+}
+
+
+// ------------------------------------------------------------
+// DAILY BIBLE QUOTE (feature added beyond base SRS)
+// One quote per calendar day, enforced by a unique index.
+// ------------------------------------------------------------
+
+enum DailyQuoteStatus {
+  PUBLISHED
+  DELETED
+}
+
+model DailyQuote {
+  id                String            @id @default(cuid())
+
+  // Calendar day the quote belongs to. Stored as a real date (no time).
+  dateOnly          DateTime          @db.Date
+
+  quoteText         String
+  source            String            // e.g. "Psalm 4:4", "John 3:16"
+
+  youtubeUrl        String?
+  audioUrl          String?
+  audioPublicId     String?
+
+  status            DailyQuoteStatus  @default(PUBLISHED)
+
+  submittedByUserId String?
+  submittedBy       User?             @relation("SubmittedQuotes", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([dateOnly])
+  @@index([dateOnly])
+  @@map("daily_quotes")
+}
+
+// ------------------------------------------------------------
+// PUSH TOKENS (SRS 32)
+// One row per device that has opted in to notifications.
+// A user may have multiple devices, but only one is active per
+// the one-device login rule (SRS 6.5). We keep at most one row
+// per user by replacing on each registration.
+// ------------------------------------------------------------
+
+model PushToken {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token      String   @unique     // Expo push token
+  platform   String                // "android" | "ios" | "web"
+  deviceLabel String?
+
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("push_tokens")
+}
+
+// ------------------------------------------------------------
+// NOTIFICATION PREFERENCES (SRS 16.4)
+// One row per user. All types default to enabled except none.
+// Chat notifications are always enabled by SRS 16.4 and are
+// forced ON in the mobile UI.
+// ------------------------------------------------------------
+
+model NotificationPreference {
+  id                       String   @id @default(cuid())
+  userId                   String   @unique
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  announcementsEnabled     Boolean  @default(true)
+  eventRemindersEnabled    Boolean  @default(true)
+  chatMessagesEnabled      Boolean  @default(true)   // forced on per SRS 16.4
+  birthdaysEnabled         Boolean  @default(true)
+  newSongEnabled           Boolean  @default(true)
+  newMemoryEnabled         Boolean  @default(true)
+  dailyQuoteEnabled        Boolean  @default(true)
+
+  updatedAt                DateTime @updatedAt
+
+  @@map("notification_preferences")
+}
+
+// ------------------------------------------------------------
+// BIRTHDAY POSTS, COMMENTS, LIKES, REACTIONS
+// A mini social feed scoped to birthdays.
+// One post per birthday person per year.
+// ------------------------------------------------------------
+
+model BirthdayPost {
+  id          String   @id @default(cuid())
+
+  userId      String
+  user        User     @relation("BirthdayPosts", fields: [userId], references: [id], onDelete: Cascade)
+
+  year        Int
+  birthdayDate DateTime  // Full date this post celebrates (UTC midnight)
+
+  createdAt   DateTime @default(now())
+
+  comments    BirthdayComment[]
+  reactions   BirthdayReaction[]
+
+  @@unique([userId, year])
+  @@index([year])
+  @@map("birthday_posts")
+}
+
+model BirthdayComment {
+  id              String   @id @default(cuid())
+
+  postId          String
+  post            BirthdayPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  authorId        String
+  author          User     @relation("BirthdayComments", fields: [authorId], references: [id], onDelete: Cascade)
+
+  // null = top-level comment, otherwise a reply.
+  parentCommentId String?
+  parentComment   BirthdayComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         BirthdayComment[] @relation("CommentReplies")
+
+  text            String
+  createdAt       DateTime @default(now())
+  deletedAt       DateTime?
+
+  likes           BirthdayCommentLike[]
+
+  @@index([postId])
+  @@index([parentCommentId])
+  @@map("birthday_comments")
+}
+
+model BirthdayCommentLike {
+  id         String   @id @default(cuid())
+
+  commentId  String
+  comment    BirthdayComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  userId     String
+  user       User     @relation("BirthdayCommentLikes", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+  @@map("birthday_comment_likes")
+}
+
+model BirthdayReaction {
+  id         String   @id @default(cuid())
+
+  postId     String
+  post       BirthdayPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  userId     String
+  user       User     @relation("BirthdayReactions", fields: [userId], references: [id], onDelete: Cascade)
+
+  // One emoji per user per post. Can be changed.
+  emoji      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@map("birthday_reactions")
+}
+
+// ------------------------------------------------------------
+// CHAT (SRS 19)
+// ------------------------------------------------------------
+
+enum ConversationType {
+  DIRECT
+  GENERAL
+  GROUP
+}
+
+enum ChatMessageType {
+  TEXT
+  PHOTO
+  VOICE
+}
+
+enum ChatMediaType {
+  PHOTO
+  VOICE
+}
+
+enum MessageReportResolution {
+  KEPT
+  DELETED
+  DISMISSED
+}
+
+model ChatConversation {
+  id             String           @id @default(cuid())
+  type           ConversationType
+
+  // For DIRECT, we store a deterministic "participant hash" so that
+  // opening a DM with the same person twice does not create a second
+  // conversation. Format: sorted userId1 + "|" + userId2.
+  directKey      String?          @unique
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  lastMessageAt  DateTime?
+
+  members        ConversationMember[]
+  messages       ChatMessage[]
+  pins           MessagePin[]
+  readStates     ChatReadState[]
+  group          ChatGroup?
+
+  @@index([type, lastMessageAt])
+  @@map("chat_conversations")
+}
+
+model ConversationMember {
+  id             String            @id @default(cuid())
+
+  conversationId String
+  conversation   ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  userId         String
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt       DateTime          @default(now())
+  leftAt         DateTime?
+
+  @@unique([conversationId, userId])
+  @@index([userId, leftAt])
+  @@map("conversation_members")
+}
+
+model ChatGroup {
+  id              String            @id @default(cuid())
+
+  conversationId  String            @unique
+  conversation    ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // SRS 19.5 — active group names must be unique.
+  name            String            @unique
+
+  photoUrl        String?
+  photoPublicId   String?
+
+  managerId       String
+  manager         User              @relation("GroupManager", fields: [managerId], references: [id], onDelete: Restrict)
+
+  createdByUserId String
+  createdBy       User              @relation("GroupCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("chat_groups")
+}
+
+model ChatMessage {
+  id             String            @id @default(cuid())
+
+  conversationId String
+  conversation   ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId       String
+  sender         User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  type           ChatMessageType   @default(TEXT)
+
+  // For TEXT messages. For PHOTO/VOICE, this is an optional caption.
+  text           String?
+
+  // For replies (SRS 19.19)
+  replyToId      String?
+  replyTo        ChatMessage?      @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies        ChatMessage[]     @relation("MessageReplies")
+
+  createdAt      DateTime          @default(now())
+  editedAt       DateTime?
+  deletedAt      DateTime?
+
+  media          ChatMedia[]
+  reactions      MessageReaction[]
+  pins           MessagePin[]
+  reports        MessageReport[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@map("chat_messages")
+}
+
+model ChatMedia {
+  id              String          @id @default(cuid())
+
+  messageId       String
+  message         ChatMessage     @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  type            ChatMediaType
+
+  storageUrl      String
+  storagePublicId String
+
+  // SRS 19.11 — voice messages record the original duration (max 60).
+  durationSeconds Int?
+
+  // SRS 19.15 — 1 year retention for chat media.
+  retentionUntil  DateTime
+
+  createdAt       DateTime        @default(now())
+
+  @@index([messageId])
+  @@index([retentionUntil])
+  @@map("chat_media")
+}
+
+model MessageReaction {
+  id         String       @id @default(cuid())
+
+  messageId  String
+  message    ChatMessage  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  emoji      String
+  createdAt  DateTime     @default(now())
+
+  // SRS 19.20 — a member may add multiple distinct emojis to one message.
+  // The same emoji twice by the same user on the same message is blocked.
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@map("message_reactions")
+}
+
+model MessagePin {
+  id              String            @id @default(cuid())
+
+  conversationId  String
+  conversation    ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  messageId       String
+  message         ChatMessage       @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  pinnedByUserId  String
+  pinnedBy        User              @relation(fields: [pinnedByUserId], references: [id], onDelete: Cascade)
+
+  pinnedAt        DateTime          @default(now())
+
+  // SRS 19.24 — one pin per message.
+  @@unique([conversationId, messageId])
+  @@index([conversationId])
+  @@map("message_pins")
+}
+
+model MessageReport {
+  id                String                    @id @default(cuid())
+
+  messageId         String
+  message           ChatMessage               @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  reporterId        String
+  reporter          User                      @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime                  @default(now())
+
+  resolution        MessageReportResolution?
+  resolvedAt        DateTime?
+  resolvedByUserId  String?
+  resolvedBy        User?                     @relation("ReportsResolved", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  // SRS 19.23 — records retained for 30 days after creation.
+  retainUntil       DateTime
+
+  @@index([messageId])
+  @@index([reporterId])
+  @@index([resolvedAt])
+  @@map("message_reports")
+}
+
+model ChatReadState {
+  id                 String            @id @default(cuid())
+
+  conversationId     String
+  conversation       ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  userId             String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  lastReadAt         DateTime          @default(now())
+  lastReadMessageId  String?
+
+  @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@map("chat_read_states")
+}
