@@ -67,11 +67,14 @@ export default function LeaderStack() {
         component={ApplicantDetailScreen}
         options={{ title: t('leader.applicantDetail') }}
       />
+
+      {/* Manage member — custom gradient hero */}
       <Stack.Screen
         name="ManageMember"
         component={ManageMemberScreen}
-        options={{ title: t('leaderTools.manageMember') }}
+        options={{ headerShown: false }}
       />
+
       <Stack.Screen
         name="LeaderEvents"
         component={LeaderEventsScreen}
@@ -136,10 +139,10 @@ export default function LeaderStack() {
         options={{ title: t('leaderSongs.review') }}
       />
       <Stack.Screen
-  name="LeaderMemories"
-  component={LeaderMemoriesScreen}
-  options={{ headerShown: false }}
-/>
+        name="LeaderMemories"
+        component={LeaderMemoriesScreen}
+        options={{ headerShown: false }}
+      />
       <Stack.Screen
         name="MemoryReviewDetail"
         component={MemoryReviewDetailScreen}
