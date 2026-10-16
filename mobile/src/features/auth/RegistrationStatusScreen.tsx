@@ -1,14 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  ScrollView,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { View, Text, Animated } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
@@ -18,8 +9,18 @@ import {
 } from '../../services/registration';
 import { ApiError } from '../../services/api';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
+import {
+  AuthScreen,
+  AuthField,
+  PrimaryButton,
+  SecondaryButton,
+  ErrorBanner,
+  withAlpha,
+} from './Auth_UI';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Status'>;
+
+const PENDING_COLOR = '#F59E0B';
 
 export default function RegistrationStatusScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
@@ -30,6 +31,24 @@ export default function RegistrationStatusScreen({ route, navigation }: Props) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<RegistrationStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Use our own branded header instead of the native one.
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  // Result card pops in whenever a new status arrives
+  const pop = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!status) return;
+    pop.setValue(0);
+    Animated.spring(pop, {
+      toValue: 1,
+      friction: 6,
+      tension: 70,
+      useNativeDriver: true,
+    }).start();
+  }, [status, pop]);
 
   useEffect(() => {
     if (route.params?.phone) void query(route.params.phone);
@@ -51,152 +70,161 @@ export default function RegistrationStatusScreen({ route, navigation }: Props) {
     }
   };
 
+  const tone =
+    status?.status === 'APPROVED'
+      ? { color: colors.success, icon: '✓' }
+      : status?.status === 'REJECTED'
+        ? { color: colors.error, icon: '✕' }
+        : { color: PENDING_COLOR, icon: '⏳' };
+
+  const badgeLabel =
+    status?.status === 'APPROVED'
+      ? t('status.approvedTitle', { defaultValue: 'Approved' })
+      : status?.status === 'REJECTED'
+        ? t('status.rejected')
+        : t('status.pendingTitle', { defaultValue: 'Pending review' });
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
-    >
-      <ScrollView
-        contentContainerStyle={{
-          padding: spacing.xl,
-          flexGrow: 1,
-        }}
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
+    <AuthScreen compact>
+      <Text style={[typography.h2, { color: colors.text }]}>{t('status.title')}</Text>
+      <Text
+        style={[
+          typography.bodySmall,
+          { color: colors.textSecondary, marginTop: spacing.xs, marginBottom: spacing.xl },
+        ]}
       >
-        <Text style={[typography.h2, { color: colors.primary }]}>
-          {t('status.title')}
-        </Text>
-        <Text
-          style={[
-            typography.bodySmall,
-            { color: colors.textSecondary, marginTop: spacing.xs },
-          ]}
-        >
-          {t('status.checkSubtitle')}
-        </Text>
+        {t('status.checkSubtitle')}
+      </Text>
 
-        <View style={{ marginTop: spacing.lg, flexDirection: 'row', gap: spacing.sm }}>
-          <TextInput
-            value={phone}
-            onChangeText={setPhone}
-            placeholder={t('status.phone')}
-            placeholderTextColor={colors.textSecondary}
-            keyboardType="phone-pad"
-            autoCapitalize="none"
-            style={{
-              flex: 1,
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              borderWidth: 1,
-              borderRadius: radius.md,
-              paddingHorizontal: spacing.md,
-              color: colors.text,
-            }}
-          />
-          <Pressable
-            onPress={() => query(phone)}
-            disabled={busy}
-            style={{
-              paddingHorizontal: spacing.lg,
-              justifyContent: 'center',
-              borderRadius: radius.md,
-              backgroundColor: colors.primary,
-              opacity: busy ? 0.6 : 1,
-            }}
-          >
-            {busy ? (
-              <ActivityIndicator color={colors.primaryText} />
-            ) : (
-              <Text style={[typography.button, { color: colors.primaryText }]}>
-                {t('status.check')}
-              </Text>
-            )}
-          </Pressable>
+      <AuthField
+        label={t('status.phone')}
+        icon="📞"
+        value={phone}
+        onChangeText={setPhone}
+        keyboardType="phone-pad"
+        autoCapitalize="none"
+        returnKeyType="go"
+        onSubmitEditing={() => query(phone)}
+      />
+
+      <PrimaryButton
+        label={t('status.check')}
+        onPress={() => query(phone)}
+        busy={busy}
+        icon="🔍"
+      />
+
+      {error && (
+        <View style={{ marginTop: spacing.md }}>
+          <ErrorBanner message={error} />
         </View>
+      )}
 
-        {error && (
-          <Text
-            style={[
-              typography.bodySmall,
-              { color: colors.error, marginTop: spacing.md },
-            ]}
-          >
-            {error}
-          </Text>
-        )}
-
-        {status && (
+      {status && (
+        <Animated.View
+          style={{
+            marginTop: spacing.xl,
+            padding: spacing.lg,
+            borderRadius: radius.md,
+            borderWidth: 1.5,
+            borderColor: withAlpha(tone.color, 0.5),
+            backgroundColor: colors.surface,
+            alignItems: 'center',
+            opacity: pop,
+            transform: [
+              { scale: pop.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) },
+            ],
+          }}
+        >
           <View
             style={{
-              marginTop: spacing.xl,
-              padding: spacing.lg,
-              borderRadius: radius.md,
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.surface,
-              marginBottom: spacing.xl,
+              width: 64,
+              height: 64,
+              borderRadius: 32,
+              backgroundColor: withAlpha(tone.color, 0.15),
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: spacing.md,
             }}
           >
-            {status.status === 'PENDING' && (
-              <Text style={[typography.body, { color: colors.text }]}>
+            <Text style={{ fontSize: 28, color: tone.color, fontWeight: '800' }}>
+              {tone.icon}
+            </Text>
+          </View>
+
+          {status.status === 'PENDING' && (
+            <>
+              <Text style={[typography.h3, { color: tone.color, textAlign: 'center' }]}>
+                {badgeLabel}
+              </Text>
+              <Text
+                style={[
+                  typography.body,
+                  { color: colors.text, textAlign: 'center', marginTop: spacing.sm },
+                ]}
+              >
                 {t('status.pending')}
               </Text>
-            )}
+            </>
+          )}
 
-            {status.status === 'APPROVED' && (
-              <Text style={[typography.body, { color: colors.success }]}>
+          {status.status === 'APPROVED' && (
+            <>
+              <Text style={[typography.h3, { color: tone.color, textAlign: 'center' }]}>
+                {badgeLabel}
+              </Text>
+              <Text
+                style={[
+                  typography.body,
+                  { color: colors.success, textAlign: 'center', marginTop: spacing.sm },
+                ]}
+              >
                 {t('status.approved')}
               </Text>
-            )}
+            </>
+          )}
 
-            {status.status === 'REJECTED' && (
-              <>
-                <Text style={[typography.h3, { color: colors.error }]}>
-                  {t('status.rejected')}
-                </Text>
-                {status.rejectionReason && (
-                  <Text
-                    style={[
-                      typography.body,
-                      { color: colors.text, marginTop: spacing.sm },
-                    ]}
-                  >
-                    {t('status.rejectionReason')}: {status.rejectionReason}
-                  </Text>
-                )}
-                <Pressable
-                  onPress={() => navigation.navigate('Register')}
-                  style={{
-                    marginTop: spacing.lg,
-                    backgroundColor: colors.primary,
-                    borderRadius: radius.md,
-                    paddingVertical: spacing.md,
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text style={[typography.button, { color: colors.primaryText }]}>
-                    {t('status.createNew')}
-                  </Text>
-                </Pressable>
-              </>
-            )}
-
-            <Pressable
-              onPress={() => navigation.navigate('Login')}
-              style={{
-                marginTop: spacing.md,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={[typography.bodySmall, { color: colors.textSecondary }]}>
-                {t('status.backToLogin')}
+          {status.status === 'REJECTED' && (
+            <>
+              <Text style={[typography.h3, { color: colors.error, textAlign: 'center' }]}>
+                {t('status.rejected')}
               </Text>
-            </Pressable>
+              {status.rejectionReason && (
+                <Text
+                  style={[
+                    typography.body,
+                    { color: colors.text, marginTop: spacing.sm, textAlign: 'center' },
+                  ]}
+                >
+                  {t('status.rejectionReason')}: {status.rejectionReason}
+                </Text>
+              )}
+              <View style={{ alignSelf: 'stretch', marginTop: spacing.lg }}>
+                <PrimaryButton
+                  label={t('status.createNew')}
+                  onPress={() => navigation.navigate('Register')}
+                />
+              </View>
+            </>
+          )}
+
+          <View style={{ alignSelf: 'stretch', marginTop: spacing.md }}>
+            <SecondaryButton
+              label={t('status.backToLogin')}
+              onPress={() => navigation.navigate('Login')}
+            />
           </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </Animated.View>
+      )}
+
+      {!status && (
+        <View style={{ marginTop: spacing.xl }}>
+          <SecondaryButton
+            label={t('status.backToLogin')}
+            onPress={() => navigation.navigate('Login')}
+          />
+        </View>
+      )}
+    </AuthScreen>
   );
 }

@@ -1,23 +1,36 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  ScrollView,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 import { changePassword } from '../../services/auth';
 import { ApiError } from '../../services/api';
+import {
+  KeyboardAwareScroll,
+  AuthField,
+  PrimaryButton,
+  ErrorBanner,
+  BRAND,
+  withAlpha,
+} from '../auth/Auth_UI';
+
+// Visual-only helper: scores the new password 0..4 for the strength bar.
+// It never blocks submit; the real validation stays in onSubmit below.
+function strengthOf(p: string): number {
+  if (!p) return 0;
+  if (p.length < 8) return 1;
+  let s = 1;
+  if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++;
+  if (/\d/.test(p)) s++;
+  if (/[^A-Za-z0-9]/.test(p)) s++;
+  return Math.min(s, 4);
+}
 
 export default function ChangePasswordScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
 
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -46,96 +59,226 @@ export default function ChangePasswordScreen({ navigation }: any) {
     }
   };
 
-  return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={{ padding: spacing.xl, flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
-      >
-        <Text style={[typography.h2, { color: colors.primary }]}>
-          {t('password.changeTitle')}
-        </Text>
+  // ---- Visual-only motion ----
+  const enter = useRef(new Animated.Value(0)).current;
+  const strengthAnim = useRef(new Animated.Value(0)).current;
+  const successPop = useRef(new Animated.Value(0)).current;
+  const shake = useRef(new Animated.Value(0)).current;
 
-        <View style={{ marginTop: spacing.lg }}>
-          <Field label={t('password.current')} value={current} onChange={setCurrent} secureTextEntry />
-          <Field label={t('password.new')} value={next} onChange={setNext} secureTextEntry />
-          <Field label={t('password.confirm')} value={confirm} onChange={setConfirm} secureTextEntry />
-        </View>
+  const score = strengthOf(next);
+  const labels = [
+    '',
+    t('password.strengthWeak', { defaultValue: 'Weak' }),
+    t('password.strengthFair', { defaultValue: 'Fair' }),
+    t('password.strengthGood', { defaultValue: 'Good' }),
+    t('password.strengthStrong', { defaultValue: 'Strong' }),
+  ];
+  const barColors = [colors.border, colors.error, '#F59E0B', '#6EDBD5', colors.success];
+
+  useEffect(() => {
+    Animated.timing(enter, { toValue: 1, duration: 650, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+  }, [enter]);
+
+  useEffect(() => {
+    Animated.timing(strengthAnim, { toValue: score, duration: 300, useNativeDriver: false }).start();
+  }, [score, strengthAnim]);
+
+  useEffect(() => {
+    if (success) {
+      successPop.setValue(0);
+      Animated.spring(successPop, { toValue: 1, useNativeDriver: true, bounciness: 14 }).start();
+    }
+  }, [success, successPop]);
+
+  useEffect(() => {
+    if (error) {
+      shake.setValue(0);
+      Animated.sequence(
+        [10, -10, 6, -6, 0].map((v) => Animated.timing(shake, { toValue: v, duration: 60, useNativeDriver: true })),
+      ).start();
+    }
+  }, [error, shake]);
+
+  const fadeUp = (i: number) => ({
+    opacity: enter,
+    transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [24 + i * 10, 0] }) }],
+  });
+
+  const fieldIcon = (name: React.ComponentProps<typeof Ionicons>['name'], tint: string) => (
+    <View style={[styles.fieldIcon, { backgroundColor: withAlpha(tint, 0.18) }]}>
+      <Ionicons name={name} size={16} color={tint} />
+    </View>
+  );
+
+  const matches = confirm.length > 0 && confirm === next;
+  const mismatch = confirm.length > 0 && confirm !== next;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Water drops are on by default; pass drops={false} to KeyboardAwareScroll to hide them. */}
+      <KeyboardAwareScroll contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.xl * 2 }}>
+        <Animated.View style={fadeUp(0)}>
+          <LinearGradient
+            colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.hero}
+          >
+            <View pointerEvents="none" style={[styles.blob, { top: -50, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.2) }]} />
+            <View pointerEvents="none" style={[styles.blob, { bottom: -70, left: -40, backgroundColor: withAlpha(BRAND.water, 0.2) }]} />
+            <View style={styles.heroIcon}>
+              <Ionicons name="lock-closed" size={26} color={BRAND.deep} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text accessibilityRole="header" style={styles.heroTitle}>
+                {t('password.changeTitle')}
+              </Text>
+              <Text style={styles.heroSubtitle}>
+                {t('password.changeSubtitle', { defaultValue: 'Keep your account safe with a strong password.' })}
+              </Text>
+            </View>
+          </LinearGradient>
+        </Animated.View>
+
+        <Animated.View
+          style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, fadeUp(1)]}
+        >
+          <AuthField
+            label={t('password.current')}
+            iconNode={fieldIcon('key', '#E6C779')}
+            value={current}
+            onChangeText={setCurrent}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+          <AuthField
+            label={t('password.new')}
+            iconNode={fieldIcon('lock-closed', '#B6A0FF')}
+            value={next}
+            onChangeText={setNext}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+
+          {/* Strength meter */}
+          {next.length > 0 && (
+            <View style={{ marginTop: -4, marginBottom: spacing.md }}>
+              <View style={[styles.track, { backgroundColor: colors.border }]}>
+                <Animated.View
+                  style={{
+                    height: 6,
+                    borderRadius: 3,
+                    width: strengthAnim.interpolate({ inputRange: [0, 4], outputRange: ['0%', '100%'] }),
+                    backgroundColor: strengthAnim.interpolate({
+                      inputRange: [0, 1, 2, 3, 4],
+                      outputRange: barColors,
+                    }),
+                  }}
+                />
+              </View>
+              <Text style={[typography.caption, { color: barColors[score], marginTop: 6, fontWeight: '800' }]}>
+                {labels[score]}
+              </Text>
+            </View>
+          )}
+
+          <AuthField
+            label={t('password.confirm')}
+            iconNode={fieldIcon('shield-checkmark', '#6EDBD5')}
+            showCheck={matches}
+            value={confirm}
+            onChangeText={setConfirm}
+            secureTextEntry
+            autoCapitalize="none"
+            returnKeyType="go"
+            onSubmitEditing={onSubmit}
+          />
+          {matches && (
+            <View style={styles.matchRow}>
+              <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+              <Text style={[typography.caption, { color: colors.success, fontWeight: '700' }]}>
+                {t('password.matches', { defaultValue: 'Passwords match' })}
+              </Text>
+            </View>
+          )}
+          {mismatch && (
+            <View style={styles.matchRow}>
+              <Ionicons name="close-circle" size={14} color={colors.error} />
+              <Text style={[typography.caption, { color: colors.error, fontWeight: '700' }]}>
+                {t('password.mismatch')}
+              </Text>
+            </View>
+          )}
+        </Animated.View>
 
         {error && (
-          <Text style={[typography.bodySmall, { color: colors.error, marginTop: spacing.md }]}>
-            {error}
-          </Text>
+          <Animated.View style={{ marginTop: spacing.lg, transform: [{ translateX: shake }] }}>
+            <ErrorBanner message={error} />
+          </Animated.View>
         )}
         {success && (
-          <Text style={[typography.bodySmall, { color: colors.success, marginTop: spacing.md }]}>
-            {success}
-          </Text>
+          <Animated.View
+            style={[
+              styles.successBox,
+              {
+                borderLeftColor: colors.success,
+                backgroundColor: withAlpha(colors.success, 0.14),
+                opacity: successPop,
+                transform: [{ scale: successPop.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }],
+              },
+            ]}
+          >
+            <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+            <Text style={[typography.bodySmall, { color: colors.success, flex: 1, fontWeight: '600' }]}>
+              {success}
+            </Text>
+          </Animated.View>
         )}
 
-        <Pressable
-          onPress={onSubmit}
-          disabled={busy}
-          style={{
-            marginTop: spacing.xl,
-            backgroundColor: colors.primary,
-            borderRadius: radius.md,
-            paddingVertical: spacing.md,
-            alignItems: 'center',
-            opacity: busy ? 0.6 : 1,
-          }}
-        >
-          {busy ? (
-            <ActivityIndicator color={colors.primaryText} />
-          ) : (
-            <Text style={[typography.button, { color: colors.primaryText }]}>
-              {t('password.submit')}
-            </Text>
-          )}
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  secureTextEntry,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  secureTextEntry?: boolean;
-}) {
-  const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
-  return (
-    <View style={{ marginBottom: spacing.md }}>
-      <Text style={[typography.bodySmall, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-        {label}
-      </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        secureTextEntry={secureTextEntry}
-        autoCapitalize="none"
-        style={{
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          borderWidth: 1,
-          borderRadius: radius.md,
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.md,
-          color: colors.text,
-          fontSize: typography.body.fontSize,
-        }}
-      />
+        <Animated.View style={[{ marginTop: 28 }, fadeUp(2)]}>
+          <PrimaryButton
+            label={t('password.submit')}
+            onPress={onSubmit}
+            busy={busy}
+            iconNode={<Ionicons name="shield-checkmark-outline" size={18} color="#FFFFFF" />}
+          />
+        </Animated.View>
+      </KeyboardAwareScroll>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    padding: 22,
+    borderRadius: 28,
+    overflow: 'hidden',
+  },
+  blob: { position: 'absolute', width: 170, height: 170, borderRadius: 85 },
+  heroIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: BRAND.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF' },
+  heroSubtitle: { marginTop: 4, fontSize: 13, lineHeight: 19, color: 'rgba(255,255,255,0.8)' },
+  card: { borderWidth: 1, borderRadius: 24, padding: 16, marginTop: 20 },
+  fieldIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  track: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  matchRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: -4 },
+  successBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+  },
+});

@@ -1,18 +1,7 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Image,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { View, Text, Pressable, Image, Alert, Animated, Easing } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -20,6 +9,15 @@ import { useTheme } from '../../theme/ThemeContext';
 import { register, RegisterInput } from '../../services/registration';
 import { ApiError } from '../../services/api';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
+import {
+  AuthScreen,
+  AuthField,
+  PrimaryButton,
+  SecondaryButton,
+  ErrorBanner,
+  Stepper,
+  BRAND,
+} from './Auth_UI';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
@@ -28,7 +26,7 @@ type FormState = {
   phone: string;
   email: string;
   password: string;
-  gender: 'male' | 'female' | 'other' | '';
+  gender: 'male' | 'female' | '';
   dateOfBirth: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
@@ -58,6 +56,23 @@ export default function RegisterScreen({ navigation }: Props) {
   const [form, setForm] = useState<FormState>(INITIAL);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Use our own branded header instead of the native one.
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  // Slide/fade each time the step changes
+  const enter = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    enter.setValue(0);
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [step, enter]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -169,84 +184,195 @@ export default function RegisterScreen({ navigation }: Props) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
-    >
-      <ScrollView
-        contentContainerStyle={{
-          padding: spacing.xl,
-          flexGrow: 1,
-        }}
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
-        showsVerticalScrollIndicator={false}
+    <AuthScreen compact>
+      <Text style={[typography.h2, { color: colors.text }]}>{t('register.title')}</Text>
+      <Text
+        style={[
+          typography.bodySmall,
+          { color: colors.textSecondary, marginTop: spacing.xs, marginBottom: spacing.md },
+        ]}
       >
-        <Text style={[typography.h2, { color: colors.primary }]}>
-          {t('register.title')}
-        </Text>
-        <Text
-          style={[
-            typography.bodySmall,
-            { color: colors.textSecondary, marginTop: spacing.xs },
-          ]}
-        >
-          {t('register.step', { current: step, total: 3 })}
-        </Text>
+        {t('register.step', { current: step, total: 3 })}
+      </Text>
+      <Stepper step={step} icons={['👤', '📋', '📷']} />
 
-        <View style={{ marginTop: spacing.xl }}>
-          {step === 1 && (
-            <>
-              <Heading text={t('register.step1Title')} />
-              <Field label={t('register.fullName')} value={form.fullName} onChange={(v) => set('fullName', v)} />
-              <Field label={t('register.phone')} value={form.phone} onChange={(v) => set('phone', v)} keyboardType="phone-pad" autoCapitalize="none" />
-              <Field label={t('register.email')} value={form.email} onChange={(v) => set('email', v)} keyboardType="email-address" autoCapitalize="none" />
-              <Field label={t('register.password')} value={form.password} onChange={(v) => set('password', v)} secureTextEntry />
-            </>
-          )}
+      <Animated.View
+        style={{
+          marginTop: spacing.xl,
+          opacity: enter,
+          transform: [
+            { translateX: enter.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }) },
+          ],
+        }}
+      >
+        {step === 1 && (
+          <>
+            <Heading text={t('register.step1Title')} />
+            <AuthField
+              label={t('register.fullName')}
+              icon="👤"
+              value={form.fullName}
+              onChangeText={(v) => set('fullName', v)}
+              autoCapitalize="words"
+            />
+            <AuthField
+              label={t('register.phone')}
+              icon="📞"
+              value={form.phone}
+              onChangeText={(v) => set('phone', v)}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+            />
+            <AuthField
+              label={t('register.email')}
+              icon="✉️"
+              value={form.email}
+              onChangeText={(v) => set('email', v)}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <AuthField
+              label={t('register.password')}
+              icon="🔒"
+              value={form.password}
+              onChangeText={(v) => set('password', v)}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+          </>
+        )}
 
-          {step === 2 && (
-            <>
-              <Heading text={t('register.step2Title')} />
-              <Text style={[typography.bodySmall, { color: colors.textSecondary, marginBottom: spacing.sm }]}>
-                {t('register.gender')}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
-                {(['male', 'female', 'other'] as const).map((g) => (
+        {step === 2 && (
+          <>
+            <Heading text={t('register.step2Title')} />
+            <Text
+              style={[
+                typography.bodySmall,
+                { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '600' },
+              ]}
+            >
+              {t('register.gender')}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md }}>
+              {(['male', 'female'] as const).map((g) => {
+                const active = form.gender === g;
+                return (
                   <Pressable
                     key={g}
                     onPress={() => set('gender', g)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
                     style={{
                       flex: 1,
                       paddingVertical: spacing.md,
                       borderRadius: radius.md,
-                      borderWidth: 1,
-                      borderColor: form.gender === g ? colors.primary : colors.border,
-                      backgroundColor: colors.surface,
+                      borderWidth: 1.5,
+                      borderColor: active ? colors.primary : colors.border,
+                      backgroundColor: active ? colors.primary : colors.surface,
                       alignItems: 'center',
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      gap: spacing.sm,
                     }}
                   >
-                    <Text style={[typography.bodySmall, { color: colors.text }]}>
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        color: active ? colors.primaryText : BRAND.magenta,
+                      }}
+                    >
+                      {g === 'male' ? '♂' : '♀'}
+                    </Text>
+                    <Text
+                      style={[
+                        typography.body,
+                        {
+                          color: active ? colors.primaryText : colors.text,
+                          fontWeight: active ? '700' : '500',
+                        },
+                      ]}
+                    >
                       {t(`register.${g}`)}
                     </Text>
                   </Pressable>
-                ))}
-              </View>
-              <Field label={t('register.dateOfBirth')} value={form.dateOfBirth} onChange={(v) => set('dateOfBirth', v)} autoCapitalize="none" />
-              <Field label={t('register.emergencyContactName')} value={form.emergencyContactName} onChange={(v) => set('emergencyContactName', v)} />
-              <Field label={t('register.emergencyContactPhone')} value={form.emergencyContactPhone} onChange={(v) => set('emergencyContactPhone', v)} keyboardType="phone-pad" />
-              <Field label={t('register.joiningDate')} value={form.joiningDate} onChange={(v) => set('joiningDate', v)} autoCapitalize="none" />
-            </>
-          )}
+                );
+              })}
+            </View>
+            <AuthField
+              label={t('register.dateOfBirth')}
+              icon="🎂"
+              value={form.dateOfBirth}
+              onChangeText={(v) => set('dateOfBirth', v)}
+              autoCapitalize="none"
+              placeholder="YYYY-MM-DD"
+            />
+            <AuthField
+              label={t('register.emergencyContactName')}
+              icon="🚑"
+              value={form.emergencyContactName}
+              onChangeText={(v) => set('emergencyContactName', v)}
+              autoCapitalize="words"
+            />
+            <AuthField
+              label={t('register.emergencyContactPhone')}
+              icon="📞"
+              value={form.emergencyContactPhone}
+              onChangeText={(v) => set('emergencyContactPhone', v)}
+              keyboardType="phone-pad"
+            />
+            <AuthField
+              label={t('register.joiningDate')}
+              icon="📅"
+              value={form.joiningDate}
+              onChangeText={(v) => set('joiningDate', v)}
+              autoCapitalize="none"
+              placeholder="YYYY-MM-DD"
+            />
+          </>
+        )}
 
-          {step === 3 && (
-            <>
-              <Heading text={t('register.step3Title')} />
+        {step === 3 && (
+          <>
+            <Heading text={t('register.step3Title')} />
 
-              <Pressable onPress={pickPhoto} style={{ alignItems: 'center', marginBottom: spacing.lg }}>
+            <Pressable
+              onPress={pickPhoto}
+              style={{ alignItems: 'center', marginBottom: spacing.xl }}
+              accessibilityRole="button"
+              accessibilityLabel={t('register.pickPhoto')}
+            >
+              <LinearGradient
+                colors={[BRAND.gold, BRAND.magenta, BRAND.violet]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  width: 160,
+                  height: 160,
+                  borderRadius: 80,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: BRAND.magenta,
+                  shadowOpacity: 0.45,
+                  shadowRadius: 16,
+                  shadowOffset: { width: 0, height: 8 },
+                  elevation: 8,
+                }}
+              >
+                <View
+                  style={{
+                    width: 152,
+                    height: 152,
+                    borderRadius: 76,
+                    backgroundColor: colors.background,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
                 {form.photoUri ? (
-                  <Image source={{ uri: form.photoUri }} style={{ width: 140, height: 140, borderRadius: 70 }} />
+                  <Image
+                    source={{ uri: form.photoUri }}
+                    style={{ width: 140, height: 140, borderRadius: 70 }}
+                  />
                 ) : (
                   <View
                     style={{
@@ -254,98 +380,105 @@ export default function RegisterScreen({ navigation }: Props) {
                       height: 140,
                       borderRadius: 70,
                       backgroundColor: colors.surface,
-                      borderWidth: 2,
-                      borderColor: colors.primary,
                       alignItems: 'center',
                       justifyContent: 'center',
+                      padding: spacing.md,
                     }}
                   >
-                    <Text style={[typography.bodySmall, { color: colors.primary }]}>
+                    <Text style={{ fontSize: 34 }}>📷</Text>
+                    <Text
+                      style={[
+                        typography.bodySmall,
+                        { color: colors.primary, marginTop: spacing.xs, textAlign: 'center' },
+                      ]}
+                    >
                       {t('register.pickPhoto')}
                     </Text>
                   </View>
                 )}
-              </Pressable>
+                {form.photoUri ? (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      right: 4,
+                      bottom: 4,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: BRAND.magenta,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 3,
+                      borderColor: colors.background,
+                    }}
+                  >
+                    <Text style={{ fontSize: 16 }}>✏️</Text>
+                  </View>
+                ) : null}
+                </View>
+              </LinearGradient>
+            </Pressable>
 
-              <Review label={t('register.fullName')} value={form.fullName} />
-              <Review label={t('register.phone')} value={form.phone} />
-              <Review label={t('register.email')} value={form.email} />
-              <Review label={t('register.gender')} value={t(`register.${form.gender || 'other'}`)} />
-              <Review label={t('register.dateOfBirth')} value={form.dateOfBirth} />
-              <Review label={t('register.emergencyContactName')} value={form.emergencyContactName} />
-              <Review label={t('register.emergencyContactPhone')} value={form.emergencyContactPhone} />
-              {form.joiningDate ? (
-                <Review label={t('register.joiningDate')} value={form.joiningDate} />
-              ) : null}
-            </>
-          )}
-
-          {error && (
-            <Text style={[typography.bodySmall, { color: colors.error, marginTop: spacing.md }]}>
-              {error}
-            </Text>
-          )}
-
-          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl, marginBottom: spacing.xl }}>
-            <Pressable
-              onPress={back}
+            <View
               style={{
-                flex: 1,
-                paddingVertical: spacing.md,
+                padding: spacing.lg,
                 borderRadius: radius.md,
                 borderWidth: 1,
                 borderColor: colors.border,
-                alignItems: 'center',
+                backgroundColor: colors.surface,
               }}
             >
-              <Text style={[typography.button, { color: colors.text }]}>
-                {t('register.back')}
-              </Text>
-            </Pressable>
+              <Review label={t('register.fullName')} value={form.fullName} />
+              <Review label={t('register.phone')} value={form.phone} />
+              <Review label={t('register.email')} value={form.email} />
+              <Review
+                label={t('register.gender')}
+                value={form.gender ? t(`register.${form.gender}`) : ''}
+              />
+              <Review label={t('register.dateOfBirth')} value={form.dateOfBirth} />
+              <Review
+                label={t('register.emergencyContactName')}
+                value={form.emergencyContactName}
+              />
+              <Review
+                label={t('register.emergencyContactPhone')}
+                value={form.emergencyContactPhone}
+              />
+              {form.joiningDate ? (
+                <Review label={t('register.joiningDate')} value={form.joiningDate} />
+              ) : null}
+            </View>
+          </>
+        )}
+      </Animated.View>
 
-            {step < 3 && (
-              <Pressable
-                onPress={next}
-                style={{
-                  flex: 1,
-                  paddingVertical: spacing.md,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.primary,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={[typography.button, { color: colors.primaryText }]}>
-                  {t('register.next')}
-                </Text>
-              </Pressable>
-            )}
-
-            {step === 3 && (
-              <Pressable
-                onPress={submit}
-                disabled={busy}
-                style={{
-                  flex: 1,
-                  paddingVertical: spacing.md,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.primary,
-                  alignItems: 'center',
-                  opacity: busy ? 0.6 : 1,
-                }}
-              >
-                {busy ? (
-                  <ActivityIndicator color={colors.primaryText} />
-                ) : (
-                  <Text style={[typography.button, { color: colors.primaryText }]}>
-                    {t('register.submit')}
-                  </Text>
-                )}
-              </Pressable>
-            )}
-          </View>
+      {error && (
+        <View style={{ marginTop: spacing.md }}>
+          <ErrorBanner message={error} />
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      )}
+
+      <View
+        style={{
+          flexDirection: 'row',
+          gap: spacing.md,
+          marginTop: spacing.xl,
+          marginBottom: spacing.md,
+        }}
+      >
+        <SecondaryButton label={t('register.back')} onPress={back} flex={1} />
+        {step < 3 ? (
+          <PrimaryButton label={t('register.next')} onPress={next} flex={1} />
+        ) : (
+          <PrimaryButton
+            label={t('register.submit')}
+            onPress={submit}
+            busy={busy}
+            flex={1}
+          />
+        )}
+      </View>
+    </AuthScreen>
   );
 }
 
@@ -355,9 +488,18 @@ function Heading({ text }: { text: string }) {
   const { theme } = useTheme();
   const { colors, typography, spacing } = theme;
   return (
-    <Text style={[typography.h3, { color: colors.text, marginBottom: spacing.md }]}>
-      {text}
-    </Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
+      <View
+        style={{
+          width: 4,
+          height: 22,
+          borderRadius: 2,
+          backgroundColor: BRAND.gold,
+          marginRight: spacing.sm,
+        }}
+      />
+      <Text style={[typography.h3, { color: colors.text }]}>{text}</Text>
+    </View>
   );
 }
 
@@ -366,60 +508,10 @@ function Review({ label, value }: { label: string; value: string }) {
   const { colors, typography, spacing } = theme;
   return (
     <View style={{ marginBottom: spacing.sm }}>
-      <Text style={[typography.caption, { color: colors.textSecondary }]}>
-        {label}
+      <Text style={[typography.caption, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[typography.body, { color: colors.text, fontWeight: '600' }]}>
+        {value || '—'}
       </Text>
-      <Text style={[typography.body, { color: colors.text }]}>{value || '—'}</Text>
     </View>
   );
 }
-
-function Field({
-  label,
-  value,
-  onChange,
-  keyboardType,
-  autoCapitalize,
-  secureTextEntry,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  keyboardType?: 'default' | 'phone-pad' | 'email-address';
-  autoCapitalize?: 'none' | 'sentences' | 'words';
-  secureTextEntry?: boolean;
-}) {
-  const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
-  return (
-    <View style={{ marginBottom: spacing.md }}>
-      <Text
-        style={[
-          typography.bodySmall,
-          { color: colors.textSecondary, marginBottom: spacing.xs },
-        ]}
-      >
-        {label}
-      </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        keyboardType={keyboardType ?? 'default'}
-        autoCapitalize={autoCapitalize ?? 'sentences'}
-        secureTextEntry={secureTextEntry}
-        style={{
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          borderWidth: 1,
-          borderRadius: radius.md,
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.md,
-          color: colors.text,
-          fontSize: typography.body.fontSize,
-        }}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({});

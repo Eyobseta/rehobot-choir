@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,11 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Animated,
+  Easing,
+  StyleSheet,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
@@ -22,15 +26,18 @@ import {
 } from '../../services/notifications';
 import { ApiError } from '../../services/api';
 import { setUnread } from '../../services/unreadStore';
+import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
 
 type Props = {
   navigation: any;
 };
 
+type IconName = keyof typeof Ionicons.glyphMap;
+
 export default function NotificationsScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,7 +157,7 @@ export default function NotificationsScreen({ navigation }: Props) {
     ]);
   };
 
-  const iconFor = (type: NotificationType): keyof typeof Ionicons.glyphMap => {
+  const iconFor = (type: NotificationType): IconName => {
     switch (type) {
       case 'ANNOUNCEMENT':
         return 'megaphone-outline';
@@ -173,6 +180,30 @@ export default function NotificationsScreen({ navigation }: Props) {
     }
   };
 
+  // Visual only: each type gets its own accent colour.
+  const tintFor = (type: NotificationType): string => {
+    switch (type) {
+      case 'ANNOUNCEMENT':
+        return '#B6A0FF';
+      case 'EVENT_REMINDER':
+        return '#6EDBD5';
+      case 'CHAT_MESSAGE':
+        return '#B8E986';
+      case 'BIRTHDAY':
+        return '#EE9BBD';
+      case 'SONG_PUBLISHED':
+        return '#E6C779';
+      case 'MEMORY_PUBLISHED':
+        return '#6EDBD5';
+      case 'LEADERSHIP_CHANGE':
+        return '#B6A0FF';
+      case 'DAILY_QUOTE':
+        return '#E6C779';
+      default:
+        return '#B6A0FF';
+    }
+  };
+
   if (loading) {
     return (
       <View
@@ -183,49 +214,22 @@ export default function NotificationsScreen({ navigation }: Props) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={BRAND.violet} />
       </View>
     );
   }
 
+  const unreadCount = items.filter((i) => !i.readAt).length;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ padding: spacing.lg, paddingBottom: 0 }}>
-        {items.some((i) => !i.readAt) && (
-          <Pressable
-            onPress={onMarkAllRead}
-            style={{
-              alignSelf: 'flex-end',
-              paddingVertical: spacing.xs,
-              paddingHorizontal: spacing.md,
-              borderRadius: radius.md,
-              borderWidth: 1,
-              borderColor: colors.primary,
-            }}
-          >
-            <Text style={[typography.caption, { color: colors.primary }]}>
-              {t('notifications.markAllRead')}
-            </Text>
-          </Pressable>
-        )}
-        {error && (
-          <Text
-            style={[
-              typography.bodySmall,
-              { color: colors.error, marginTop: spacing.sm },
-            ]}
-          >
-            {error}
-          </Text>
-        )}
-      </View>
-
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           padding: spacing.lg,
-          paddingBottom: spacing.xl,
+          paddingBottom: spacing.xl * 2,
         }}
         refreshControl={
           <RefreshControl
@@ -234,106 +238,274 @@ export default function NotificationsScreen({ navigation }: Props) {
               setRefreshing(true);
               void load();
             }}
-            tintColor={colors.primary}
+            tintColor={BRAND.violet}
+            colors={[BRAND.violet]}
           />
+        }
+        ListHeaderComponent={
+          <View>
+            <LinearGradient
+              colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.hero}
+            >
+              <View pointerEvents="none" style={[styles.blob, { top: -50, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.2) }]} />
+              <View pointerEvents="none" style={[styles.blob, { bottom: -70, left: -40, backgroundColor: withAlpha(BRAND.water, 0.2) }]} />
+
+              <View style={styles.heroIcon}>
+                <Ionicons name="notifications" size={26} color={BRAND.deep} />
+                {unreadCount > 0 && <View style={styles.heroDot} />}
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text accessibilityRole="header" style={styles.heroTitle}>
+                  {t('notifications.title')}
+                </Text>
+                <Text style={styles.heroSubtitle}>
+                  {unreadCount > 0
+                    ? t('notifications.unreadCount', { count: unreadCount, defaultValue: '{{count}} unread' })
+                    : t('notifications.allCaughtUp', { defaultValue: "You're all caught up" })}
+                </Text>
+              </View>
+
+              {unreadCount > 0 && (
+                <Pressable
+                  onPress={onMarkAllRead}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('notifications.markAllRead')}
+                  style={({ pressed }) => [styles.markAll, { opacity: pressed ? 0.7 : 1 }]}
+                >
+                  <Ionicons name="checkmark-done" size={16} color={BRAND.gold} />
+                  <Text style={styles.markAllText} numberOfLines={1}>
+                    {t('notifications.markAllRead')}
+                  </Text>
+                </Pressable>
+              )}
+            </LinearGradient>
+
+            {error && (
+              <View style={{ marginTop: spacing.md }}>
+                <ErrorBanner message={error} />
+              </View>
+            )}
+            <View style={{ height: spacing.md }} />
+          </View>
         }
         ListEmptyComponent={
           <View style={{ padding: spacing.xl, alignItems: 'center' }}>
-            <Ionicons
-              name="notifications-off-outline"
-              size={40}
-              color={colors.textSecondary}
-            />
+            <LinearGradient
+              colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.emptyRing}
+            >
+              <View style={[styles.emptyInner, { backgroundColor: colors.background }]}>
+                <Ionicons name="notifications-off-outline" size={40} color={colors.textSecondary} />
+              </View>
+            </LinearGradient>
             <Text
               style={[
                 typography.body,
-                { color: colors.textSecondary, marginTop: spacing.md },
+                { color: colors.textSecondary, marginTop: spacing.lg, textAlign: 'center' },
               ]}
             >
               {t('notifications.empty')}
             </Text>
           </View>
         }
-        renderItem={({ item }) => {
-          const unread = !item.readAt;
-          return (
-            <Pressable
-              onPress={() => onOpen(item)}
-              onLongPress={() => onDelete(item)}
-              style={{
-                padding: spacing.md,
-                marginBottom: spacing.sm,
-                backgroundColor: unread ? colors.surfaceAlt : colors.surface,
-                borderRadius: radius.md,
-                borderWidth: 1,
-                borderColor: unread ? colors.primary : colors.border,
-                flexDirection: 'row',
-              }}
-            >
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: colors.primary,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons
-                  name={iconFor(item.type)}
-                  size={20}
-                  color={colors.primaryText}
-                />
-              </View>
-
-              <View style={{ flex: 1, marginLeft: spacing.md }}>
-                <Text
-                  style={[
-                    typography.body,
-                    { color: colors.text, fontWeight: unread ? '700' : '500' },
-                  ]}
-                  numberOfLines={2}
-                >
-                  {item.title}
-                </Text>
-                {item.body && (
-                  <Text
-                    style={[
-                      typography.bodySmall,
-                      { color: colors.textSecondary, marginTop: 2 },
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {item.body}
-                  </Text>
-                )}
-                <Text
-                  style={[
-                    typography.caption,
-                    { color: colors.textSecondary, marginTop: spacing.xs },
-                  ]}
-                >
-                  {new Date(item.createdAt).toLocaleString()}
-                </Text>
-              </View>
-
-              {unread && (
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: colors.primary,
-                    marginLeft: spacing.sm,
-                    marginTop: 6,
-                  }}
-                />
-              )}
-            </Pressable>
-          );
-        }}
+        renderItem={({ item, index }) => (
+          <NotificationCard
+            item={item}
+            index={index}
+            icon={iconFor(item.type)}
+            tint={tintFor(item.type)}
+            onOpen={() => onOpen(item)}
+            onDelete={() => onDelete(item)}
+          />
+        )}
       />
     </View>
   );
 }
+
+// ---------- Card (module scope so it never remounts on parent re-render) ----------
+
+function NotificationCard({
+  item,
+  index,
+  icon,
+  tint,
+  onOpen,
+  onDelete,
+}: {
+  item: NotificationItem;
+  index: number;
+  icon: IconName;
+  tint: string;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  const { theme } = useTheme();
+  const { colors, spacing, typography } = theme;
+  const unread = !item.readAt;
+
+  const enter = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const animation = Animated.timing(enter, {
+      toValue: 1,
+      duration: 420,
+      delay: Math.min(index, 8) * 60,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [enter, index]);
+
+  const to = (v: number) =>
+    Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
+
+  return (
+    <Animated.View
+      style={{
+        marginBottom: spacing.sm + 2,
+        opacity: enter,
+        transform: [
+          { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) },
+          { scale },
+        ],
+      }}
+    >
+      <Pressable
+        onPress={onOpen}
+        onLongPress={onDelete}
+        onPressIn={() => to(0.98)}
+        onPressOut={() => to(1)}
+        accessibilityRole="button"
+        accessibilityLabel={item.title}
+        style={[
+          styles.card,
+          {
+            backgroundColor: unread ? colors.surfaceAlt : colors.surface,
+            borderColor: unread ? withAlpha(tint, 0.55) : colors.border,
+          },
+        ]}
+      >
+        {unread && (
+          <LinearGradient
+            colors={[BRAND.violet, BRAND.magenta]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.unreadBar}
+          />
+        )}
+
+        <View style={[styles.iconTile, { backgroundColor: withAlpha(tint, unread ? 0.22 : 0.14) }]}>
+          <Ionicons name={icon} size={22} color={tint} />
+        </View>
+
+        <View style={{ flex: 1, marginLeft: spacing.md }}>
+          <Text
+            style={[
+              typography.body,
+              { color: colors.text, fontWeight: unread ? '800' : '500' },
+            ]}
+            numberOfLines={2}
+          >
+            {item.title}
+          </Text>
+          {item.body && (
+            <Text
+              style={[typography.bodySmall, { color: colors.textSecondary, marginTop: 2 }]}
+              numberOfLines={2}
+            >
+              {item.body}
+            </Text>
+          )}
+          <View style={styles.timeRow}>
+            <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              {new Date(item.createdAt).toLocaleString()}
+            </Text>
+          </View>
+        </View>
+
+        {unread && <View style={styles.dot} />}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 20,
+    borderRadius: 28,
+    overflow: 'hidden',
+    flexWrap: 'wrap',
+  },
+  blob: { position: 'absolute', width: 170, height: 170, borderRadius: 85 },
+  heroIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: BRAND.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroDot: {
+    position: 'absolute',
+    top: 8,
+    right: 9,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: BRAND.magenta,
+    borderWidth: 2,
+    borderColor: BRAND.gold,
+  },
+  heroTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF' },
+  heroSubtitle: { marginTop: 3, fontSize: 13, color: 'rgba(255,255,255,0.82)' },
+  markAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    maxWidth: '100%',
+  },
+  markAllText: { color: BRAND.gold, fontSize: 12, fontWeight: '800', flexShrink: 1 },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    paddingLeft: 18,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+  },
+  unreadBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 },
+  iconTile: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  dot: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: BRAND.magenta,
+    marginLeft: 10,
+    shadowColor: BRAND.magenta,
+    shadowOpacity: 0.7,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 3,
+  },
+  emptyRing: { width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' },
+  emptyInner: { width: 104, height: 104, borderRadius: 52, alignItems: 'center', justifyContent: 'center' },
+});
