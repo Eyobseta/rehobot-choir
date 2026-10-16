@@ -24,6 +24,7 @@ import { ApiError } from '../../services/api';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
 import { HeroBanner, DatePill, EmptyState } from './Memorykit';
 
+
 export default function LeaderMemoriesScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
