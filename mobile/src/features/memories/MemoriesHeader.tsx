@@ -15,7 +15,6 @@ export default function MemoriesHeader() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
-  // Title entrance animation
   const enter = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(enter, {
@@ -26,7 +25,6 @@ export default function MemoriesHeader() {
     }).start();
   }, [enter]);
 
-  // Slow drifting blobs (visual only)
   const drift = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -75,7 +73,6 @@ export default function MemoriesHeader() {
       end={{ x: 1, y: 1 }}
       style={[styles.wrap, { paddingTop: insets.top }]}
     >
-      {/* Drifting decorative blobs */}
       <Animated.View
         pointerEvents="none"
         style={[
@@ -147,15 +144,15 @@ export default function MemoriesHeader() {
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingBottom: 14,
-    // No bottom radius — flows straight into the hero card below.
+    paddingBottom: 0,           // ← was 14; now flows directly into the hero below
   },
   blob: { position: 'absolute', width: 180, height: 180, borderRadius: 90 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 0,
+    paddingBottom: 6,           // ← tiny breathing room above the hero
   },
   iconBubble: {
     width: 40,

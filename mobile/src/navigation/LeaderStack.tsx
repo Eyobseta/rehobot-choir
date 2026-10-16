@@ -136,10 +136,10 @@ export default function LeaderStack() {
         options={{ title: t('leaderSongs.review') }}
       />
       <Stack.Screen
-        name="LeaderMemories"
-        component={LeaderMemoriesScreen}
-        options={{ title: t('memories.reviewTitle') }}
-      />
+  name="LeaderMemories"
+  component={LeaderMemoriesScreen}
+  options={{ headerShown: false }}
+/>
       <Stack.Screen
         name="MemoryReviewDetail"
         component={MemoryReviewDetailScreen}

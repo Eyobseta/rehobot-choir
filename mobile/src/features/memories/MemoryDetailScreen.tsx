@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { getMemory, MemoryDetail, MemoryMediaItem } from '../../services/memories';
 import { ApiError } from '../../services/api';
@@ -34,19 +35,19 @@ import {
   useEnter,
   YOUTUBE_COLORS,
 } from './Memorykit';
+import GlassBackButton from '../../components/GlassBackButton';
 
 export default function MemoryDetailScreen({ route, navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
+  const insets = useSafeAreaInsets();
   const { id } = route.params;
 
   const [item, setItem] = useState<MemoryDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [playerStatus, setPlayerStatus] = useState<SimpleStatus>(
-    getSnapshot(),
-  );
+  const [playerStatus, setPlayerStatus] = useState<SimpleStatus>(getSnapshot());
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
 
@@ -99,6 +100,11 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
         }}
       >
         <ErrorBanner message={error ?? t('memories.notFound')} />
+
+        {/* Back button still reachable if the memory failed to load */}
+        <View style={{ position: 'absolute', top: insets.top + 12, left: 16 }}>
+          <GlassBackButton onPress={() => navigation.goBack()} size={44} />
+        </View>
       </View>
     );
   }
@@ -116,11 +122,7 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
     if (!audio?.storageUrl) return;
     const key = `memory:${item.id}`;
     if (getCurrentKey() !== key) {
-      await playTrack({
-        key,
-        uri: audio.storageUrl,
-        title: item.title,
-      });
+      await playTrack({ key, uri: audio.storageUrl, title: item.title });
       return;
     }
     if (isAudioPlaying) await pauseTrack();
@@ -128,9 +130,17 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
   };
 
   const pressAudio = (v: number) =>
-    Animated.spring(audioScale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
+    Animated.spring(audioScale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 6,
+      useNativeDriver: true,
+    }).start();
 
-  const carouselPhotos = photos.map((p: MemoryMediaItem) => ({ id: p.id, uri: p.storageUrl ?? undefined }));
+  const carouselPhotos = photos.map((p: MemoryMediaItem) => ({
+    id: p.id,
+    uri: p.storageUrl ?? undefined,
+  }));
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -147,7 +157,6 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
           }}
         />
 
-        {/* Content sheet overlapping the carousel */}
         <View
           style={{
             marginTop: -28,
@@ -158,16 +167,26 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
           }}
         >
           <Animated.View style={fadeUp(0)}>
-            <Text style={[typography.h2, { color: colors.text, fontWeight: '800' }]}>{item.title}</Text>
+            <Text style={[typography.h2, { color: colors.text, fontWeight: '800' }]}>
+              {item.title}
+            </Text>
 
             <View style={styles.metaRow}>
               <DatePill text={new Date(item.date).toISOString().slice(0, 10)} />
               {photos.length > 0 && (
-                <StatusPill label={String(photos.length)} color={BRAND.magenta} icon="images" />
+                <StatusPill
+                  label={String(photos.length)}
+                  color={BRAND.magenta}
+                  icon="images"
+                />
               )}
               {audio && <StatusPill label="" color={BRAND.violet} icon="musical-notes" />}
               {youtubes.length > 0 && (
-                <StatusPill label={String(youtubes.length)} color="#FF2D2D" icon="logo-youtube" />
+                <StatusPill
+                  label={String(youtubes.length)}
+                  color="#FF2D2D"
+                  icon="logo-youtube"
+                />
               )}
             </View>
           </Animated.View>
@@ -181,7 +200,9 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
               ]}
             >
               <View style={[styles.quoteBar, { backgroundColor: BRAND.gold }]} />
-              <Text style={[typography.body, { color: colors.text, lineHeight: 24, flex: 1 }]}>
+              <Text
+                style={[typography.body, { color: colors.text, lineHeight: 24, flex: 1 }]}
+              >
                 {item.description}
               </Text>
             </Animated.View>
@@ -223,7 +244,9 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.audioTitle}>{t('memories.audioAttached')}</Text>
+                      <Text style={styles.audioTitle}>
+                        {t('memories.audioAttached')}
+                      </Text>
                       <Text style={styles.audioSub} numberOfLines={1}>
                         {item.title}
                       </Text>
@@ -236,7 +259,9 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
           )}
 
           {youtubes.length > 0 && (
-            <Animated.View style={[{ marginTop: spacing.lg, gap: spacing.sm }, fadeUp(3)]}>
+            <Animated.View
+              style={[{ marginTop: spacing.lg, gap: spacing.sm }, fadeUp(3)]}
+            >
               {youtubes.map((y) => (
                 <GradientButton
                   key={y.id}
@@ -262,6 +287,18 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
         </View>
       </ScrollView>
 
+      {/* Floating back button over the carousel */}
+      <View
+        pointerEvents="box-none"
+        style={{ position: 'absolute', top: insets.top + 12, left: 16, zIndex: 10 }}
+      >
+        <GlassBackButton
+          onPress={() => navigation.goBack()}
+          accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+          size={44}
+        />
+      </View>
+
       <PhotoViewer
         visible={viewerOpen}
         photos={carouselPhotos}
@@ -273,7 +310,13 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
   descCard: {
     flexDirection: 'row',
     gap: 14,
@@ -283,7 +326,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   quoteBar: { width: 4, borderRadius: 2 },
-  audioCard: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 24 },
+  audioCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderRadius: 24,
+  },
   playCircle: {
     width: 56,
     height: 56,

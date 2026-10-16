@@ -9,23 +9,27 @@ import {
   Easing,
   StyleSheet,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { listMyMemories, MyMemoryRow } from '../../services/memories';
 import { ApiError } from '../../services/api';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
-import { HeroBanner, StatusPill, DatePill, EmptyState } from './Memorykit';
+import { StatusPill, DatePill, EmptyState } from './Memorykit';
+import GlassBackButton from '../../components/GlassBackButton';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const PENDING_COLOR = '#F59E0B';
 
-export default function MyMemoriesScreen() {
+export default function MyMemoriesScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
+  const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<MyMemoryRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,12 +116,69 @@ export default function MyMemoriesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* ---------- Full-bleed hero (sibling of the list) ---------- */}
+      <LinearGradient
+        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.hero, { paddingTop: insets.top + 16 }]}
+      >
+        <View
+          pointerEvents="none"
+          style={[
+            styles.blob,
+            { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.22) },
+          ]}
+        />
+        <View
+          pointerEvents="none"
+          style={[
+            styles.blob,
+            { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.22) },
+          ]}
+        />
+
+        <View style={styles.heroRow}>
+          <View style={styles.heroIcon}>
+            <Ionicons name="albums" size={22} color={BRAND.deep} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.heroKicker}>{t('memories.mine')}</Text>
+            <Text style={styles.heroTitle} numberOfLines={1}>
+              {t('memories.myCount', {
+                count: items.length,
+                defaultValue: '{{count}} memories shared',
+              })}
+            </Text>
+          </View>
+
+          <GlassBackButton
+            onPress={() => navigation.goBack()}
+            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+            size={44}
+          />
+        </View>
+
+        <View style={styles.summary}>
+          <SummaryTile icon="checkmark-circle" value={published} label={t('memories.statusPublished')} />
+          <SummaryTile icon="time" value={pending} label={t('memories.statusPending')} />
+          <SummaryTile icon="close-circle" value={rejected} label={t('memories.statusRejected')} />
+        </View>
+      </LinearGradient>
+
+      {error && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <ErrorBanner message={error} />
+        </View>
+      )}
+
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          padding: spacing.lg,
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.md,
           paddingBottom: spacing.xl * 2,
         }}
         refreshControl={
@@ -131,29 +192,9 @@ export default function MyMemoriesScreen() {
             colors={[BRAND.violet]}
           />
         }
-        ListHeaderComponent={
-          <View style={{ marginBottom: spacing.lg }}>
-            <HeroBanner
-              icon="albums"
-              title={t('memories.mine')}
-              subtitle={t('memories.myCount', { count: items.length, defaultValue: '{{count}} memories shared' })}
-            >
-              {/* status summary */}
-              <View style={styles.summary}>
-                <SummaryTile icon="checkmark-circle" value={published} label={t('memories.statusPublished')} />
-                <SummaryTile icon="time" value={pending} label={t('memories.statusPending')} />
-                <SummaryTile icon="close-circle" value={rejected} label={t('memories.statusRejected')} />
-              </View>
-            </HeroBanner>
-
-            {error && (
-              <View style={{ marginTop: spacing.md }}>
-                <ErrorBanner message={error} />
-              </View>
-            )}
-          </View>
+        ListEmptyComponent={
+          <EmptyState icon="albums-outline" text={t('memories.emptyMine')} />
         }
-        ListEmptyComponent={<EmptyState icon="albums-outline" text={t('memories.emptyMine')} />}
         renderItem={({ item, index }) => (
           <MyMemoryCard
             item={item}
@@ -169,9 +210,15 @@ export default function MyMemoriesScreen() {
   );
 }
 
-// ---------- Helpers (module scope) ----------
-
-function SummaryTile({ icon, value, label }: { icon: IconName; value: number; label: string }) {
+function SummaryTile({
+  icon,
+  value,
+  label,
+}: {
+  icon: IconName;
+  value: number;
+  label: string;
+}) {
   return (
     <View style={styles.summaryTile}>
       <Ionicons name={icon} size={16} color={BRAND.gold} />
@@ -218,7 +265,9 @@ function MyMemoryCard({
     <Animated.View
       style={{
         opacity: enter,
-        transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) }],
+        transform: [
+          { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) },
+        ],
         marginBottom: spacing.sm + 4,
       }}
     >
@@ -227,7 +276,10 @@ function MyMemoryCard({
 
         <View style={{ flex: 1 }}>
           <View style={styles.topRow}>
-            <Text style={[typography.body, { color: colors.text, fontWeight: '800', flex: 1 }]} numberOfLines={1}>
+            <Text
+              style={[typography.body, { color: colors.text, fontWeight: '800', flex: 1 }]}
+              numberOfLines={1}
+            >
               {item.title}
             </Text>
             <StatusPill label={label} color={tone} icon={icon} />
@@ -241,10 +293,15 @@ function MyMemoryCard({
             <View
               style={[
                 styles.reason,
-                { backgroundColor: withAlpha(colors.error, 0.1), borderLeftColor: colors.error },
+                {
+                  backgroundColor: withAlpha(colors.error, 0.1),
+                  borderLeftColor: colors.error,
+                },
               ]}
             >
-              <Text style={[typography.caption, { color: colors.error, fontWeight: '800' }]}>
+              <Text
+                style={[typography.caption, { color: colors.error, fontWeight: '800' }]}
+              >
                 {reasonLabel}
               </Text>
               <Text style={[typography.bodySmall, { color: colors.text, marginTop: 3 }]}>
@@ -259,6 +316,32 @@ function MyMemoryCard({
 }
 
 const styles = StyleSheet.create({
+  hero: {
+    paddingHorizontal: 16,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+  },
+  blob: { position: 'absolute', width: 180, height: 180, borderRadius: 90 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  heroIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: BRAND.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroKicker: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  heroTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', marginTop: 2 },
+
   summary: { flexDirection: 'row', gap: 10, marginTop: 18 },
   summaryTile: {
     flex: 1,
@@ -270,6 +353,7 @@ const styles = StyleSheet.create({
   },
   summaryValue: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 2 },
   summaryLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: '700', marginTop: 1 },
+
   card: {
     flexDirection: 'row',
     padding: 14,

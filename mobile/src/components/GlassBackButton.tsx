@@ -1,5 +1,12 @@
-import React, { useRef } from 'react';
-import { Pressable, Animated, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import {
+  Pressable,
+  Animated,
+  Easing,
+  StyleSheet,
+  View,
+  AccessibilityInfo,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -18,8 +25,22 @@ const ABS_FILL = {
   bottom: 0,
 };
 
+// Brand colours (violet / magenta / gold / water)
+const RIM = ['#FFC247', '#E0409A', '#6C3FE0', '#38BDF8'] as const;
+const SPHERE = ['#A78BFA', '#6C3FE0', '#E0409A', '#7A1B4F'] as const;
+const BASE = '#2A0F57'; // dark "side" of the 3D key
+
 /**
- * Modern, colorful, 3D interactive back button — retains exact layout/press logic.
+ * Modern, colorful, 3D interactive back button.
+ *
+ * - Sits on a dark base, so it looks like a real key.
+ * - On press the face sinks into the base, squashes slightly, flashes,
+ *   the arrow nudges back and a ring ripples outwards.
+ * - On release it springs back up with a little bounce.
+ * - A soft light sweep glides across the glass every few seconds
+ *   (skipped when the phone has "reduce motion" turned on).
+ *
+ * Layout footprint is exactly size x size, same as before.
  */
 export default function GlassBackButton({
   onPress,
@@ -28,19 +49,29 @@ export default function GlassBackButton({
   size = 48,
 }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
-  const shine = useRef(new Animated.Value(0)).current;
+  const shine = useRef(new Animated.Value(0)).current; // 0 = up, 1 = pressed
+  const ripple = useRef(new Animated.Value(0)).current;
+  const sweep = useRef(new Animated.Value(0)).current;
 
   const pressIn = () => {
+    ripple.setValue(0);
     Animated.parallel([
       Animated.spring(scale, {
-        toValue: 0.9,
+        toValue: 0.94,
         speed: 40,
         bounciness: 8,
         useNativeDriver: true,
       }),
       Animated.timing(shine, {
         toValue: 1,
-        duration: 160,
+        duration: 110,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(ripple, {
+        toValue: 1,
+        duration: 520,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start();
@@ -51,19 +82,48 @@ export default function GlassBackButton({
       Animated.spring(scale, {
         toValue: 1,
         speed: 28,
-        bounciness: 12,
+        bounciness: 14,
         useNativeDriver: true,
       }),
-      Animated.timing(shine, {
+      Animated.spring(shine, {
         toValue: 0,
-        duration: 220,
+        speed: 24,
+        bounciness: 14,
         useNativeDriver: true,
       }),
     ]).start();
   };
 
+  // Idle light sweep across the glass.
+  useEffect(() => {
+    let loop: Animated.CompositeAnimation | null = null;
+    let cancelled = false;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((reduced) => {
+        if (cancelled || reduced) return;
+        loop = Animated.loop(
+          Animated.sequence([
+            Animated.timing(sweep, {
+              toValue: 1,
+              duration: 900,
+              easing: Easing.inOut(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.delay(3600),
+          ]),
+        );
+        loop.start();
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      loop?.stop();
+    };
+  }, [sweep]);
+
   const ringThickness = Math.max(3, Math.round(size * 0.08));
   const inner = size - ringThickness * 2;
+  const depth = Math.max(4, Math.round(size * 0.11)); // how far the face sinks
 
   return (
     <Animated.View
@@ -74,142 +134,231 @@ export default function GlassBackButton({
           height: size,
           borderRadius: size / 2,
           transform: [{ scale }],
-          // Colorful deep shadow casting a vibrant aura
-          shadowColor: '#EC4899',
-          shadowOpacity: 0.5,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: 10,
         },
       ]}
     >
-      {/* ---------- Vibrant Colorful Outer Ring (Cyan to Fuchsia Glow Rim) ---------- */}
-      <LinearGradient
-        colors={['#38BDF8', '#818CF8', '#C084FC', '#F43F5E']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      {/* ---------- Ripple ring (fires on press) ---------- */}
+      <Animated.View
+        pointerEvents="none"
         style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
           width: size,
           height: size,
           borderRadius: size / 2,
-          alignItems: 'center',
-          justifyContent: 'center',
+          borderWidth: 2,
+          borderColor: '#FFC247',
+          opacity: ripple.interpolate({
+            inputRange: [0, 0.15, 1],
+            outputRange: [0, 0.7, 0],
+          }),
+          transform: [
+            {
+              scale: ripple.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1.9],
+              }),
+            },
+          ],
+        }}
+      />
+
+      {/* ---------- Base / side of the 3D key (peeks out underneath) ---------- */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: depth,
+          left: 0,
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: BASE,
+          shadowColor: '#E0409A',
+          shadowOpacity: 0.55,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 6 },
+          elevation: 9,
+        }}
+      />
+
+      {/* ---------- Face: sinks into the base while pressed ---------- */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          transform: [
+            {
+              translateY: shine.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, depth * 0.85],
+              }),
+            },
+          ],
         }}
       >
-        {/* Deep translucent rim for maximum 3D contrast */}
-        <View
+        {/* Vibrant outer rim */}
+        <LinearGradient
+          colors={RIM}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={{
-            width: inner + 2,
-            height: inner + 2,
-            borderRadius: (inner + 2) / 2,
-            backgroundColor: 'rgba(15, 23, 42, 0.4)',
+            width: size,
+            height: size,
+            borderRadius: size / 2,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          {/* ---------- Ultra-Vibrant Multi-Color 3D Sphere Core ---------- */}
-          <LinearGradient
-            colors={[
-              '#38BDF8',    // Bright Electric Cyan top highlight
-              '#6366F1',    // Rich Indigo mid-tone
-              '#D946EF',    // Vivid Neon Fuchsia
-              '#881337',    // Deep Crimson base for heavy 3D shadow
-            ]}
-            locations={[0, 0.35, 0.75, 1]}
-            start={{ x: 0.3, y: 0 }}
-            end={{ x: 0.7, y: 1 }}
+          {/* Dark translucent bevel for contrast */}
+          <View
             style={{
-              width: inner,
-              height: inner,
-              borderRadius: inner / 2,
+              width: inner + 2,
+              height: inner + 2,
+              borderRadius: (inner + 2) / 2,
+              backgroundColor: 'rgba(15, 23, 42, 0.4)',
               alignItems: 'center',
               justifyContent: 'center',
-              overflow: 'hidden',
             }}
           >
-            {/* Top curved glossy specular highlight (Glass bubble effect) */}
-            <View
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                top: inner * 0.04,
-                left: inner * 0.15,
-                right: inner * 0.15,
-                height: inner * 0.4,
-                borderRadius: inner * 0.4,
-                backgroundColor: 'rgba(255,255,255,0.7)',
-                transform: [{ scaleY: 0.5 }],
-              }}
-            />
-
-            {/* Bottom inner bounce reflection */}
-            <View
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                bottom: inner * 0.05,
-                left: inner * 0.2,
-                right: inner * 0.2,
-                height: inner * 0.2,
-                borderRadius: inner * 0.2,
-                backgroundColor: 'rgba(56, 189, 248, 0.4)',
-                transform: [{ scaleY: 0.4 }],
-              }}
-            />
-
-            {/* Diagonal sheen overlay */}
+            {/* Glass sphere */}
             <LinearGradient
-              pointerEvents="none"
-              colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[ABS_FILL, { borderRadius: inner / 2 }]}
-            />
-
-            {/* Press interactive flash effect */}
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                ABS_FILL,
-                {
-                  borderRadius: inner / 2,
-                  backgroundColor: '#FFFFFF',
-                  opacity: shine.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 0.4],
-                  }),
-                },
-              ]}
-            />
-
-            {/* Tappable layer */}
-            <Pressable
-              onPress={onPress}
-              onPressIn={pressIn}
-              onPressOut={pressOut}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel={accessibilityLabel}
-              style={[
-                ABS_FILL,
-                { alignItems: 'center', justifyContent: 'center' },
-              ]}
+              colors={SPHERE}
+              locations={[0, 0.35, 0.75, 1]}
+              start={{ x: 0.3, y: 0 }}
+              end={{ x: 0.7, y: 1 }}
+              style={{
+                width: inner,
+                height: inner,
+                borderRadius: inner / 2,
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+              }}
             >
-              <Ionicons
-                name="arrow-back"
-                size={Math.round(inner * 0.55)}
-                color={tint}
+              {/* Top specular highlight */}
+              <View
+                pointerEvents="none"
                 style={{
-                  marginLeft: -Math.round(inner * 0.04),
-                  textShadowColor: 'rgba(0, 0, 0, 0.4)',
-                  textShadowOffset: { width: 0, height: 2 },
-                  textShadowRadius: 3,
+                  position: 'absolute',
+                  top: inner * 0.04,
+                  left: inner * 0.15,
+                  right: inner * 0.15,
+                  height: inner * 0.4,
+                  borderRadius: inner * 0.4,
+                  backgroundColor: 'rgba(255,255,255,0.7)',
+                  transform: [{ scaleY: 0.5 }],
                 }}
               />
-            </Pressable>
-          </LinearGradient>
-        </View>
-      </LinearGradient>
+
+              {/* Bottom bounce light */}
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  bottom: inner * 0.05,
+                  left: inner * 0.2,
+                  right: inner * 0.2,
+                  height: inner * 0.2,
+                  borderRadius: inner * 0.2,
+                  backgroundColor: 'rgba(56, 189, 248, 0.45)',
+                  transform: [{ scaleY: 0.4 }],
+                }}
+              />
+
+              {/* Diagonal sheen */}
+              <LinearGradient
+                pointerEvents="none"
+                colors={['rgba(255,255,255,0.45)', 'rgba(255,255,255,0)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[ABS_FILL, { borderRadius: inner / 2 }]}
+              />
+
+              {/* Moving light sweep (idle animation) */}
+              <Animated.View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: -inner * 0.3,
+                  width: inner * 0.26,
+                  height: inner * 1.6,
+                  backgroundColor: 'rgba(255,255,255,0.35)',
+                  transform: [
+                    {
+                      translateX: sweep.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-inner * 0.9, inner * 0.9],
+                      }),
+                    },
+                    { rotate: '25deg' },
+                  ],
+                }}
+              />
+
+              {/* Press flash */}
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  ABS_FILL,
+                  {
+                    borderRadius: inner / 2,
+                    backgroundColor: '#FFFFFF',
+                    opacity: shine.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 0.4],
+                    }),
+                  },
+                ]}
+              />
+
+              {/* Arrow: nudges back while pressed */}
+              <Animated.View
+                pointerEvents="none"
+                style={{
+                  transform: [
+                    {
+                      translateX: shine.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, -Math.max(2, Math.round(inner * 0.1))],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                <Ionicons
+                  name="arrow-back"
+                  size={Math.round(inner * 0.55)}
+                  color={tint}
+                  style={{
+                    marginLeft: -Math.round(inner * 0.04),
+                    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+                    textShadowOffset: { width: 0, height: 2 },
+                    textShadowRadius: 3,
+                  }}
+                />
+              </Animated.View>
+            </LinearGradient>
+          </View>
+        </LinearGradient>
+      </Animated.View>
+
+      {/* ---------- Tappable layer (covers the whole button) ---------- */}
+      <Pressable
+        onPress={onPress}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        style={[ABS_FILL, { borderRadius: size / 2 }]}
+      />
     </Animated.View>
   );
 }

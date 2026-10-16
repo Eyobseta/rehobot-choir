@@ -142,7 +142,6 @@ function Drop({
         ],
       }}
     >
-      {/* teardrop = rounded square with one sharp corner, rotated */}
       <View
         style={{
           width: size,
@@ -277,7 +276,6 @@ export function BrandHeader({
   const topPad = insets.top + (compact ? 14 : 30);
 
   return (
-    // The oversized negative margin / padding keeps the colour visible when iOS over-scrolls.
     <View style={{ backgroundColor: BRAND.deep, marginTop: -1000, paddingTop: 1000 }}>
       <View
         style={{
@@ -375,13 +373,14 @@ export function BrandHeader({
 // ---------------------------------------------------------------------------
 
 /**
- * ScrollView + keyboard handling + water drops. Use it for any screen with inputs:
+ * ScrollView + keyboard handling. Use it for any screen with inputs:
  * the focused field is scrolled just above the keyboard.
+ * Water drops are opt-in via `drops` (default: off).
  */
 export function KeyboardAwareScroll({
   children,
   contentContainerStyle,
-  drops = true,
+  drops = false,
 }: {
   children: React.ReactNode;
   contentContainerStyle?: any;
@@ -396,7 +395,6 @@ export function KeyboardAwareScroll({
   const pending = useRef<View | null>(null);
   const [kbOpen, setKbOpen] = useState(false);
 
-  // Scroll just enough so the focused field sits above the keyboard.
   const reveal = useCallback((node: View | null) => {
     if (!node) return;
     node.measureInWindow((_x, y, _w, h) => {
@@ -516,7 +514,7 @@ export function AvatarRing({
   uri?: string | null;
   fallback?: React.ReactNode;
   gapColor: string;
-  children?: React.ReactNode; // badges, positioned absolutely by the caller
+  children?: React.ReactNode;
 }) {
   const spin = useRef(new Animated.Value(0)).current;
 
@@ -675,7 +673,6 @@ export function AuthField({
         </Text>
       ) : null}
 
-      {/* border track: plain border colour, with a flowing gradient fading in on focus */}
       <View
         onLayout={(e) => setW(e.nativeEvent.layout.width)}
         style={{ borderRadius: r, overflow: 'hidden', backgroundColor: colors.border }}
@@ -761,7 +758,6 @@ export function AuthField({
 // Buttons
 // ---------------------------------------------------------------------------
 
-/** Gradient button with a periodic light sweep and a press-down spring. */
 export function PrimaryButton({
   label,
   onPress,
@@ -948,7 +944,7 @@ export function ErrorBanner({ message }: { message: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Stepper: icon dots joined by animated progress lines
+// Stepper
 // ---------------------------------------------------------------------------
 
 function StepDot({

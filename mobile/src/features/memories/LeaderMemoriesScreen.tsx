@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   leaderListPendingMemories,
@@ -22,13 +23,14 @@ import {
 } from '../../services/memories';
 import { ApiError } from '../../services/api';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
-import { HeroBanner, DatePill, EmptyState } from './Memorykit';
-
+import { DatePill, EmptyState } from './Memorykit';
+import GlassBackButton from '../../components/GlassBackButton';
 
 export default function LeaderMemoriesScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing } = theme;
+  const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<PendingMemory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,11 +74,71 @@ export default function LeaderMemoriesScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* ---------- Full-bleed gradient hero ---------- */}
+      <LinearGradient
+        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.hero, { paddingTop: insets.top + 16 }]}
+      >
+        <View
+          pointerEvents="none"
+          style={[
+            styles.blob,
+            { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.22) },
+          ]}
+        />
+        <View
+          pointerEvents="none"
+          style={[
+            styles.blob,
+            { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.22) },
+          ]}
+        />
+
+        <View style={styles.heroRow}>
+          <View style={styles.heroIcon}>
+            <Ionicons name="shield-checkmark" size={22} color={BRAND.deep} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.heroKicker}>
+              {t('tabs.memories', { defaultValue: 'Memories' })}
+            </Text>
+            <Text style={styles.heroTitle} numberOfLines={1}>
+              {t('memories.reviewTitle', { defaultValue: 'Memory review' })}
+            </Text>
+          </View>
+
+          <GlassBackButton
+            onPress={() => navigation.goBack()}
+            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+            size={44}
+          />
+        </View>
+
+        <Text style={styles.heroSubtitle}>
+          {t('memories.pendingCount', {
+            count: items.length,
+            defaultValue: '{{count}} waiting for review',
+          })}
+        </Text>
+      </LinearGradient>
+
+      {error && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <ErrorBanner message={error} />
+        </View>
+      )}
+
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xl * 2 }}
+        contentContainerStyle={{
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.md,
+          paddingBottom: spacing.xl * 2,
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -88,29 +150,19 @@ export default function LeaderMemoriesScreen({ navigation }: any) {
             colors={[BRAND.violet]}
           />
         }
-        ListHeaderComponent={
-          <View style={{ marginBottom: spacing.lg }}>
-            <HeroBanner
-              icon="shield-checkmark"
-              title={t('memories.reviewTitle')}
-              subtitle={t('memories.pendingCount', {
-                count: items.length,
-                defaultValue: '{{count}} waiting for review',
-              })}
-            />
-            {error && (
-              <View style={{ marginTop: spacing.md }}>
-                <ErrorBanner message={error} />
-              </View>
-            )}
-          </View>
+        ListEmptyComponent={
+          <EmptyState
+            icon="checkmark-done-outline"
+            text={t('memories.emptyReview')}
+          />
         }
-        ListEmptyComponent={<EmptyState icon="checkmark-done-outline" text={t('memories.emptyReview')} />}
         renderItem={({ item, index }) => (
           <ReviewCard
             item={item}
             index={index}
-            onPress={() => navigation.navigate('MemoryReviewDetail', { id: item.id })}
+            onPress={() =>
+              navigation.navigate('MemoryReviewDetail', { id: item.id })
+            }
           />
         )}
       />
@@ -150,7 +202,12 @@ function ReviewCard({
     return () => a.stop();
   }, [enter, index]);
   const to = (v: number) =>
-    Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
+    Animated.spring(scale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 6,
+      useNativeDriver: true,
+    }).start();
 
   return (
     <Animated.View
@@ -169,7 +226,10 @@ function ReviewCard({
         onPressOut={() => to(1)}
         accessibilityRole="button"
         accessibilityLabel={item.title}
-        style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        style={[
+          styles.card,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
       >
         <View style={[styles.bar, { backgroundColor: '#F59E0B' }]} />
 
@@ -187,7 +247,10 @@ function ReviewCard({
         )}
 
         <View style={{ flex: 1, marginLeft: 14 }}>
-          <Text style={[typography.body, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
+          <Text
+            style={[typography.body, { color: colors.text, fontWeight: '800' }]}
+            numberOfLines={1}
+          >
             {item.title}
           </Text>
           <View style={{ marginTop: 6, alignSelf: 'flex-start' }}>
@@ -196,9 +259,17 @@ function ReviewCard({
           {submitter ? (
             <View style={styles.byRow}>
               <View style={styles.avatar}>
-                <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>{initial}</Text>
+                <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>
+                  {initial}
+                </Text>
               </View>
-              <Text style={[typography.caption, { color: colors.textSecondary, flex: 1 }]} numberOfLines={1}>
+              <Text
+                style={[
+                  typography.caption,
+                  { color: colors.textSecondary, flex: 1 },
+                ]}
+                numberOfLines={1}
+              >
                 {submitter}
               </Text>
             </View>
@@ -214,6 +285,38 @@ function ReviewCard({
 }
 
 const styles = StyleSheet.create({
+  hero: {
+    paddingHorizontal: 16,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+  },
+  blob: { position: 'absolute', width: 180, height: 180, borderRadius: 90 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  heroIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: BRAND.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroKicker: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  heroTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '800', marginTop: 2 },
+  heroSubtitle: {
+    marginTop: 12,
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -224,7 +327,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   bar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 },
-  thumb: { width: 70, height: 70, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  thumb: {
+    width: 70,
+    height: 70,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   byRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   avatar: {
     width: 20,
@@ -234,5 +343,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  go: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  go: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
 });

@@ -15,6 +15,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { submitMemory } from '../../services/memories';
 import { ApiError } from '../../services/api';
@@ -27,7 +28,8 @@ import {
   BRAND,
   withAlpha,
 } from '../auth/Auth_UI';
-import { HeroBanner, useEnter } from './Memorykit';
+import { useEnter } from './Memorykit';
+import GlassBackButton from '../../components/GlassBackButton';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -35,6 +37,7 @@ export default function SubmitMemoryScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
+  const insets = useSafeAreaInsets();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -140,11 +143,9 @@ export default function SubmitMemoryScreen({ navigation }: any) {
         audioMime,
         youtubeUrls,
       });
-      Alert.alert(
-        t('memories.submitted'),
-        t('memories.submittedBody'),
-        [{ text: t('common.continue'), onPress: () => navigation.goBack() }],
-      );
+      Alert.alert(t('memories.submitted'), t('memories.submittedBody'), [
+        { text: t('common.continue'), onPress: () => navigation.goBack() },
+      ]);
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
@@ -153,14 +154,15 @@ export default function SubmitMemoryScreen({ navigation }: any) {
     }
   };
 
-  // ---- Visual-only motion ----
   const { fadeUp } = useEnter();
   const shake = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (error) {
       shake.setValue(0);
       Animated.sequence(
-        [10, -10, 6, -6, 0].map((v) => Animated.timing(shake, { toValue: v, duration: 60, useNativeDriver: true })),
+        [10, -10, 6, -6, 0].map((v) =>
+          Animated.timing(shake, { toValue: v, duration: 60, useNativeDriver: true }),
+        ),
       ).start();
     }
   }, [error, shake]);
@@ -173,17 +175,68 @@ export default function SubmitMemoryScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <KeyboardAwareScroll contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.xl * 2 }}>
-        <Animated.View style={fadeUp(0)}>
-          <HeroBanner
-            icon="images"
-            title={t('memories.submit')}
-            subtitle={t('memories.submitSubtitle', { defaultValue: 'Share a moment with the choir family.' })}
+      {/* ---------- Full-bleed hero ---------- */}
+      <Animated.View style={fadeUp(0)}>
+        <LinearGradient
+          colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.hero, { paddingTop: insets.top + 16 }]}
+        >
+          <View
+            pointerEvents="none"
+            style={[
+              styles.blob,
+              { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.22) },
+            ]}
           />
-        </Animated.View>
+          <View
+            pointerEvents="none"
+            style={[
+              styles.blob,
+              { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.22) },
+            ]}
+          />
 
-        {/* Basics */}
-        <Animated.View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, fadeUp(1)]}>
+          <View style={styles.heroRow}>
+            <View style={styles.heroIcon}>
+              <Ionicons name="images" size={22} color={BRAND.deep} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroKicker}>
+                {t('memories.submit')}
+              </Text>
+              <Text style={styles.heroTitle} numberOfLines={2}>
+                {t('memories.submitSubtitle', {
+                  defaultValue: 'Share a moment with the choir family.',
+                })}
+              </Text>
+            </View>
+
+            <GlassBackButton
+              onPress={() => navigation.goBack()}
+              accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+              size={44}
+            />
+          </View>
+        </LinearGradient>
+      </Animated.View>
+
+      {/* ---------- Content ---------- */}
+      <KeyboardAwareScroll
+        contentContainerStyle={{
+          paddingHorizontal: spacing.xl,
+          paddingTop: spacing.lg,
+          paddingBottom: spacing.xl * 2,
+        }}
+      >
+        <Animated.View
+          style={[
+            styles.card,
+            { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 0 },
+            fadeUp(1),
+          ]}
+        >
           <AuthField
             label={t('memories.titleField')}
             iconNode={fieldIcon('create', '#B6A0FF')}
@@ -207,16 +260,24 @@ export default function SubmitMemoryScreen({ navigation }: any) {
           />
         </Animated.View>
 
-        {/* Photos */}
         <Animated.View style={fadeUp(2)}>
-          <SectionCard icon="camera" tint={BRAND.magenta} title={t('memories.photosField')} badge={photoUris.length > 0 ? `${photoUris.length}/20` : undefined}>
+          <SectionCard
+            icon="camera"
+            tint={BRAND.magenta}
+            title={t('memories.photosField')}
+            badge={photoUris.length > 0 ? `${photoUris.length}/20` : undefined}
+          >
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <PickButton icon="images" label={t('memories.addFromLibrary')} onPress={addPhoto} />
               <PickButton icon="camera" label={t('memories.takePhoto')} onPress={takePhoto} />
             </View>
 
             {photoUris.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.md }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginTop: spacing.md }}
+              >
                 {photoUris.map((uri) => (
                   <View key={uri} style={{ marginRight: spacing.sm }}>
                     <Image source={{ uri }} style={styles.thumb} />
@@ -224,7 +285,10 @@ export default function SubmitMemoryScreen({ navigation }: any) {
                       onPress={() => removePhoto(uri)}
                       hitSlop={8}
                       accessibilityRole="button"
-                      style={[styles.removeBadge, { backgroundColor: colors.error, borderColor: colors.surface }]}
+                      style={[
+                        styles.removeBadge,
+                        { backgroundColor: colors.error, borderColor: colors.surface },
+                      ]}
                     >
                       <Ionicons name="close" size={14} color="#FFFFFF" />
                     </Pressable>
@@ -235,7 +299,6 @@ export default function SubmitMemoryScreen({ navigation }: any) {
           </SectionCard>
         </Animated.View>
 
-        {/* Audio */}
         <Animated.View style={fadeUp(3)}>
           <SectionCard icon="musical-notes" tint={BRAND.violet} title={t('memories.audioField')}>
             <View
@@ -255,7 +318,10 @@ export default function SubmitMemoryScreen({ navigation }: any) {
                 />
               </View>
               <Text
-                style={[typography.bodySmall, { color: colors.text, flex: 1, fontWeight: audioUri ? '700' : '400' }]}
+                style={[
+                  typography.bodySmall,
+                  { color: colors.text, flex: 1, fontWeight: audioUri ? '700' : '400' },
+                ]}
                 numberOfLines={1}
               >
                 {audioUri ? audioName : t('memories.audioNone')}
@@ -284,7 +350,6 @@ export default function SubmitMemoryScreen({ navigation }: any) {
           </SectionCard>
         </Animated.View>
 
-        {/* YouTube */}
         <Animated.View style={fadeUp(4)}>
           <SectionCard icon="logo-youtube" tint="#FF2D2D" title={t('memories.youtubeField')}>
             <AuthField
@@ -302,10 +367,16 @@ export default function SubmitMemoryScreen({ navigation }: any) {
             {youtubeUrls.map((u) => (
               <View
                 key={u}
-                style={[styles.ytRow, { backgroundColor: colors.background, borderColor: colors.border }]}
+                style={[
+                  styles.ytRow,
+                  { backgroundColor: colors.background, borderColor: colors.border },
+                ]}
               >
                 <Ionicons name="logo-youtube" size={18} color="#FF2D2D" />
-                <Text style={[typography.bodySmall, { color: colors.text, flex: 1 }]} numberOfLines={1}>
+                <Text
+                  style={[typography.bodySmall, { color: colors.text, flex: 1 }]}
+                  numberOfLines={1}
+                >
                   {u}
                 </Text>
                 <Pressable onPress={() => removeYoutube(u)} hitSlop={8}>
@@ -335,8 +406,6 @@ export default function SubmitMemoryScreen({ navigation }: any) {
   );
 }
 
-// ---------- Helpers (module scope) ----------
-
 function SectionCard({
   icon,
   tint,
@@ -358,7 +427,9 @@ function SectionCard({
         <View style={[styles.sectionIcon, { backgroundColor: withAlpha(tint, 0.18) }]}>
           <Ionicons name={icon} size={18} color={tint} />
         </View>
-        <Text style={[typography.body, { color: colors.text, fontWeight: '800', flex: 1 }]}>{title}</Text>
+        <Text style={[typography.body, { color: colors.text, fontWeight: '800', flex: 1 }]}>
+          {title}
+        </Text>
         {badge ? (
           <View style={[styles.badge, { backgroundColor: withAlpha(tint, 0.18) }]}>
             <Text style={{ color: tint, fontSize: 12, fontWeight: '800' }}>{badge}</Text>
@@ -370,7 +441,15 @@ function SectionCard({
   );
 }
 
-function PickButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+function PickButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+}) {
   const scale = useRef(new Animated.Value(1)).current;
   const to = (v: number) =>
     Animated.spring(scale, { toValue: v, speed: 40, bounciness: 8, useNativeDriver: true }).start();
@@ -389,7 +468,10 @@ function PickButton({ icon, label, onPress }: { icon: IconName; label: string; o
           style={styles.pick}
         >
           <Ionicons name={icon} size={18} color="#FFFFFF" />
-          <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13, flexShrink: 1 }} numberOfLines={1}>
+          <Text
+            style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13, flexShrink: 1 }}
+            numberOfLines={1}
+          >
             {label}
           </Text>
         </LinearGradient>
@@ -399,6 +481,34 @@ function PickButton({ icon, label, onPress }: { icon: IconName; label: string; o
 }
 
 const styles = StyleSheet.create({
+  // Full-bleed hero
+  hero: {
+    paddingHorizontal: 16,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+  },
+  blob: { position: 'absolute', width: 180, height: 180, borderRadius: 90 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  heroIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: BRAND.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroKicker: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  heroTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', marginTop: 2 },
+
+  // Content
   card: { borderWidth: 1, borderRadius: 24, padding: 16, marginTop: 16 },
   fieldIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },

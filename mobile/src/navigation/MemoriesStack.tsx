@@ -20,7 +20,6 @@ export type MemoriesStackParamList = {
 const Stack = createNativeStackNavigator<MemoriesStackParamList>();
 
 export default function MemoriesStack() {
-  const { t } = useTranslation();
   const { theme } = useTheme();
 
   return (
@@ -40,17 +39,17 @@ export default function MemoriesStack() {
       <Stack.Screen
         name="MemoryDetail"
         component={MemoryDetailScreen}
-        options={{ title: '' }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="SubmitMemory"
         component={SubmitMemoryScreen}
-        options={{ title: t('memories.submit') }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="MyMemories"
         component={MyMemoriesScreen}
-        options={{ title: t('memories.mine') }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="MemoryVideo"

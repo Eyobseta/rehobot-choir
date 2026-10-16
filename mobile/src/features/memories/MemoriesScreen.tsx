@@ -83,7 +83,6 @@ export default function MemoriesScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ---------- Fixed header: search, actions, year chips ---------- */}
       <LinearGradient
         colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
         start={{ x: 0, y: 0 }}
@@ -197,8 +196,6 @@ export default function MemoriesScreen({ navigation }: any) {
     </View>
   );
 }
-
-// ---------- Helpers (module scope so they never remount) ----------
 
 function SearchBox({
   value,
@@ -486,7 +483,7 @@ function MemoryCard({
 const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
-    paddingTop: 4,          // ← small top pad so it merges with MemoriesHeader
+    paddingTop: 0,
     paddingBottom: 18,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
