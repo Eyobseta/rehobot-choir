@@ -1,6 +1,5 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTranslation } from 'react-i18next';
 import { useTheme } from '../theme/ThemeContext';
 import EventsScreen from '../features/events/EventsScreen';
 import EventDetailScreen from '../features/events/EventDetailScreen';
@@ -13,7 +12,6 @@ export type EventsStackParamList = {
 const Stack = createNativeStackNavigator<EventsStackParamList>();
 
 export default function EventsStack() {
-  const { t } = useTranslation();
   const { theme } = useTheme();
 
   return (
@@ -28,12 +26,12 @@ export default function EventsStack() {
       <Stack.Screen
         name="EventsList"
         component={EventsScreen}
-        options={{ title: t('events.title') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="EventDetail"
         component={EventDetailScreen}
-        options={{ title: '' }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
     </Stack.Navigator>
   );

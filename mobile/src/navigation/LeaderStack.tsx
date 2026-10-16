@@ -75,18 +75,19 @@ export default function LeaderStack() {
         options={{ headerShown: false }}
       />
 
+      {/* Events — custom gradient heroes */}
       <Stack.Screen
         name="LeaderEvents"
         component={LeaderEventsScreen}
-        options={{ title: t('events.title') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="EventEditor"
         component={EventEditorScreen}
-        options={{ title: '' }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
 
-      {/* Attendance — custom gradient heroes, native headers hidden */}
+      {/* Attendance — custom gradient heroes */}
       <Stack.Screen
         name="LeaderAttendance"
         component={LeaderAttendanceScreen}
@@ -103,16 +104,18 @@ export default function LeaderStack() {
         options={{ headerShown: false }}
       />
 
+      {/* Announcements — custom gradient heroes */}
       <Stack.Screen
         name="LeaderAnnouncements"
         component={LeaderAnnouncementsScreen}
-        options={{ title: t('announcements.title') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="AnnouncementEditor"
         component={AnnouncementEditorScreen}
-        options={{ title: '' }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
+
       <Stack.Screen
         name="LeaderSongs"
         component={LeaderSongsScreen}

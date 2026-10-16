@@ -26,6 +26,7 @@ import {
 } from '../../services/events';
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
+import GlassBackButton from '../../components/GlassBackButton';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -57,7 +58,11 @@ export default function EventEditorScreen({ route, navigation }: any) {
         setLocation(ev.location ?? '');
         const d = new Date(ev.date);
         setDateText(
-          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+            d.getDate(),
+          ).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(
+            d.getMinutes(),
+          ).padStart(2, '0')}`,
         );
         setCoverUri(ev.coverImageUrl);
       } catch (e) {
@@ -192,7 +197,7 @@ export default function EventEditorScreen({ route, navigation }: any) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={BRAND.violet} />
       </View>
     );
   }
@@ -204,204 +209,236 @@ export default function EventEditorScreen({ route, navigation }: any) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
       <ScrollView
-        contentContainerStyle={{
-          padding: spacing.lg,
-          paddingBottom: spacing.xl,
-        }}
+        contentContainerStyle={{ paddingBottom: spacing.xl }}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm + 2 }}>
-          <View
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 15,
-              backgroundColor: withAlpha(BRAND.violet, 0.14),
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Ionicons
-              name={editingId ? 'create' : 'add-circle'}
-              size={22}
-              color={BRAND.violet}
-            />
-          </View>
-          <Text
-            style={[typography.h2, { color: colors.text, fontWeight: '800', flex: 1 }]}
-          >
-            {editingId ? t('events.editEvent') : t('events.createEvent')}
-          </Text>
-        </View>
-
-        {/* ---------- COVER ---------- */}
-        <Text
-          style={[
-            typography.bodySmall,
-            {
-              color: colors.textSecondary,
-              marginTop: spacing.lg,
-              fontWeight: '700',
-            },
-          ]}
-        >
-          {t('events.coverImage')}
-        </Text>
-        <Pressable
-          onPress={pickCover}
-          style={{ marginTop: spacing.sm }}
-          accessibilityRole="button"
-        >
-          {coverUri ? (
-            <View>
-              <Image
-                source={{ uri: coverUri }}
-                style={{ width: '100%', height: 190, borderRadius: 26 }}
-              />
-              <View
-                style={{
-                  position: 'absolute',
-                  right: spacing.sm + 2,
-                  bottom: spacing.sm + 2,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.sm,
-                  borderRadius: 16,
-                  backgroundColor: 'rgba(10,6,30,0.65)',
-                }}
-              >
-                <Ionicons name="camera" size={15} color="#FFFFFF" />
-                <Text style={[typography.caption, { color: '#FFFFFF', fontWeight: '800' }]}>
-                  {t('events.coverImage')}
-                </Text>
-              </View>
-            </View>
-          ) : (
-            <View
-              style={{
-                width: '100%',
-                height: 190,
-                borderRadius: 26,
-                borderWidth: 2,
-                borderColor: withAlpha(BRAND.violet, 0.6),
-                borderStyle: 'dashed',
-                backgroundColor: withAlpha(BRAND.violet, 0.06),
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: spacing.sm,
-              }}
-            >
-              <View
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 20,
-                  backgroundColor: withAlpha(BRAND.violet, 0.16),
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="image" size={26} color={BRAND.violet} />
-              </View>
-              <Text style={[typography.body, { color: BRAND.violet, fontWeight: '700' }]}>
-                {t('events.pickCover')}
-              </Text>
-            </View>
-          )}
-        </Pressable>
-
-        {coverUri && (
-          <Pressable
-            onPress={() => {
-              setCoverUri(null);
-              setRemoveCover(true);
-            }}
-            style={{
-              marginTop: spacing.sm,
-              alignSelf: 'center',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 5,
-              paddingHorizontal: spacing.md,
-              paddingVertical: spacing.xs + 2,
-              borderRadius: 14,
-              backgroundColor: withAlpha(colors.error, 0.1),
-            }}
-          >
-            <Ionicons name="trash-outline" size={14} color={colors.error} />
-            <Text style={[typography.caption, { color: colors.error, fontWeight: '700' }]}>
-              {t('events.delete')} {t('events.coverImage').toLowerCase()}
-            </Text>
-          </Pressable>
-        )}
-
-        {/* ---------- DETAILS ---------- */}
-        <View
+        {/* ---------- Hero ---------- */}
+        <LinearGradient
+          colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={{
-            marginTop: spacing.lg,
-            padding: spacing.lg,
-            paddingTop: spacing.xs,
-            borderRadius: 26,
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.border,
+            paddingHorizontal: 16,
+            paddingTop: insets.top + 16,
+            paddingBottom: 22,
+            borderBottomLeftRadius: 28,
+            borderBottomRightRadius: 28,
+            overflow: 'hidden',
           }}
         >
-          <EditorField
-            icon="text"
-            label={t('events.titleField')}
-            value={title}
-            onChange={setTitle}
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: -60,
+              right: -40,
+              width: 180,
+              height: 180,
+              borderRadius: 90,
+              backgroundColor: withAlpha(BRAND.gold, 0.22),
+            }}
           />
-          <EditorField
-            icon="location"
-            label={t('events.locationField')}
-            value={location}
-            onChange={setLocation}
-          />
-          <EditorField
-            icon="calendar"
-            label={t('events.dateField')}
-            value={dateText}
-            onChange={setDateText}
-            placeholder="2026-12-15 10:00"
-          />
-          <EditorField
-            icon="reader"
-            label={t('events.description')}
-            value={description}
-            onChange={setDescription}
-            multiline
-          />
-        </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <View
+              style={{
+                width: 50,
+                height: 50,
+                borderRadius: 16,
+                backgroundColor: BRAND.gold,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons
+                name={editingId ? 'create' : 'add-circle'}
+                size={22}
+                color={BRAND.deep}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  color: 'rgba(255,255,255,0.75)',
+                  fontSize: 11,
+                  fontWeight: '800',
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {t('events.title')}
+              </Text>
+              <Text
+                style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '800', marginTop: 2 }}
+                numberOfLines={1}
+              >
+                {editingId ? t('events.editEvent') : t('events.createEvent')}
+              </Text>
+            </View>
 
-        {error && (
+            <GlassBackButton
+              onPress={() => navigation.goBack()}
+              accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+              size={44}
+            />
+          </View>
+        </LinearGradient>
+
+        <View style={{ padding: spacing.lg }}>
+          {/* COVER */}
+          <Text
+            style={[typography.bodySmall, { color: colors.textSecondary, fontWeight: '700' }]}
+          >
+            {t('events.coverImage')}
+          </Text>
+          <Pressable
+            onPress={pickCover}
+            style={{ marginTop: spacing.sm }}
+            accessibilityRole="button"
+          >
+            {coverUri ? (
+              <View>
+                <Image
+                  source={{ uri: coverUri }}
+                  style={{ width: '100%', height: 190, borderRadius: 26 }}
+                />
+                <View
+                  style={{
+                    position: 'absolute',
+                    right: spacing.sm + 2,
+                    bottom: spacing.sm + 2,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: spacing.sm,
+                    borderRadius: 16,
+                    backgroundColor: 'rgba(10,6,30,0.65)',
+                  }}
+                >
+                  <Ionicons name="camera" size={15} color="#FFFFFF" />
+                  <Text style={[typography.caption, { color: '#FFFFFF', fontWeight: '800' }]}>
+                    {t('events.coverImage')}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View
+                style={{
+                  width: '100%',
+                  height: 190,
+                  borderRadius: 26,
+                  borderWidth: 2,
+                  borderColor: withAlpha(BRAND.violet, 0.6),
+                  borderStyle: 'dashed',
+                  backgroundColor: withAlpha(BRAND.violet, 0.06),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.sm,
+                }}
+              >
+                <View
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 20,
+                    backgroundColor: withAlpha(BRAND.violet, 0.16),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="image" size={26} color={BRAND.violet} />
+                </View>
+                <Text style={[typography.body, { color: BRAND.violet, fontWeight: '700' }]}>
+                  {t('events.pickCover')}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+
+          {coverUri && (
+            <Pressable
+              onPress={() => {
+                setCoverUri(null);
+                setRemoveCover(true);
+              }}
+              style={{
+                marginTop: spacing.sm,
+                alignSelf: 'center',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.xs + 2,
+                borderRadius: 14,
+                backgroundColor: withAlpha(colors.error, 0.1),
+              }}
+            >
+              <Ionicons name="trash-outline" size={14} color={colors.error} />
+              <Text style={[typography.caption, { color: colors.error, fontWeight: '700' }]}>
+                {t('events.delete')} {t('events.coverImage').toLowerCase()}
+              </Text>
+            </Pressable>
+          )}
+
+          {/* DETAILS */}
           <View
             style={{
-              marginTop: spacing.md,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.sm,
-              padding: spacing.md,
-              borderRadius: radius.md + 2,
-              backgroundColor: withAlpha(colors.error, 0.1),
+              marginTop: spacing.lg,
+              padding: spacing.lg,
+              paddingTop: spacing.xs,
+              borderRadius: 26,
+              backgroundColor: colors.surface,
               borderWidth: 1,
-              borderColor: withAlpha(colors.error, 0.35),
+              borderColor: colors.border,
             }}
           >
-            <Ionicons name="alert-circle" size={18} color={colors.error} />
-            <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
-              {error}
-            </Text>
+            <EditorField icon="text" label={t('events.titleField')} value={title} onChange={setTitle} />
+            <EditorField
+              icon="location"
+              label={t('events.locationField')}
+              value={location}
+              onChange={setLocation}
+            />
+            <EditorField
+              icon="calendar"
+              label={t('events.dateField')}
+              value={dateText}
+              onChange={setDateText}
+              placeholder="2026-12-15 10:00"
+            />
+            <EditorField
+              icon="reader"
+              label={t('events.description')}
+              value={description}
+              onChange={setDescription}
+              multiline
+            />
           </View>
-        )}
+
+          {error && (
+            <View
+              style={{
+                marginTop: spacing.md,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                padding: spacing.md,
+                borderRadius: radius.md + 2,
+                backgroundColor: withAlpha(colors.error, 0.1),
+                borderWidth: 1,
+                borderColor: withAlpha(colors.error, 0.35),
+              }}
+            >
+              <Ionicons name="alert-circle" size={18} color={colors.error} />
+              <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
+            </View>
+          )}
+        </View>
       </ScrollView>
 
-      {/* ---------- STICKY ACTION BAR ---------- */}
+      {/* Sticky action bar */}
       <View
         style={{
           flexDirection: 'row',
@@ -493,7 +530,10 @@ export default function EventEditorScreen({ route, navigation }: any) {
             ) : (
               <>
                 <Ionicons name="rocket" size={17} color="#FFFFFF" />
-                <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]} numberOfLines={1}>
+                <Text
+                  style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}
+                  numberOfLines={1}
+                >
                   {t('events.publishNow')}
                 </Text>
               </>
@@ -504,8 +544,6 @@ export default function EventEditorScreen({ route, navigation }: any) {
     </KeyboardAvoidingView>
   );
 }
-
-// ---------- Helper component (module scope — stable across renders) ----------
 
 function EditorField({
   icon,

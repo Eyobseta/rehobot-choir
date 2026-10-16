@@ -24,7 +24,7 @@ export type HomeStackParamList = {
   AnnouncementDetail: { id: string };
   DailyQuoteComposer: undefined;
   DailyQuoteHistory: undefined;
-    BirthdayDetail: { postId: string };
+  BirthdayDetail: { postId: string };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -42,56 +42,29 @@ export default function HomeStack() {
         contentStyle: { backgroundColor: theme.colors.background },
       }}
     >
-      <Stack.Screen
-        name="HomeMain"
-        component={HomeScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Directory"
-        component={DirectoryScreen}
-        options={{ title: t('directory.title') }}
-      />
-      <Stack.Screen
-        name="MemberProfile"
-        component={MemberProfileScreen}
-        options={{ title: t('memberProfile.title') }}
-      />
-      <Stack.Screen
-        name="EventsList"
-        component={EventsScreen}
-        options={{ title: t('events.title') }}
-      />
+      <Stack.Screen name="HomeMain" component={HomeScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Directory" component={DirectoryScreen} options={{ title: t('directory.title') }} />
+      <Stack.Screen name="MemberProfile" component={MemberProfileScreen} options={{ title: t('memberProfile.title') }} />
+
+      {/* Events — custom gradient heroes */}
+      <Stack.Screen name="EventsList" component={EventsScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="EventDetail"
         component={EventDetailScreen}
-        options={{ title: '' }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
-      <Stack.Screen
-        name="AnnouncementsList"
-        component={AnnouncementsScreen}
-        options={{ title: t('announcements.title') }}
-      />
+
+      {/* Announcements — custom gradient heroes */}
+      <Stack.Screen name="AnnouncementsList" component={AnnouncementsScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="AnnouncementDetail"
         component={AnnouncementDetailScreen}
-        options={{ title: '' }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
-      <Stack.Screen
-        name="DailyQuoteComposer"
-        component={DailyQuoteComposerScreen}
-        options={{ title: '' }}
-      />
-      <Stack.Screen
-        name="DailyQuoteHistory"
-        component={DailyQuoteHistoryScreen}
-        options={{ title: t('quote.title') }}
-      />
-            <Stack.Screen
-        name="BirthdayDetail"
-        component={BirthdayDetailScreen}
-        options={{ title: t('birthdays.title') }}
-      />
+
+      <Stack.Screen name="DailyQuoteComposer" component={DailyQuoteComposerScreen} options={{ title: '' }} />
+      <Stack.Screen name="DailyQuoteHistory" component={DailyQuoteHistoryScreen} options={{ title: t('quote.title') }} />
+      <Stack.Screen name="BirthdayDetail" component={BirthdayDetailScreen} options={{ title: t('birthdays.title') }} />
     </Stack.Navigator>
   );
 }

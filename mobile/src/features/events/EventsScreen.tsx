@@ -12,15 +12,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { listEvents, EventSummary } from '../../services/events';
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
+import GlassBackButton from '../../components/GlassBackButton';
 
 export default function EventsScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
+  const insets = useSafeAreaInsets();
 
   const [scope, setScope] = useState<'upcoming' | 'past'>('upcoming');
   const [items, setItems] = useState<EventSummary[]>([]);
@@ -31,8 +34,7 @@ export default function EventsScreen({ navigation }: any) {
   const load = useCallback(async (s: 'upcoming' | 'past') => {
     setError(null);
     try {
-      const list = await listEvents(s);
-      setItems(list);
+      setItems(await listEvents(s));
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
@@ -51,32 +53,111 @@ export default function EventsScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* segmented control */}
-      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md }}>
+      {/* ---------- Hero ---------- */}
+      <LinearGradient
+        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          paddingHorizontal: 16,
+          paddingTop: insets.top + 16,
+          paddingBottom: 22,
+          borderBottomLeftRadius: 28,
+          borderBottomRightRadius: 28,
+          overflow: 'hidden',
+        }}
+      >
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -60,
+            right: -40,
+            width: 180,
+            height: 180,
+            borderRadius: 90,
+            backgroundColor: withAlpha(BRAND.gold, 0.22),
+          }}
+        />
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            bottom: -80,
+            left: -50,
+            width: 180,
+            height: 180,
+            borderRadius: 90,
+            backgroundColor: withAlpha(BRAND.water, 0.22),
+          }}
+        />
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <View
+            style={{
+              width: 50,
+              height: 50,
+              borderRadius: 16,
+              backgroundColor: BRAND.gold,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="calendar" size={22} color={BRAND.deep} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                color: 'rgba(255,255,255,0.75)',
+                fontSize: 11,
+                fontWeight: '800',
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+              }}
+            >
+              {t('tabs.home', { defaultValue: 'Home' })}
+            </Text>
+            <Text
+              style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 2 }}
+              numberOfLines={1}
+            >
+              {t('events.title')}
+            </Text>
+          </View>
+
+          <GlassBackButton
+            onPress={() => navigation.goBack()}
+            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+            size={44}
+          />
+        </View>
+
+        {/* Segmented control inside hero */}
         <View
           style={{
             flexDirection: 'row',
             padding: 4,
             borderRadius: 20,
-            backgroundColor: colors.surface,
+            backgroundColor: 'rgba(255,255,255,0.16)',
             borderWidth: 1,
-            borderColor: colors.border,
+            borderColor: 'rgba(255,255,255,0.28)',
+            marginTop: 18,
           }}
         >
-          <SegBtn
+          <HeroSegBtn
             icon="sparkles"
             label={t('events.upcoming')}
             active={scope === 'upcoming'}
             onPress={() => setScope('upcoming')}
           />
-          <SegBtn
+          <HeroSegBtn
             icon="time"
             label={t('events.past')}
             active={scope === 'past'}
             onPress={() => setScope('past')}
           />
         </View>
-      </View>
+      </LinearGradient>
 
       {error && (
         <View
@@ -85,7 +166,7 @@ export default function EventsScreen({ navigation }: any) {
             alignItems: 'center',
             gap: spacing.sm,
             marginHorizontal: spacing.lg,
-            marginBottom: spacing.sm,
+            marginTop: spacing.md,
             padding: spacing.md,
             borderRadius: radius.md + 2,
             backgroundColor: withAlpha(colors.error, 0.1),
@@ -94,15 +175,13 @@ export default function EventsScreen({ navigation }: any) {
           }}
         >
           <Ionicons name="alert-circle" size={18} color={colors.error} />
-          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
-            {error}
-          </Text>
+          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
         </View>
       )}
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={BRAND.violet} />
         </View>
       ) : (
         <FlatList
@@ -111,6 +190,7 @@ export default function EventsScreen({ navigation }: any) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
+            paddingTop: spacing.md,
             paddingBottom: spacing.xl,
           }}
           refreshControl={
@@ -120,27 +200,39 @@ export default function EventsScreen({ navigation }: any) {
                 setRefreshing(true);
                 void load(scope);
               }}
-              tintColor={colors.primary}
+              tintColor={BRAND.violet}
+              colors={[BRAND.violet]}
             />
           }
           ListEmptyComponent={
             <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
-              <View
+              <LinearGradient
+                colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={{
-                  width: 76,
-                  height: 76,
-                  borderRadius: 26,
-                  backgroundColor: withAlpha(BRAND.violet, 0.12),
+                  width: 112,
+                  height: 112,
+                  borderRadius: 56,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name="calendar-outline" size={34} color={BRAND.violet} />
-              </View>
+                <View
+                  style={{
+                    width: 104,
+                    height: 104,
+                    borderRadius: 52,
+                    backgroundColor: colors.background,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="calendar-outline" size={40} color={colors.textSecondary} />
+                </View>
+              </LinearGradient>
               <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}>
-                {scope === 'upcoming'
-                  ? t('events.emptyUpcoming')
-                  : t('events.emptyPast')}
+                {scope === 'upcoming' ? t('events.emptyUpcoming') : t('events.emptyPast')}
               </Text>
             </View>
           }
@@ -150,9 +242,7 @@ export default function EventsScreen({ navigation }: any) {
             const monthShort = d.toLocaleString(undefined, { month: 'short' });
             return (
               <Pressable
-                onPress={() =>
-                  navigation.navigate('EventDetail', { id: item.id })
-                }
+                onPress={() => navigation.navigate('EventDetail', { id: item.id })}
                 style={({ pressed }) => ({
                   marginBottom: spacing.md + 2,
                   borderRadius: 26,
@@ -179,11 +269,7 @@ export default function EventsScreen({ navigation }: any) {
                       colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
-                      style={{
-                        flex: 1,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
+                      style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
                     >
                       <Ionicons name="calendar" size={64} color="rgba(255,255,255,0.18)" />
                     </LinearGradient>
@@ -195,7 +281,6 @@ export default function EventsScreen({ navigation }: any) {
                       style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0 }}
                     />
                   )}
-                  {/* floating date chip */}
                   <View
                     style={{
                       position: 'absolute',
@@ -287,9 +372,7 @@ export default function EventsScreen({ navigation }: any) {
   );
 }
 
-// ---------- Helper (module scope — stable across renders) ----------
-
-function SegBtn({
+function HeroSegBtn({
   icon,
   label,
   active,
@@ -301,7 +384,7 @@ function SegBtn({
   onPress: () => void;
 }) {
   const { theme } = useTheme();
-  const { colors, spacing, typography } = theme;
+  const { typography } = theme;
   return (
     <Pressable
       onPress={onPress}
@@ -311,25 +394,16 @@ function SegBtn({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        paddingVertical: spacing.sm + 2,
+        paddingVertical: 10,
         borderRadius: 16,
-        backgroundColor: active ? colors.primary : 'transparent',
-        shadowColor: active ? colors.primary : 'transparent',
-        shadowOpacity: active ? 0.35 : 0,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: active ? 3 : 0,
+        backgroundColor: active ? '#FFFFFF' : 'transparent',
       }}
     >
-      <Ionicons
-        name={icon}
-        size={15}
-        color={active ? colors.primaryText : colors.textSecondary}
-      />
+      <Ionicons name={icon} size={15} color={active ? BRAND.deep : 'rgba(255,255,255,0.85)'} />
       <Text
         style={[
           typography.button,
-          { color: active ? colors.primaryText : colors.textSecondary },
+          { color: active ? BRAND.deep : 'rgba(255,255,255,0.85)', fontWeight: '800' },
         ]}
       >
         {label}

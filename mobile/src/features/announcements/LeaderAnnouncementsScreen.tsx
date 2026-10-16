@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   leaderListAnnouncements,
@@ -19,6 +20,7 @@ import {
 } from '../../services/announcements';
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
+import GlassBackButton from '../../components/GlassBackButton';
 
 const AMBER = '#F59E0B';
 
@@ -26,6 +28,7 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
+  const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<LeaderAnnouncementRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,35 +65,121 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={BRAND.violet} />
       </View>
     );
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ padding: spacing.lg }}>
+      {/* ---------- Hero ---------- */}
+      <LinearGradient
+        colors={['#F59E0B', BRAND.magenta, BRAND.violet]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          paddingHorizontal: 16,
+          paddingTop: insets.top + 16,
+          paddingBottom: 22,
+          borderBottomLeftRadius: 28,
+          borderBottomRightRadius: 28,
+          overflow: 'hidden',
+        }}
+      >
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -60,
+            right: -40,
+            width: 180,
+            height: 180,
+            borderRadius: 90,
+            backgroundColor: withAlpha('#FFFFFF', 0.18),
+          }}
+        />
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <View
+            style={{
+              width: 50,
+              height: 50,
+              borderRadius: 16,
+              backgroundColor: '#FFFFFF',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="megaphone" size={22} color={BRAND.deep} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                color: 'rgba(255,255,255,0.75)',
+                fontSize: 11,
+                fontWeight: '800',
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+              }}
+            >
+              {t('leaderTools.manageMember', { defaultValue: 'Leader' })}
+            </Text>
+            <Text
+              style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 2 }}
+              numberOfLines={1}
+            >
+              {t('announcements.title')}
+            </Text>
+          </View>
+
+          <GlassBackButton
+            onPress={() => navigation.goBack()}
+            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+            size={44}
+          />
+        </View>
+      </LinearGradient>
+
+      {error && (
+        <View
+          style={{
+            marginHorizontal: spacing.lg,
+            marginTop: spacing.md,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            padding: spacing.md,
+            borderRadius: radius.md + 2,
+            backgroundColor: withAlpha(colors.error, 0.1),
+            borderWidth: 1,
+            borderColor: withAlpha(colors.error, 0.35),
+          }}
+        >
+          <Ionicons name="alert-circle" size={18} color={colors.error} />
+          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
+        </View>
+      )}
+
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
         <Pressable
-          onPress={() =>
-            navigation.navigate('AnnouncementEditor', { id: null })
-          }
+          onPress={() => navigation.navigate('AnnouncementEditor', { id: null })}
           style={({ pressed }) => ({
-            borderRadius: 24,
+            borderRadius: 22,
             overflow: 'hidden',
             transform: [{ scale: pressed ? 0.98 : 1 }],
-            shadowColor: AMBER,
+            shadowColor: BRAND.magenta,
             shadowOpacity: 0.4,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 6 },
+            shadowRadius: 14,
+            shadowOffset: { width: 0, height: 8 },
             elevation: 6,
           })}
         >
           <LinearGradient
-            colors={[AMBER, BRAND.magenta, BRAND.violet]}
+            colors={[BRAND.violet, BRAND.magenta]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{
-              paddingVertical: spacing.md + 2,
+              paddingVertical: spacing.md,
               paddingHorizontal: spacing.lg,
               flexDirection: 'row',
               alignItems: 'center',
@@ -116,35 +205,12 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
             >
               <Ionicons name="add" size={26} color={BRAND.magenta} />
             </View>
-            <Text
-              style={[typography.button, { color: '#FFFFFF', fontWeight: '800', flex: 1 }]}
-            >
+            <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800', flex: 1 }]}>
               {t('announcements.create')}
             </Text>
             <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           </LinearGradient>
         </Pressable>
-
-        {error && (
-          <View
-            style={{
-              marginTop: spacing.sm,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.sm,
-              padding: spacing.md,
-              borderRadius: radius.md + 2,
-              backgroundColor: withAlpha(colors.error, 0.1),
-              borderWidth: 1,
-              borderColor: withAlpha(colors.error, 0.35),
-            }}
-          >
-            <Ionicons name="alert-circle" size={18} color={colors.error} />
-            <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
-              {error}
-            </Text>
-          </View>
-        )}
       </View>
 
       <FlatList
@@ -153,6 +219,7 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
+          paddingTop: spacing.md,
           paddingBottom: spacing.xl,
         }}
         refreshControl={
@@ -162,7 +229,8 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
               setRefreshing(true);
               void load();
             }}
-            tintColor={colors.primary}
+            tintColor={BRAND.violet}
+            colors={[BRAND.violet]}
           />
         }
         ListEmptyComponent={
@@ -179,7 +247,9 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
             >
               <Ionicons name="megaphone-outline" size={34} color={AMBER} />
             </View>
-            <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}>
+            <Text
+              style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}
+            >
               {t('announcements.empty')}
             </Text>
           </View>
@@ -199,9 +269,7 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
               : 'document-text';
           return (
             <Pressable
-              onPress={() =>
-                navigation.navigate('AnnouncementEditor', { id: item.id })
-              }
+              onPress={() => navigation.navigate('AnnouncementEditor', { id: item.id })}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -215,7 +283,6 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
                 transform: [{ scale: pressed ? 0.98 : 1 }],
               })}
             >
-              {/* thumbnail */}
               {item.imageUrl ? (
                 <Image
                   source={{ uri: item.imageUrl }}

@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   listAnnouncements,
@@ -20,6 +21,7 @@ import {
 } from '../../services/announcements';
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
+import GlassBackButton from '../../components/GlassBackButton';
 
 const AMBER = '#F59E0B';
 
@@ -27,6 +29,7 @@ export default function AnnouncementsScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
+  const insets = useSafeAreaInsets();
 
   const [search, setSearch] = useState('');
   const [focused, setFocused] = useState(false);
@@ -57,71 +60,137 @@ export default function AnnouncementsScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ padding: spacing.lg, paddingBottom: spacing.md }}>
-        {/* search pill */}
+      {/* ---------- Hero ---------- */}
+      <LinearGradient
+        colors={['#F59E0B', BRAND.magenta, BRAND.violet]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          paddingHorizontal: 16,
+          paddingTop: insets.top + 16,
+          paddingBottom: 22,
+          borderBottomLeftRadius: 28,
+          borderBottomRightRadius: 28,
+          overflow: 'hidden',
+        }}
+      >
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -60,
+            right: -40,
+            width: 180,
+            height: 180,
+            borderRadius: 90,
+            backgroundColor: withAlpha('#FFFFFF', 0.18),
+          }}
+        />
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <View
+            style={{
+              width: 50,
+              height: 50,
+              borderRadius: 16,
+              backgroundColor: '#FFFFFF',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="megaphone" size={22} color={BRAND.deep} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                color: 'rgba(255,255,255,0.75)',
+                fontSize: 11,
+                fontWeight: '800',
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+              }}
+            >
+              {t('tabs.home', { defaultValue: 'Home' })}
+            </Text>
+            <Text
+              style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 2 }}
+              numberOfLines={1}
+            >
+              {t('announcements.title')}
+            </Text>
+          </View>
+
+          <GlassBackButton
+            onPress={() => navigation.goBack()}
+            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+            size={44}
+          />
+        </View>
+
+        {/* Search box */}
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            gap: spacing.sm,
-            backgroundColor: colors.surface,
-            borderColor: focused ? AMBER : colors.border,
+            gap: 10,
+            minHeight: 48,
+            paddingHorizontal: 14,
+            borderRadius: 16,
             borderWidth: 1.5,
-            borderRadius: 22,
-            paddingHorizontal: spacing.md,
+            borderColor: focused ? BRAND.gold : 'rgba(255,255,255,0.28)',
+            backgroundColor: 'rgba(255,255,255,0.16)',
+            marginTop: 16,
           }}
         >
           <Ionicons
             name="search"
             size={18}
-            color={focused ? AMBER : colors.textSecondary}
+            color={focused ? BRAND.gold : 'rgba(255,255,255,0.85)'}
           />
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder={t('announcements.searchPlaceholder')}
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor="rgba(255,255,255,0.65)"
             autoCapitalize="none"
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            style={{
-              flex: 1,
-              paddingVertical: spacing.md,
-              color: colors.text,
-            }}
+            selectionColor={BRAND.gold}
+            style={{ flex: 1, color: '#FFFFFF', fontSize: 15, paddingVertical: 10 }}
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch('')} hitSlop={10}>
-              <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+              <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.85)" />
             </Pressable>
           )}
         </View>
+      </LinearGradient>
 
-        {error && (
-          <View
-            style={{
-              marginTop: spacing.sm,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.sm,
-              padding: spacing.md,
-              borderRadius: radius.md + 2,
-              backgroundColor: withAlpha(colors.error, 0.1),
-              borderWidth: 1,
-              borderColor: withAlpha(colors.error, 0.35),
-            }}
-          >
-            <Ionicons name="alert-circle" size={18} color={colors.error} />
-            <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
-              {error}
-            </Text>
-          </View>
-        )}
-      </View>
+      {error && (
+        <View
+          style={{
+            marginHorizontal: spacing.lg,
+            marginTop: spacing.md,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            padding: spacing.md,
+            borderRadius: radius.md + 2,
+            backgroundColor: withAlpha(colors.error, 0.1),
+            borderWidth: 1,
+            borderColor: withAlpha(colors.error, 0.35),
+          }}
+        >
+          <Ionicons name="alert-circle" size={18} color={colors.error} />
+          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
+            {error}
+          </Text>
+        </View>
+      )}
 
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={BRAND.violet} />
         </View>
       ) : (
         <FlatList
@@ -131,6 +200,7 @@ export default function AnnouncementsScreen({ navigation }: any) {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
+            paddingTop: spacing.md,
             paddingBottom: spacing.xl,
           }}
           refreshControl={
@@ -140,33 +210,47 @@ export default function AnnouncementsScreen({ navigation }: any) {
                 setRefreshing(true);
                 void load(search);
               }}
-              tintColor={colors.primary}
+              tintColor={BRAND.violet}
+              colors={[BRAND.violet]}
             />
           }
           ListEmptyComponent={
             <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
-              <View
+              <LinearGradient
+                colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={{
-                  width: 76,
-                  height: 76,
-                  borderRadius: 26,
-                  backgroundColor: withAlpha(AMBER, 0.14),
+                  width: 112,
+                  height: 112,
+                  borderRadius: 56,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name="megaphone-outline" size={34} color={AMBER} />
-              </View>
-              <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}>
+                <View
+                  style={{
+                    width: 104,
+                    height: 104,
+                    borderRadius: 52,
+                    backgroundColor: colors.background,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="megaphone-outline" size={40} color={colors.textSecondary} />
+                </View>
+              </LinearGradient>
+              <Text
+                style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}
+              >
                 {t('announcements.empty')}
               </Text>
             </View>
           }
           renderItem={({ item }) => (
             <Pressable
-              onPress={() =>
-                navigation.navigate('AnnouncementDetail', { id: item.id })
-              }
+              onPress={() => navigation.navigate('AnnouncementDetail', { id: item.id })}
               style={({ pressed }) => ({
                 marginBottom: spacing.md + 2,
                 borderRadius: 26,
@@ -205,18 +289,20 @@ export default function AnnouncementsScreen({ navigation }: any) {
                 }}
               >
                 {!item.imageUrl && (
-                  <View
+                  <LinearGradient
+                    colors={[AMBER, BRAND.magenta]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
                     style={{
                       width: 44,
                       height: 44,
                       borderRadius: 16,
-                      backgroundColor: withAlpha(AMBER, 0.16),
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <Ionicons name="megaphone" size={20} color={AMBER} />
-                  </View>
+                    <Ionicons name="megaphone" size={20} color="#FFFFFF" />
+                  </LinearGradient>
                 )}
                 <View style={{ flex: 1 }}>
                   <Text
@@ -226,7 +312,10 @@ export default function AnnouncementsScreen({ navigation }: any) {
                     {item.title}
                   </Text>
                   <Text
-                    style={[typography.bodySmall, { color: colors.textSecondary, marginTop: 3, lineHeight: 19 }]}
+                    style={[
+                      typography.bodySmall,
+                      { color: colors.textSecondary, marginTop: 3, lineHeight: 19 },
+                    ]}
                     numberOfLines={2}
                   >
                     {item.message}
