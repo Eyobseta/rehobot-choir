@@ -90,8 +90,20 @@ export default function MemoriesScreen({ navigation }: any) {
         end={{ x: 1, y: 1 }}
         style={styles.header}
       >
-        <View pointerEvents="none" style={[styles.blob, { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.2) }]} />
-        <View pointerEvents="none" style={[styles.blob, { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.2) }]} />
+        <View
+          pointerEvents="none"
+          style={[
+            styles.blob,
+            { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.2) },
+          ]}
+        />
+        <View
+          pointerEvents="none"
+          style={[
+            styles.blob,
+            { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.2) },
+          ]}
+        />
 
         <SearchBox
           value={search}
@@ -120,7 +132,11 @@ export default function MemoriesScreen({ navigation }: any) {
             style={{ marginTop: spacing.md }}
             contentContainerStyle={{ paddingRight: spacing.lg }}
           >
-            <YearChip label={t('memories.allYears')} active={year === null} onPress={() => setYear(null)} />
+            <YearChip
+              label={t('memories.allYears')}
+              active={year === null}
+              onPress={() => setYear(null)}
+            />
             {years.map((y) => {
               const active = year === y.year;
               return (
@@ -166,7 +182,9 @@ export default function MemoriesScreen({ navigation }: any) {
               colors={[BRAND.violet]}
             />
           }
-          ListEmptyComponent={<EmptyState icon="images-outline" text={t('memories.empty')} />}
+          ListEmptyComponent={
+            <EmptyState icon="images-outline" text={t('memories.empty')} />
+          }
           renderItem={({ item, index }) => (
             <MemoryCard
               item={item}
@@ -246,7 +264,12 @@ function HeaderButton({
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   const to = (v: number) =>
-    Animated.spring(scale, { toValue: v, speed: 40, bounciness: 8, useNativeDriver: true }).start();
+    Animated.spring(scale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 8,
+      useNativeDriver: true,
+    }).start();
   return (
     <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
       <Pressable
@@ -258,13 +281,22 @@ function HeaderButton({
           styles.headerButton,
           solid
             ? { backgroundColor: BRAND.gold }
-            : { backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+            : {
+                backgroundColor: 'rgba(255,255,255,0.16)',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.3)',
+              },
         ]}
       >
         <Ionicons name={icon} size={18} color={solid ? BRAND.deep : '#FFFFFF'} />
         <Text
           numberOfLines={1}
-          style={{ color: solid ? BRAND.deep : '#FFFFFF', fontWeight: '800', fontSize: 13, flexShrink: 1 }}
+          style={{
+            color: solid ? BRAND.deep : '#FFFFFF',
+            fontWeight: '800',
+            fontSize: 13,
+            flexShrink: 1,
+          }}
         >
           {label}
         </Text>
@@ -273,10 +305,23 @@ function HeaderButton({
   );
 }
 
-function YearChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+function YearChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
   const scale = useRef(new Animated.Value(1)).current;
   const to = (v: number) =>
-    Animated.spring(scale, { toValue: v, speed: 40, bounciness: 8, useNativeDriver: true }).start();
+    Animated.spring(scale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 8,
+      useNativeDriver: true,
+    }).start();
   return (
     <Animated.View style={{ transform: [{ scale }], marginRight: 8 }}>
       <Pressable
@@ -289,10 +334,21 @@ function YearChip({ label, active, onPress }: { label: string; active: boolean; 
           styles.chip,
           active
             ? { backgroundColor: BRAND.gold, borderColor: BRAND.gold }
-            : { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.3)' },
+            : {
+                backgroundColor: 'rgba(255,255,255,0.14)',
+                borderColor: 'rgba(255,255,255,0.3)',
+              },
         ]}
       >
-        <Text style={{ color: active ? BRAND.deep : '#FFFFFF', fontSize: 13, fontWeight: '800' }}>{label}</Text>
+        <Text
+          style={{
+            color: active ? BRAND.deep : '#FFFFFF',
+            fontSize: 13,
+            fontWeight: '800',
+          }}
+        >
+          {label}
+        </Text>
       </Pressable>
     </Animated.View>
   );
@@ -331,7 +387,12 @@ function MemoryCard({
     return () => a.stop();
   }, [enter, index]);
   const to = (v: number) =>
-    Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
+    Animated.spring(scale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 6,
+      useNativeDriver: true,
+    }).start();
 
   return (
     <Animated.View
@@ -400,8 +461,18 @@ function MemoryCard({
         </View>
 
         {item.description ? (
-          <View style={{ padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Text style={[typography.bodySmall, { color: colors.textSecondary, flex: 1 }]} numberOfLines={2}>
+          <View
+            style={{
+              padding: spacing.md,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+            }}
+          >
+            <Text
+              style={[typography.bodySmall, { color: colors.textSecondary, flex: 1 }]}
+              numberOfLines={2}
+            >
               {item.description}
             </Text>
             <Ionicons name="arrow-forward-circle" size={24} color={BRAND.magenta} />
@@ -414,7 +485,8 @@ function MemoryCard({
 
 const styles = StyleSheet.create({
   header: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 4,          // ← small top pad so it merges with MemoriesHeader
     paddingBottom: 18,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
@@ -462,5 +534,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
-  cardTitle: { position: 'absolute', left: 16, right: 16, bottom: 14, color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
+  cardTitle: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 14,
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
+  },
 });

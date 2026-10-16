@@ -470,7 +470,10 @@
     "reviewTitle": "የትዝታ ግምገማ",
     "submitSubtitle": "አንድ ልዩ ጊዜ ለመዘምራኑ ቤተሰብ ያካፍሉ።",
     "pendingCount": "{{count}} ለግምገማ በመጠበቅ ላይ",
-    "myCount": "{{count}} ትዝታዎች አጋርተዋል"
+    "myCount": "{{count}} ትዝታዎች አጋርተዋል",
+    "videoKicker": "የትዝታ ቪዲዮ",
+"videoTitle": "ተመልከት",
+"videoSubtitle": "ከመተግበሪያው ሳይወጡ እዚሁ ይጫወታል።"
   },
   "quote": {
     "title": "የዕለቱ የመጽሐፍ ቅዱስ ጥቅስ",

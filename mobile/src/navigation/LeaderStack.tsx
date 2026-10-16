@@ -19,7 +19,7 @@ import ZemaTeamScreen from '../features/leader/ZemaTeamScreen';
 import SongReviewScreen from '../features/leader/SongReviewScreen';
 import LeaderMemoriesScreen from '../features/memories/LeaderMemoriesScreen';
 import MemoryReviewDetailScreen from '../features/memories/MemoryReviewDetailScreen';
-
+import MemoryVideoScreen from '../features/memories/MemoryVideoScreen';
 
 export type LeaderStackParamList = {
   ApprovalsList: undefined;
@@ -39,6 +39,7 @@ export type LeaderStackParamList = {
   SongReview: undefined;
     LeaderMemories: undefined;
   MemoryReviewDetail: { id: string };
+  MemoryVideo: { youtubeUrl: string; memoryTitle?: string };
 };
 
 const Stack = createNativeStackNavigator<LeaderStackParamList>();
@@ -141,6 +142,11 @@ export default function LeaderStack() {
         component={MemoryReviewDetailScreen}
         options={{ title: '' }}
       />
+      <Stack.Screen
+  name="MemoryVideo"
+  component={MemoryVideoScreen}
+  options={{ headerShown: false, animation: 'slide_from_right' }}
+/>
     </Stack.Navigator>
 
   );

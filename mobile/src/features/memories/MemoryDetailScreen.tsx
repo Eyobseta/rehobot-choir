@@ -5,7 +5,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Pressable,
-  Linking,
   Animated,
   StyleSheet,
 } from 'react-native';
@@ -36,7 +35,7 @@ import {
   YOUTUBE_COLORS,
 } from './Memorykit';
 
-export default function MemoryDetailScreen({ route }: any) {
+export default function MemoryDetailScreen({ route, navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
@@ -244,7 +243,12 @@ export default function MemoryDetailScreen({ route }: any) {
                   label={t('memories.watchOnYoutube')}
                   icon="logo-youtube"
                   colors={YOUTUBE_COLORS}
-                  onPress={() => Linking.openURL(y.youtubeUrl as string)}
+                  onPress={() =>
+                    navigation.navigate('MemoryVideo', {
+                      youtubeUrl: y.youtubeUrl as string,
+                      memoryTitle: item.title,
+                    })
+                  }
                 />
               ))}
             </Animated.View>

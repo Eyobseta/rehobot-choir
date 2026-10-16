@@ -470,7 +470,10 @@
     "reviewTitle": "Memory review",
     "submitSubtitle": "Share a moment with the choir family.",
     "pendingCount": "{{count}} waiting for review",
-    "myCount": "{{count}} memories shared"
+    "myCount": "{{count}} memories shared",
+    "videoKicker": "Memory video",
+"videoTitle": "Watch",
+"videoSubtitle": "Plays right here — no need to leave the app."
   },
   "quote": {
     "title": "Daily Bible Quote",

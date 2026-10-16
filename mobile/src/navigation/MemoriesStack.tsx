@@ -6,12 +6,15 @@ import MemoriesScreen from '../features/memories/MemoriesScreen';
 import MemoryDetailScreen from '../features/memories/MemoryDetailScreen';
 import SubmitMemoryScreen from '../features/memories/SubmitMemoryScreen';
 import MyMemoriesScreen from '../features/memories/MyMemoriesScreen';
+import MemoryVideoScreen from '../features/memories/MemoryVideoScreen';
+import MemoriesHeader from '../features/memories/MemoriesHeader';
 
 export type MemoriesStackParamList = {
   MemoriesList: undefined;
   MemoryDetail: { id: string };
   SubmitMemory: undefined;
   MyMemories: undefined;
+  MemoryVideo: { youtubeUrl: string; memoryTitle?: string };
 };
 
 const Stack = createNativeStackNavigator<MemoriesStackParamList>();
@@ -32,7 +35,7 @@ export default function MemoriesStack() {
       <Stack.Screen
         name="MemoriesList"
         component={MemoriesScreen}
-        options={{ title: t('tabs.memories') }}
+        options={{ header: () => <MemoriesHeader /> }}
       />
       <Stack.Screen
         name="MemoryDetail"
@@ -48,6 +51,11 @@ export default function MemoriesStack() {
         name="MyMemories"
         component={MyMemoriesScreen}
         options={{ title: t('memories.mine') }}
+      />
+      <Stack.Screen
+        name="MemoryVideo"
+        component={MemoryVideoScreen}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
     </Stack.Navigator>
   );
