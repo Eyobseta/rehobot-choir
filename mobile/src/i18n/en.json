@@ -467,7 +467,10 @@
     "rejectPlaceholder": "Explain what needs to be changed…",
     "delete": "Delete memory",
     "deleteConfirm": "Delete this memory?",
-    "reviewTitle": "Memory review"
+    "reviewTitle": "Memory review",
+    "submitSubtitle": "Share a moment with the choir family.",
+    "pendingCount": "{{count}} waiting for review",
+    "myCount": "{{count}} memories shared"
   },
   "quote": {
     "title": "Daily Bible Quote",

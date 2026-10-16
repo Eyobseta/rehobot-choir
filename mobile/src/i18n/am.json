@@ -467,7 +467,10 @@
     "rejectPlaceholder": "ምን መስተካከል እንዳለበት ያብራሩ…",
     "delete": "ትዝታ ሰርዝ",
     "deleteConfirm": "ይህን ትዝታ ይሰርዙ?",
-    "reviewTitle": "የትዝታ ግምገማ"
+    "reviewTitle": "የትዝታ ግምገማ",
+    "submitSubtitle": "አንድ ልዩ ጊዜ ለመዘምራኑ ቤተሰብ ያካፍሉ።",
+    "pendingCount": "{{count}} ለግምገማ በመጠበቅ ላይ",
+    "myCount": "{{count}} ትዝታዎች አጋርተዋል"
   },
   "quote": {
     "title": "የዕለቱ የመጽሐፍ ቅዱስ ጥቅስ",

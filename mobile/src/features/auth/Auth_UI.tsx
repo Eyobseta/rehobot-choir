@@ -598,6 +598,7 @@ export function AuthField({
   icon,
   iconNode,
   showCheck,
+  multiline,
   returnKeyType,
   onSubmitEditing,
 }: {
@@ -611,6 +612,7 @@ export function AuthField({
   icon?: string;
   iconNode?: React.ReactNode;
   showCheck?: boolean;
+  multiline?: boolean;
   returnKeyType?: 'done' | 'next' | 'go';
   onSubmitEditing?: () => void;
 }) {
@@ -658,18 +660,20 @@ export function AuthField({
 
   return (
     <View ref={wrapRef} collapsable={false} style={{ marginBottom: spacing.md }}>
-      <Text
-        style={[
-          typography.bodySmall,
-          {
-            color: focused ? BRAND.violet : colors.textSecondary,
-            marginBottom: spacing.xs,
-            fontWeight: '600',
-          },
-        ]}
-      >
-        {label}
-      </Text>
+      {label ? (
+        <Text
+          style={[
+            typography.bodySmall,
+            {
+              color: focused ? BRAND.violet : colors.textSecondary,
+              marginBottom: spacing.xs,
+              fontWeight: '600',
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      ) : null}
 
       {/* border track: plain border colour, with a flowing gradient fading in on focus */}
       <View
@@ -701,18 +705,18 @@ export function AuthField({
         <View
           style={{
             margin: 2,
-            minHeight: 50,
+            minHeight: multiline ? 120 : 50,
             flexDirection: 'row',
-            alignItems: 'center',
+            alignItems: multiline ? 'flex-start' : 'center',
             paddingHorizontal: spacing.md,
             borderRadius: r - 2,
             backgroundColor: colors.surface,
           }}
         >
           {iconNode ? (
-            <View style={{ marginRight: spacing.sm }}>{iconNode}</View>
+            <View style={{ marginRight: spacing.sm, marginTop: multiline ? 10 : 0 }}>{iconNode}</View>
           ) : icon ? (
-            <Text style={{ fontSize: 16, marginRight: spacing.sm }}>{icon}</Text>
+            <Text style={{ fontSize: 16, marginRight: spacing.sm, marginTop: multiline ? 14 : 0 }}>{icon}</Text>
           ) : null}
           <TextInput
             value={value}
@@ -720,6 +724,8 @@ export function AuthField({
             keyboardType={keyboardType ?? 'default'}
             autoCapitalize={autoCapitalize ?? 'sentences'}
             secureTextEntry={secureTextEntry ? hidden : false}
+            multiline={multiline}
+            textAlignVertical={multiline ? 'top' : 'center'}
             placeholder={placeholder}
             placeholderTextColor={colors.textSecondary}
             returnKeyType={returnKeyType}
