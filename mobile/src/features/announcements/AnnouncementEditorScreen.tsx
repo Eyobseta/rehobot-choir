@@ -11,6 +11,9 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useTranslation } from 'react-i18next';
@@ -22,11 +25,17 @@ import {
   leaderDeleteAnnouncement,
 } from '../../services/announcements';
 import { ApiError } from '../../services/api';
+import { BRAND, withAlpha } from '../auth/Auth_UI';
+
+type IconName = keyof typeof Ionicons.glyphMap;
+
+const AMBER = '#F59E0B';
 
 export default function AnnouncementEditorScreen({ route, navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
+  const insets = useSafeAreaInsets();
   const editingId: string | null = route.params?.id ?? null;
 
   const [loading, setLoading] = useState(!!editingId);
@@ -209,50 +218,104 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
       <ScrollView
         contentContainerStyle={{
-          padding: spacing.xl,
-          paddingBottom: spacing.xxl * 2,
+          padding: spacing.lg,
+          paddingBottom: spacing.xl,
         }}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={[typography.h2, { color: colors.primary }]}>
-          {editingId ? t('announcements.edit') : t('announcements.create')}
-        </Text>
+        {/* header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm + 2 }}>
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 15,
+              backgroundColor: withAlpha(AMBER, 0.16),
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="megaphone" size={21} color={AMBER} />
+          </View>
+          <Text style={[typography.h2, { color: colors.text, fontWeight: '800', flex: 1 }]}>
+            {editingId ? t('announcements.edit') : t('announcements.create')}
+          </Text>
+        </View>
 
+        {/* image */}
         <Text
           style={[
             typography.bodySmall,
-            { color: colors.textSecondary, marginTop: spacing.lg },
+            { color: colors.textSecondary, marginTop: spacing.lg, fontWeight: '700' },
           ]}
         >
           {t('announcements.imageField')}
         </Text>
         <Pressable
           onPress={pickImage}
-          style={{ alignItems: 'center', marginTop: spacing.sm }}
+          style={{ marginTop: spacing.sm }}
+          accessibilityRole="button"
         >
           {imageUri ? (
-            <Image
-              source={{ uri: imageUri }}
-              style={{ width: '100%', height: 160, borderRadius: radius.md }}
-            />
+            <View>
+              <Image
+                source={{ uri: imageUri }}
+                style={{ width: '100%', height: 180, borderRadius: 26 }}
+              />
+              <View
+                style={{
+                  position: 'absolute',
+                  right: spacing.sm + 2,
+                  bottom: spacing.sm + 2,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm,
+                  borderRadius: 16,
+                  backgroundColor: 'rgba(10,6,30,0.65)',
+                }}
+              >
+                <Ionicons name="camera" size={15} color="#FFFFFF" />
+                <Text style={[typography.caption, { color: '#FFFFFF', fontWeight: '800' }]}>
+                  {t('announcements.imageField')}
+                </Text>
+              </View>
+            </View>
           ) : (
             <View
               style={{
                 width: '100%',
-                height: 160,
-                borderRadius: radius.md,
+                height: 180,
+                borderRadius: 26,
                 borderWidth: 2,
-                borderColor: colors.primary,
+                borderColor: withAlpha(AMBER, 0.7),
                 borderStyle: 'dashed',
+                backgroundColor: withAlpha(AMBER, 0.07),
                 alignItems: 'center',
                 justifyContent: 'center',
+                gap: spacing.sm,
               }}
             >
-              <Text style={[typography.body, { color: colors.primary }]}>
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 20,
+                  backgroundColor: withAlpha(AMBER, 0.18),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="image" size={26} color={AMBER} />
+              </View>
+              <Text style={[typography.body, { color: AMBER, fontWeight: '700' }]}>
                 {t('announcements.pickImage')}
               </Text>
             </View>
@@ -265,111 +328,194 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
               setImageUri(null);
               setRemoveImage(true);
             }}
-            style={{ marginTop: spacing.sm, alignItems: 'center' }}
+            style={{
+              marginTop: spacing.sm,
+              alignSelf: 'center',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 5,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.xs + 2,
+              borderRadius: 14,
+              backgroundColor: withAlpha(colors.error, 0.1),
+            }}
           >
-            <Text style={[typography.caption, { color: colors.error }]}>
+            <Ionicons name="trash-outline" size={14} color={colors.error} />
+            <Text style={[typography.caption, { color: colors.error, fontWeight: '700' }]}>
               {t('announcements.removeImage')}
             </Text>
           </Pressable>
         )}
 
-        <Field
-          label={t('announcements.titleField')}
-          value={title}
-          onChange={setTitle}
-        />
-        <Field
-          label={t('announcements.messageField')}
-          value={message}
-          onChange={setMessage}
-          multiline
-        />
-        <Field
-          label={t('announcements.publishAt')}
-          value={publishAtText}
-          onChange={setPublishAtText}
-          placeholder="2026-10-15 10:00"
-        />
+        {/* fields */}
+        <View
+          style={{
+            marginTop: spacing.lg,
+            padding: spacing.lg,
+            paddingTop: spacing.xs,
+            borderRadius: 26,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}
+        >
+          <Field
+            icon="text"
+            label={t('announcements.titleField')}
+            value={title}
+            onChange={setTitle}
+          />
+          <Field
+            icon="chatbox-ellipses"
+            label={t('announcements.messageField')}
+            value={message}
+            onChange={setMessage}
+            multiline
+          />
+          <Field
+            icon="calendar"
+            label={t('announcements.publishAt')}
+            value={publishAtText}
+            onChange={setPublishAtText}
+            placeholder="2026-10-15 10:00"
+          />
+        </View>
 
         {error && (
-          <Text
-            style={[
-              typography.bodySmall,
-              { color: colors.error, marginTop: spacing.md },
-            ]}
-          >
-            {error}
-          </Text>
-        )}
-
-        <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl }}>
-          {editingId && (
-            <Pressable
-              onPress={onDelete}
-              disabled={busy}
-              style={{
-                flex: 1,
-                paddingVertical: spacing.md,
-                borderRadius: radius.md,
-                borderWidth: 1,
-                borderColor: colors.error,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={[typography.button, { color: colors.error }]}>
-                {t('announcements.delete')}
-              </Text>
-            </Pressable>
-          )}
-          <Pressable
-            onPress={() => onSave(false)}
-            disabled={busy}
+          <View
             style={{
-              flex: 1,
-              paddingVertical: spacing.md,
-              borderRadius: radius.md,
-              borderWidth: 1,
-              borderColor: colors.border,
+              marginTop: spacing.md,
+              flexDirection: 'row',
               alignItems: 'center',
+              gap: spacing.sm,
+              padding: spacing.md,
+              borderRadius: radius.md + 2,
+              backgroundColor: withAlpha(colors.error, 0.1),
+              borderWidth: 1,
+              borderColor: withAlpha(colors.error, 0.35),
             }}
           >
-            <Text style={[typography.button, { color: colors.text }]}>
-              {t('announcements.saveDraft')}
+            <Ionicons name="alert-circle" size={18} color={colors.error} />
+            <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
+              {error}
             </Text>
-          </Pressable>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* sticky action bar */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm + 2,
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.md,
+          paddingBottom: Math.max(insets.bottom, spacing.md),
+          backgroundColor: colors.surface,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        }}
+      >
+        {editingId && (
           <Pressable
-            onPress={() => onSave(true)}
+            onPress={onDelete}
             disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel={t('announcements.delete')}
             style={{
-              flex: 1,
-              paddingVertical: spacing.md,
-              borderRadius: radius.md,
-              backgroundColor: colors.primary,
+              width: 50,
+              height: 50,
+              borderRadius: 18,
+              borderWidth: 1.5,
+              borderColor: colors.error,
+              backgroundColor: withAlpha(colors.error, 0.08),
               alignItems: 'center',
+              justifyContent: 'center',
               opacity: busy ? 0.6 : 1,
             }}
           >
-            {busy ? (
-              <ActivityIndicator color={colors.primaryText} />
-            ) : (
-              <Text style={[typography.button, { color: colors.primaryText }]}>
-                {t('announcements.publishNow')}
-              </Text>
-            )}
+            <Ionicons name="trash" size={20} color={colors.error} />
           </Pressable>
-        </View>
-      </ScrollView>
+        )}
+
+        <Pressable
+          onPress={() => onSave(false)}
+          disabled={busy}
+          style={{
+            flex: 1,
+            height: 50,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            borderRadius: 18,
+            borderWidth: 1.5,
+            borderColor: colors.border,
+            backgroundColor: colors.background,
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          <Ionicons name="document-text-outline" size={17} color={colors.text} />
+          <Text style={[typography.button, { color: colors.text }]} numberOfLines={1}>
+            {t('announcements.saveDraft')}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => onSave(true)}
+          disabled={busy}
+          style={{
+            flex: 1.2,
+            height: 50,
+            borderRadius: 18,
+            overflow: 'hidden',
+            opacity: busy ? 0.6 : 1,
+            shadowColor: BRAND.violet,
+            shadowOpacity: 0.35,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 5 },
+            elevation: 5,
+          }}
+        >
+          <LinearGradient
+            colors={[BRAND.violet, BRAND.magenta]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+            }}
+          >
+            {busy ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="paper-plane" size={17} color="#FFFFFF" />
+                <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]} numberOfLines={1}>
+                  {t('announcements.publishNow')}
+                </Text>
+              </>
+            )}
+          </LinearGradient>
+        </Pressable>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 function Field({
+  icon,
   label,
   value,
   onChange,
   placeholder,
   multiline,
 }: {
+  icon: IconName;
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -378,35 +524,53 @@ function Field({
 }) {
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
+  const [focused, setFocused] = useState(false);
   return (
     <View style={{ marginTop: spacing.md }}>
       <Text
         style={[
           typography.bodySmall,
-          { color: colors.textSecondary, marginBottom: spacing.xs },
+          { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '700' },
         ]}
       >
         {label}
       </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textSecondary}
-        multiline={multiline}
-        numberOfLines={multiline ? 5 : 1}
+      <View
         style={{
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          borderWidth: 1,
-          borderRadius: radius.md,
+          flexDirection: 'row',
+          alignItems: multiline ? 'flex-start' : 'center',
+          gap: spacing.sm,
+          backgroundColor: colors.background,
+          borderColor: focused ? AMBER : colors.border,
+          borderWidth: 1.5,
+          borderRadius: radius.md + 4,
           paddingHorizontal: spacing.md,
-          paddingVertical: spacing.md,
-          color: colors.text,
-          textAlignVertical: multiline ? 'top' : 'center',
-          minHeight: multiline ? 120 : undefined,
         }}
-      />
+      >
+        <Ionicons
+          name={icon}
+          size={18}
+          color={focused ? AMBER : colors.textSecondary}
+          style={{ marginTop: multiline ? spacing.md : 0 }}
+        />
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textSecondary}
+          multiline={multiline}
+          numberOfLines={multiline ? 5 : 1}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            flex: 1,
+            paddingVertical: spacing.md,
+            color: colors.text,
+            textAlignVertical: multiline ? 'top' : 'center',
+            minHeight: multiline ? 120 : undefined,
+          }}
+        />
+      </View>
     </View>
   );
 }

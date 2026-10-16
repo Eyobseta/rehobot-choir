@@ -23,7 +23,23 @@
     "birthdayToday": "ዛሬ",
     "birthdayTomorrow": "ነገ",
     "seeAll": "ሁሉንም ይመልከቱ",
-    "bibleStudy": "የመጽሐፍ ቅዱስ ጥናት እና ፍትሐ"
+    "bibleStudy": "የመጽሐፍ ቅዱስ ጥናት እና ፍትሐ",
+    "goodMorning": "እንደምን አደሩ",
+    "goodAfternoon": "እንደምን ዋሉ",
+    "goodEvening": "እንደምን አመሹ",
+    "today": "ዛሬ",
+    "tomorrow": "ነገ",
+    "inDays": "ከ{{count}} ቀናት በኋላ",
+    "chipUnread": "{{count}} አዲስ",
+    "chipBirthdays": "ዛሬ {{count}} ልደት",
+    "chipBirthdays_one": "ዛሬ {{count}} ልደት",
+    "chipBirthdays_other": "ዛሬ {{count}} ልደቶች",
+    "lookForward": "የሚጠብቅዎት መልካም ቀን",
+    "explore": "ያስሱ",
+    "daysShort": "ቀናት",
+    "taglineMorning": "አዲስ ቀን፣ በበረከት የተሞላ ✨",
+    "taglineAfternoon": "ማብራትዎን ይቀጥሉ — መልካም ነገር እየመጣ ነው ☀️",
+    "taglineEvening": "ዛሬ ድንቅ ነበሩ። በሰላም ያርፉ 🌙"
   },
   "test": {
     "greeting": "ሰላም፣ እንኳን ወደ ርሆቦት መዘምራን በደህና መጡ",
@@ -472,8 +488,8 @@
     "pendingCount": "{{count}} ለግምገማ በመጠበቅ ላይ",
     "myCount": "{{count}} ትዝታዎች አጋርተዋል",
     "videoKicker": "የትዝታ ቪዲዮ",
-"videoTitle": "ተመልከት",
-"videoSubtitle": "ከመተግበሪያው ሳይወጡ እዚሁ ይጫወታል።"
+    "videoTitle": "ተመልከት",
+    "videoSubtitle": "ከመተግበሪያው ሳይወጡ እዚሁ ይጫወታል።"
   },
   "quote": {
     "title": "የዕለቱ የመጽሐፍ ቅዱስ ጥቅስ",
@@ -493,7 +509,9 @@
     "publishedBody": "ጥቅስዎ ለመዘምራኑ ታይቷል።",
     "previous7": "ያለፉት 7 ቀናት",
     "empty": "በያለፉት 7 ቀናት ጥቅስ የለም።",
-    "publishedCount": "የታተሙ ጥቅሶች: {{count}}"
+    "publishedCount": "የታተሙ ጥቅሶች: {{count}}",
+    "publishedBy": "በ{{name}} የታተመ",
+    "unknownPublisher": "የመዘምራን አባል"
   },
   "notifications": {
     "title": "ማሳወቂያዎች",

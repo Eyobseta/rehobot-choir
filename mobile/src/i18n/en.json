@@ -23,7 +23,23 @@
     "birthdayToday": "Today",
     "birthdayTomorrow": "Tomorrow",
     "seeAll": "See all",
-    "bibleStudy": "Bible Study & Fetua"
+    "bibleStudy": "Bible Study & Fetua",
+    "goodMorning": "Good morning",
+    "goodAfternoon": "Good afternoon",
+    "goodEvening": "Good evening",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "inDays": "In {{count}} days",
+    "chipUnread": "{{count}} new",
+    "chipBirthdays": "{{count}} birthday today",
+    "chipBirthdays_one": "{{count}} birthday today",
+    "chipBirthdays_other": "{{count}} birthdays today",
+    "lookForward": "Something to look forward to",
+    "explore": "Explore",
+    "daysShort": "days",
+    "taglineMorning": "A fresh day, full of new blessings ✨",
+    "taglineAfternoon": "Keep shining — good things are coming ☀️",
+    "taglineEvening": "You did wonderfully today. Rest well 🌙"
   },
   "test": {
     "greeting": "Hello, welcome to Rehobot Choir",
@@ -472,8 +488,8 @@
     "pendingCount": "{{count}} waiting for review",
     "myCount": "{{count}} memories shared",
     "videoKicker": "Memory video",
-"videoTitle": "Watch",
-"videoSubtitle": "Plays right here — no need to leave the app."
+    "videoTitle": "Watch",
+    "videoSubtitle": "Plays right here — no need to leave the app."
   },
   "quote": {
     "title": "Daily Bible Quote",
@@ -493,7 +509,9 @@
     "publishedBody": "Your quote is now visible to the choir.",
     "previous7": "Previous 7 days",
     "empty": "No quotes in the last 7 days.",
-    "publishedCount": "Quotes published: {{count}}"
+    "publishedCount": "Quotes published: {{count}}",
+    "publishedBy": "Published by {{name}}",
+    "unknownPublisher": "a choir member"
   },
   "notifications": {
     "title": "Notifications",

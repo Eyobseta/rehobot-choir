@@ -10,12 +10,16 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 import { publishTodayQuote } from '../../services/quotes';
 import { ApiError } from '../../services/api';
+import { BRAND, withAlpha } from '../auth/Auth_UI';
+
+type IconName = keyof typeof Ionicons.glyphMap;
 
 export default function DailyQuoteComposerScreen({ navigation }: any) {
   const { t } = useTranslation();
@@ -88,98 +92,206 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
     >
       <ScrollView
         contentContainerStyle={{
-          padding: spacing.xl,
+          padding: spacing.lg,
           paddingBottom: spacing.xxl * 2,
         }}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={[typography.h2, { color: colors.primary }]}>
-          {t('quote.addToday')}
-        </Text>
-
-        <Field
-          label={t('quote.quoteField')}
-          value={quoteText}
-          onChange={setQuoteText}
-          multiline
-        />
-        <Field
-          label={t('quote.sourceField')}
-          value={source}
-          onChange={setSource}
-          placeholder="Psalm 23:1"
-          autoCapitalize="words"
-        />
-        <Field
-          label={t('quote.youtubeField')}
-          value={youtubeUrl}
-          onChange={setYoutubeUrl}
-          placeholder="https://www.youtube.com/watch?v=..."
-          autoCapitalize="none"
-        />
-
-        <Text
-          style={[
-            typography.bodySmall,
-            { color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs },
-          ]}
-        >
-          {t('quote.audioField')}
-        </Text>
-        <View
+        {/* header banner */}
+        <LinearGradient
+          colors={['#B98045', '#9A6735', '#6E4220']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={{
-            padding: spacing.md,
-            borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: colors.border,
-            backgroundColor: colors.surface,
+            borderRadius: 28,
+            padding: spacing.lg,
+            overflow: 'hidden',
             flexDirection: 'row',
             alignItems: 'center',
-            gap: spacing.sm,
+            gap: spacing.md,
           }}
         >
-          <Ionicons
-            name={audioUri ? 'musical-notes' : 'musical-note-outline'}
-            size={22}
-            color={audioUri ? colors.primary : colors.textSecondary}
-          />
           <Text
-            style={[typography.bodySmall, { color: colors.text, flex: 1 }]}
-            numberOfLines={1}
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: -30,
+              right: 6,
+              fontSize: 140,
+              lineHeight: 160,
+              fontWeight: '800',
+              color: 'rgba(255,255,255,0.12)',
+            }}
           >
-            {audioUri ? audioName : t('quote.audioNone')}
+            “
           </Text>
-          {audioUri ? (
-            <Pressable
-              onPress={() => {
-                setAudioUri(null);
-                setAudioName(null);
-                setAudioMime(null);
-              }}
-            >
-              <Text style={[typography.caption, { color: colors.error }]}>
-                {t('quote.removeAudio')}
-              </Text>
-            </Pressable>
-          ) : (
-            <Pressable onPress={pickAudio}>
-              <Text style={[typography.caption, { color: colors.primary }]}>
-                {t('quote.pickAudio')}
-              </Text>
-            </Pressable>
-          )}
-        </View>
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 16,
+              backgroundColor: 'rgba(255,255,255,0.22)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="create" size={24} color="#FFF4E0" />
+          </View>
+          <Text
+            style={[typography.h2, { color: '#FFFFFF', flex: 1, fontWeight: '800' }]}
+          >
+            {t('quote.addToday')}
+          </Text>
+        </LinearGradient>
 
-        {error && (
+        {/* quote + source */}
+        <Card>
+          <Field
+            icon="chatbubble-ellipses-outline"
+            label={t('quote.quoteField')}
+            value={quoteText}
+            onChange={setQuoteText}
+            multiline
+          />
+          <Field
+            icon="bookmark-outline"
+            label={t('quote.sourceField')}
+            value={source}
+            onChange={setSource}
+            placeholder="Psalm 23:1"
+            autoCapitalize="words"
+          />
+        </Card>
+
+        {/* media */}
+        <Card>
+          <Field
+            icon="logo-youtube"
+            label={t('quote.youtubeField')}
+            value={youtubeUrl}
+            onChange={setYoutubeUrl}
+            placeholder="https://www.youtube.com/watch?v=..."
+            autoCapitalize="none"
+          />
+
           <Text
             style={[
               typography.bodySmall,
-              { color: colors.error, marginTop: spacing.md },
+              {
+                color: colors.textSecondary,
+                marginTop: spacing.md,
+                marginBottom: spacing.xs,
+                fontWeight: '700',
+              },
             ]}
           >
-            {error}
+            {t('quote.audioField')}
           </Text>
+          <View
+            style={{
+              padding: spacing.md,
+              borderRadius: radius.md + 4,
+              borderWidth: 1.5,
+              borderStyle: audioUri ? 'solid' : 'dashed',
+              borderColor: audioUri ? BRAND.violet : colors.border,
+              backgroundColor: audioUri
+                ? withAlpha(BRAND.violet, 0.07)
+                : colors.background,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm + 2,
+            }}
+          >
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 14,
+                backgroundColor: audioUri
+                  ? withAlpha(BRAND.violet, 0.18)
+                  : withAlpha(colors.textSecondary, 0.12),
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons
+                name={audioUri ? 'musical-notes' : 'musical-note-outline'}
+                size={20}
+                color={audioUri ? BRAND.violet : colors.textSecondary}
+              />
+            </View>
+            <Text
+              style={[
+                typography.bodySmall,
+                { color: audioUri ? colors.text : colors.textSecondary, flex: 1 },
+              ]}
+              numberOfLines={1}
+            >
+              {audioUri ? audioName : t('quote.audioNone')}
+            </Text>
+            {audioUri ? (
+              <Pressable
+                onPress={() => {
+                  setAudioUri(null);
+                  setAudioName(null);
+                  setAudioMime(null);
+                }}
+                hitSlop={8}
+                style={{
+                  paddingHorizontal: spacing.sm + 2,
+                  paddingVertical: spacing.xs + 2,
+                  borderRadius: 12,
+                  backgroundColor: withAlpha(colors.error, 0.12),
+                }}
+              >
+                <Text style={[typography.caption, { color: colors.error, fontWeight: '800' }]}>
+                  {t('quote.removeAudio')}
+                </Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={pickAudio}
+                hitSlop={8}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  paddingHorizontal: spacing.sm + 2,
+                  paddingVertical: spacing.xs + 2,
+                  borderRadius: 12,
+                  backgroundColor: withAlpha(BRAND.violet, 0.12),
+                }}
+              >
+                <Ionicons name="cloud-upload-outline" size={14} color={BRAND.violet} />
+                <Text style={[typography.caption, { color: BRAND.violet, fontWeight: '800' }]}>
+                  {t('quote.pickAudio')}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        </Card>
+
+        {error && (
+          <View
+            style={{
+              marginTop: spacing.md,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+              padding: spacing.md,
+              borderRadius: radius.md + 2,
+              backgroundColor: withAlpha(colors.error, 0.1),
+              borderWidth: 1,
+              borderColor: withAlpha(colors.error, 0.35),
+            }}
+          >
+            <Ionicons name="alert-circle" size={18} color={colors.error} />
+            <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
+              {error}
+            </Text>
+          </View>
         )}
 
         <Pressable
@@ -187,27 +299,67 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
           disabled={busy}
           style={{
             marginTop: spacing.xl,
-            backgroundColor: colors.primary,
-            borderRadius: radius.md,
-            paddingVertical: spacing.md,
-            alignItems: 'center',
+            borderRadius: radius.md + 6,
+            overflow: 'hidden',
             opacity: busy ? 0.6 : 1,
+            shadowColor: BRAND.violet,
+            shadowOpacity: 0.35,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 6 },
+            elevation: 6,
           }}
         >
-          {busy ? (
-            <ActivityIndicator color={colors.primaryText} />
-          ) : (
-            <Text style={[typography.button, { color: colors.primaryText }]}>
-              {t('quote.publish')}
-            </Text>
-          )}
+          <LinearGradient
+            colors={[BRAND.violet, BRAND.magenta]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              paddingVertical: spacing.md + 2,
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'row',
+              gap: spacing.sm,
+            }}
+          >
+            {busy ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="paper-plane" size={18} color="#FFFFFF" />
+                <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}>
+                  {t('quote.publish')}
+                </Text>
+              </>
+            )}
+          </LinearGradient>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+function Card({ children }: { children: React.ReactNode }) {
+  const { theme } = useTheme();
+  const { colors, spacing } = theme;
+  return (
+    <View
+      style={{
+        marginTop: spacing.lg,
+        padding: spacing.lg,
+        paddingTop: spacing.xs,
+        borderRadius: 24,
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.border,
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+
 function Field({
+  icon,
   label,
   value,
   onChange,
@@ -215,6 +367,7 @@ function Field({
   multiline,
   autoCapitalize,
 }: {
+  icon: IconName;
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -224,35 +377,53 @@ function Field({
 }) {
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
+  const [focused, setFocused] = useState(false);
   return (
     <View style={{ marginTop: spacing.md }}>
       <Text
         style={[
           typography.bodySmall,
-          { color: colors.textSecondary, marginBottom: spacing.xs },
+          { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '700' },
         ]}
       >
         {label}
       </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textSecondary}
-        multiline={multiline}
-        autoCapitalize={autoCapitalize ?? 'sentences'}
+      <View
         style={{
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          borderWidth: 1,
-          borderRadius: radius.md,
+          flexDirection: 'row',
+          alignItems: multiline ? 'flex-start' : 'center',
+          gap: spacing.sm,
+          backgroundColor: colors.background,
+          borderColor: focused ? BRAND.violet : colors.border,
+          borderWidth: 1.5,
+          borderRadius: radius.md + 4,
           paddingHorizontal: spacing.md,
-          paddingVertical: spacing.md,
-          color: colors.text,
-          minHeight: multiline ? 120 : undefined,
-          textAlignVertical: multiline ? 'top' : 'center',
         }}
-      />
+      >
+        <Ionicons
+          name={icon}
+          size={18}
+          color={focused ? BRAND.violet : colors.textSecondary}
+          style={{ marginTop: multiline ? spacing.md : 0 }}
+        />
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textSecondary}
+          multiline={multiline}
+          autoCapitalize={autoCapitalize ?? 'sentences'}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{
+            flex: 1,
+            paddingVertical: spacing.md,
+            color: colors.text,
+            minHeight: multiline ? 120 : undefined,
+            textAlignVertical: multiline ? 'top' : 'center',
+          }}
+        />
+      </View>
     </View>
   );
 }

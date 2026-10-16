@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   Pressable,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 import {
@@ -14,11 +16,14 @@ import {
   AnnouncementDetail,
 } from '../../services/announcements';
 import { ApiError } from '../../services/api';
+import { BRAND, withAlpha } from '../auth/Auth_UI';
+
+const AMBER = '#F59E0B';
 
 export default function AnnouncementDetailScreen({ route, navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
   const { id } = route.params;
 
   const [item, setItem] = useState<AnnouncementDetail | null>(null);
@@ -62,52 +67,131 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
           alignItems: 'center',
           backgroundColor: colors.background,
           padding: spacing.xl,
+          gap: spacing.md,
         }}
       >
-        <Text style={[typography.body, { color: colors.error }]}>
+        <View
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: 24,
+            backgroundColor: withAlpha(colors.error, 0.12),
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="megaphone-outline" size={32} color={colors.error} />
+        </View>
+        <Text style={[typography.body, { color: colors.error, textAlign: 'center' }]}>
           {error ?? t('announcements.notFound')}
         </Text>
       </View>
     );
   }
 
+  const evDate = item.event ? new Date(item.event.date) : null;
+
   return (
     <ScrollView
-      contentContainerStyle={{
-        paddingBottom: spacing.xl,
-        backgroundColor: colors.background,
-      }}
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={{ paddingBottom: spacing.xxl }}
+      showsVerticalScrollIndicator={false}
     >
-      {item.imageUrl && (
-        <Image
-          source={{ uri: item.imageUrl }}
-          style={{ width: '100%', height: 220 }}
+      {/* ---------- HERO ---------- */}
+      <View style={{ height: item.imageUrl ? 260 : 190 }}>
+        {item.imageUrl ? (
+          <Image
+            source={{ uri: item.imageUrl }}
+            style={{ width: '100%', height: '100%' }}
+          />
+        ) : (
+          <LinearGradient
+            colors={['#F59E0B', BRAND.magenta, BRAND.violet]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="megaphone" size={120} color="rgba(255,255,255,0.18)" />
+          </LinearGradient>
+        )}
+        <LinearGradient
+          pointerEvents="none"
+          colors={['rgba(10,6,30,0.1)', 'rgba(10,6,30,0)', 'rgba(10,6,30,0.5)']}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         />
-      )}
+      </View>
 
-      <View style={{ padding: spacing.xl }}>
-        <Text style={[typography.h2, { color: colors.text }]}>
+      {/* ---------- SHEET ---------- */}
+      <View
+        style={{
+          marginTop: -28,
+          borderTopLeftRadius: 32,
+          borderTopRightRadius: 32,
+          backgroundColor: colors.background,
+          padding: spacing.xl,
+          paddingTop: spacing.xl + 2,
+        }}
+      >
+        <View
+          style={{
+            alignSelf: 'flex-start',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            paddingHorizontal: spacing.md,
+            paddingVertical: 5,
+            borderRadius: 12,
+            backgroundColor: withAlpha(AMBER, 0.16),
+          }}
+        >
+          <Ionicons name="time" size={13} color={AMBER} />
+          <Text style={[typography.caption, { color: AMBER, fontWeight: '800' }]}>
+            {new Date(item.publishAt).toLocaleString()}
+          </Text>
+        </View>
+
+        <Text
+          style={[
+            typography.h2,
+            { color: colors.text, fontWeight: '800', marginTop: spacing.md, letterSpacing: -0.3 },
+          ]}
+        >
           {item.title}
         </Text>
-        <Text
-          style={[
-            typography.caption,
-            { color: colors.textSecondary, marginTop: spacing.xs },
-          ]}
-        >
-          {new Date(item.publishAt).toLocaleString()}
-        </Text>
 
-        <Text
-          style={[
-            typography.body,
-            { color: colors.text, marginTop: spacing.lg, lineHeight: 22 },
-          ]}
+        <View
+          style={{
+            marginTop: spacing.lg,
+            padding: spacing.lg,
+            borderRadius: 24,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            overflow: 'hidden',
+          }}
         >
-          {item.message}
-        </Text>
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 4,
+              backgroundColor: AMBER,
+            }}
+          />
+          <Text
+            style={[
+              typography.body,
+              { color: colors.text, lineHeight: 25, paddingLeft: spacing.sm },
+            ]}
+          >
+            {item.message}
+          </Text>
+        </View>
 
-        {item.event && (
+        {item.event && evDate && (
           <Pressable
             onPress={() =>
               navigation.navigate('Home', {
@@ -115,46 +199,158 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
                 params: { id: item.event!.id },
               })
             }
-            style={{
+            style={({ pressed }) => ({
               marginTop: spacing.lg,
-              paddingVertical: spacing.md,
-              paddingHorizontal: spacing.lg,
-              borderRadius: radius.md,
-              borderWidth: 1,
-              borderColor: colors.primary,
-              alignItems: 'center',
-            }}
+              borderRadius: 26,
+              overflow: 'hidden',
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+              shadowColor: BRAND.violet,
+              shadowOpacity: 0.3,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: 5,
+            })}
           >
-            <Text style={[typography.bodySmall, { color: colors.primary }]}>
-              {item.event.title}
-            </Text>
-            <Text
-              style={[
-                typography.caption,
-                { color: colors.textSecondary, marginTop: 2 },
-              ]}
+            <LinearGradient
+              colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.md,
+                padding: spacing.md,
+                overflow: 'hidden',
+              }}
             >
-              {new Date(item.event.date).toLocaleString()}
-            </Text>
+              <Ionicons
+                name="calendar"
+                size={100}
+                color="rgba(255,255,255,0.1)"
+                style={{ position: 'absolute', right: -12, bottom: -26 }}
+              />
+              <View
+                style={{
+                  width: 56,
+                  paddingVertical: 8,
+                  borderRadius: 16,
+                  backgroundColor: '#FFFFFF',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 22, fontWeight: '800', color: BRAND.deep, lineHeight: 24 }}>
+                  {evDate.getDate()}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '800',
+                    color: BRAND.magenta,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {evDate.toLocaleString(undefined, { month: 'short' })}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[typography.body, { color: '#FFFFFF', fontWeight: '800' }]}
+                  numberOfLines={2}
+                >
+                  {item.event.title}
+                </Text>
+                <Text
+                  style={[typography.caption, { color: 'rgba(255,255,255,0.85)', marginTop: 3 }]}
+                  numberOfLines={1}
+                >
+                  {new Date(item.event.date).toLocaleString()}
+                </Text>
+              </View>
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: BRAND.gold,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="arrow-forward" size={18} color={BRAND.deep} />
+              </View>
+            </LinearGradient>
           </Pressable>
         )}
 
         {item.songs.length > 0 && (
           <View style={{ marginTop: spacing.xl }}>
-            <Text style={[typography.h3, { color: colors.text }]}>
-              {t('announcements.songs')}
-            </Text>
-            {item.songs.map((s) => (
-              <Text
-                key={s.id}
-                style={[
-                  typography.body,
-                  { color: colors.text, marginTop: spacing.xs },
-                ]}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                marginBottom: spacing.md,
+              }}
+            >
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 10,
+                  backgroundColor: withAlpha(BRAND.violet, 0.16),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
               >
-                • {s.songTitle}
+                <Ionicons name="musical-notes" size={15} color={BRAND.violet} />
+              </View>
+              <Text style={[typography.h3, { color: colors.text, fontWeight: '800' }]}>
+                {t('announcements.songs')}
               </Text>
-            ))}
+            </View>
+            <View
+              style={{
+                borderRadius: 24,
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                overflow: 'hidden',
+              }}
+            >
+              {item.songs.map((s, i) => (
+                <View
+                  key={s.id}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.md,
+                    padding: spacing.md,
+                    borderBottomWidth: i === item.songs.length - 1 ? 0 : 1,
+                    borderBottomColor: colors.border,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: 11,
+                      backgroundColor: withAlpha(BRAND.violet, 0.12),
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: BRAND.violet }}>
+                      {i + 1}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[typography.body, { color: colors.text, flex: 1, fontWeight: '600' }]}
+                  >
+                    {s.songTitle}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
         )}
       </View>
