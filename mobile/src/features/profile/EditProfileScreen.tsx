@@ -14,6 +14,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   getOwnProfile,
@@ -30,8 +31,8 @@ import {
   BRAND,
   withAlpha,
 } from '../auth/Auth_UI';
+import GlassBackButton from '../../components/GlassBackButton';
 
-// Soft accents for the field icons; theme tokens still drive surfaces and text.
 const accents = {
   cyan: '#6EDBD5',
   pink: '#EE9BBD',
@@ -43,6 +44,7 @@ export default function EditProfileScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
+  const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -144,7 +146,6 @@ export default function EditProfileScreen({ navigation }: any) {
     }
   };
 
-  // ---- Visual-only motion ----
   const enter = useRef(new Animated.Value(0)).current;
   const camBob = useRef(new Animated.Value(0)).current;
   const savedPop = useRef(new Animated.Value(0)).current;
@@ -200,21 +201,30 @@ export default function EditProfileScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <KeyboardAwareScroll contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.xl * 2 }}>
-        {/* Hero with avatar */}
+      <KeyboardAwareScroll contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}>
+        {/* Hero with avatar + back button */}
         <Animated.View style={fadeUp(0)}>
           <LinearGradient
             colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.hero}
+            style={[styles.hero, { paddingTop: insets.top + 16 }]}
           >
             <View pointerEvents="none" style={[styles.blob, { top: -50, right: -50, backgroundColor: withAlpha(BRAND.gold, 0.18) }]} />
             <View pointerEvents="none" style={[styles.blob, { bottom: -70, left: -50, backgroundColor: withAlpha(BRAND.water, 0.2) }]} />
 
+            {/* Back button row */}
+            <View style={styles.heroTopRow}>
+              <View style={{ flex: 1 }} />
+              <GlassBackButton
+                onPress={() => navigation.goBack()}
+                accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+              />
+            </View>
+
             <PressScale onPress={pickPhoto} disabled={busy}>
               <AvatarRing
-                size={128}
+                size={160}
                 uri={photoUrl}
                 gapColor={BRAND.deep}
                 fallback={<Ionicons name="person" size={52} color={withAlpha('#FFFFFF', 0.6)} />}
@@ -230,7 +240,7 @@ export default function EditProfileScreen({ navigation }: any) {
                     { transform: [{ translateY: camBob.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }) }] },
                   ]}
                 >
-                  <Ionicons name="camera" size={18} color={BRAND.deep} />
+                  <Ionicons name="camera" size={20} color={BRAND.deep} />
                 </Animated.View>
               </AvatarRing>
             </PressScale>
@@ -243,81 +253,83 @@ export default function EditProfileScreen({ navigation }: any) {
         </Animated.View>
 
         {/* Fields */}
-        <Animated.View
-          style={[
-            styles.card,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-            fadeUp(1),
-          ]}
-        >
-          <AuthField
-            label={t('register.phone')}
-            iconNode={fieldIcon('call', accents.lime)}
-            showCheck
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            autoCapitalize="none"
-          />
-          <AuthField
-            label={t('register.email')}
-            iconNode={fieldIcon('mail', accents.cyan)}
-            showCheck
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <AuthField
-            label={t('register.emergencyContactName')}
-            iconNode={fieldIcon('heart', accents.pink)}
-            showCheck
-            value={emgName}
-            onChangeText={setEmgName}
-            autoCapitalize="words"
-          />
-          <AuthField
-            label={t('register.emergencyContactPhone')}
-            iconNode={fieldIcon('medkit', accents.gold)}
-            showCheck
-            value={emgPhone}
-            onChangeText={setEmgPhone}
-            keyboardType="phone-pad"
-          />
-        </Animated.View>
-
-        {error && (
-          <Animated.View style={{ marginTop: spacing.lg, transform: [{ translateX: shake }] }}>
-            <ErrorBanner message={error} />
-          </Animated.View>
-        )}
-        {saved && (
+        <View style={{ paddingHorizontal: spacing.xl }}>
           <Animated.View
             style={[
-              styles.savedBox,
-              {
-                borderLeftColor: colors.success,
-                backgroundColor: withAlpha(colors.success, 0.14),
-                opacity: savedPop,
-                transform: [{ scale: savedPop.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }],
-              },
+              styles.card,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+              fadeUp(1),
             ]}
           >
-            <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-            <Text style={[typography.bodySmall, { color: colors.success, flex: 1, fontWeight: '600' }]}>
-              {t('myProfile.saved')}
-            </Text>
+            <AuthField
+              label={t('register.phone')}
+              iconNode={fieldIcon('call', accents.lime)}
+              showCheck
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
+            />
+            <AuthField
+              label={t('register.email')}
+              iconNode={fieldIcon('mail', accents.cyan)}
+              showCheck
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <AuthField
+              label={t('register.emergencyContactName')}
+              iconNode={fieldIcon('heart', accents.pink)}
+              showCheck
+              value={emgName}
+              onChangeText={setEmgName}
+              autoCapitalize="words"
+            />
+            <AuthField
+              label={t('register.emergencyContactPhone')}
+              iconNode={fieldIcon('medkit', accents.gold)}
+              showCheck
+              value={emgPhone}
+              onChangeText={setEmgPhone}
+              keyboardType="phone-pad"
+            />
           </Animated.View>
-        )}
 
-        <Animated.View style={[{ marginTop: 28 }, fadeUp(2)]}>
-          <PrimaryButton
-            label={t('myProfile.saveChanges')}
-            onPress={onSave}
-            busy={busy}
-            iconNode={<Ionicons name="save-outline" size={18} color="#FFFFFF" />}
-          />
-        </Animated.View>
+          {error && (
+            <Animated.View style={{ marginTop: spacing.lg, transform: [{ translateX: shake }] }}>
+              <ErrorBanner message={error} />
+            </Animated.View>
+          )}
+          {saved && (
+            <Animated.View
+              style={[
+                styles.savedBox,
+                {
+                  borderLeftColor: colors.success,
+                  backgroundColor: withAlpha(colors.success, 0.14),
+                  opacity: savedPop,
+                  transform: [{ scale: savedPop.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }],
+                },
+              ]}
+            >
+              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+              <Text style={[typography.bodySmall, { color: colors.success, flex: 1, fontWeight: '600' }]}>
+                {t('myProfile.saved')}
+              </Text>
+            </Animated.View>
+          )}
+
+          <Animated.View style={[{ marginTop: 28 }, fadeUp(2)]}>
+            <PrimaryButton
+              label={t('myProfile.saveChanges')}
+              onPress={onSave}
+              busy={busy}
+              iconNode={<Ionicons name="save-outline" size={18} color="#FFFFFF" />}
+            />
+          </Animated.View>
+        </View>
       </KeyboardAwareScroll>
     </View>
   );
@@ -334,14 +346,27 @@ function PressScale({ onPress, children, disabled }: any) {
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20, borderRadius: 28, overflow: 'hidden' },
+  hero: {
+    alignItems: 'center',
+    paddingBottom: 28,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    overflow: 'hidden',
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    marginBottom: 4,
+  },
   blob: { position: 'absolute', width: 190, height: 190, borderRadius: 95 },
   camBadge: {
     position: 'absolute', right: 0, bottom: 0, width: 40, height: 40, borderRadius: 20,
     borderWidth: 3, borderColor: BRAND.deep, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center',
   },
   busyOverlay: {
-    position: 'absolute', top: 5, left: 5, right: 5, bottom: 5, borderRadius: 64,
+    position: 'absolute', top: 5, left: 5, right: 5, bottom: 5, borderRadius: 72,
     backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center',
   },
   chip: {

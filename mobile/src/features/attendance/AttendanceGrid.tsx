@@ -1,6 +1,9 @@
-import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Pressable, Animated, Easing, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+import { BRAND, withAlpha } from '../auth/Auth_UI';
 
 export type GridCellState = 'PRESENT' | 'ABSENT' | 'EMPTY';
 
@@ -18,18 +21,40 @@ type Props = {
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export default function AttendanceGrid({
-  cells,
-  onPressCell,
-  showCount,
-}: Props) {
+function todayISO(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export default function AttendanceGrid({ cells, onPressCell, showCount }: Props) {
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
 
+  // Entrance animation for the whole grid
+  const enter = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    enter.setValue(0);
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: 620,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [enter, cells]);
+
   if (cells.length === 0) {
     return (
-      <View style={{ padding: spacing.md }}>
-        <Text style={[typography.bodySmall, { color: colors.textSecondary }]}>
+      <View style={{ padding: spacing.md, alignItems: 'center' }}>
+        <Ionicons name="calendar-outline" size={32} color={colors.textSecondary} />
+        <Text
+          style={[
+            typography.bodySmall,
+            { color: colors.textSecondary, marginTop: 8 },
+          ]}
+        >
           —
         </Text>
       </View>
@@ -60,117 +85,236 @@ export default function AttendanceGrid({
     weeks.push(allDates.slice(i, i + 7));
   }
 
+  const today = todayISO();
+
   return (
-    <View>
-      <View style={{ flexDirection: 'row' }}>
+    <Animated.View
+      style={{
+        opacity: enter,
+        transform: [
+          {
+            translateY: enter.interpolate({
+              inputRange: [0, 1],
+              outputRange: [12, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      {/* Weekday header */}
+      <View style={styles.weekdayRow}>
         {WEEKDAYS.map((d) => (
-          <View
-            key={d}
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              paddingVertical: spacing.xs,
-            }}
-          >
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+          <View key={d} style={styles.weekdayCell}>
+            <Text
+              style={[
+                typography.caption,
+                {
+                  color: colors.textSecondary,
+                  fontWeight: '800',
+                  fontSize: 10,
+                },
+              ]}
+            >
               {d.slice(0, 1)}
             </Text>
           </View>
         ))}
       </View>
 
+      {/* Weeks */}
       {weeks.map((week, wi) => (
-        <View key={wi} style={{ flexDirection: 'row' }}>
+        <View key={wi} style={styles.weekRow}>
           {week.map((date) => {
             const cell = byDate.get(date);
             const state: GridCellState = cell?.state ?? 'EMPTY';
             const count = cell?.count ?? 0;
-
-            const bg =
-              state === 'PRESENT'
-                ? colors.success
-                : state === 'ABSENT'
-                ? colors.surfaceAlt
-                : colors.surface;
-
-            const border = state === 'EMPTY' ? colors.border : 'transparent';
-
+            const isToday = date === today;
             return (
-              <Pressable
+              <GridCellView
                 key={date}
-                onPress={() => onPressCell?.(date)}
-                style={{
-                  flex: 1,
-                  aspectRatio: 1,
-                  margin: 2,
-                  borderRadius: radius.sm,
-                  backgroundColor: bg,
-                  borderWidth: 1,
-                  borderColor: border,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {showCount && state !== 'EMPTY' && (
-                  <Text
-                    style={[
-                      typography.caption,
-                      {
-                        color:
-                          state === 'PRESENT' ? '#FFFFFF' : colors.text,
-                        fontWeight: '700',
-                      },
-                    ]}
-                  >
-                    {count}
-                  </Text>
-                )}
-              </Pressable>
+                date={date}
+                state={state}
+                count={count}
+                showCount={!!showCount}
+                isToday={isToday}
+                onPress={onPressCell}
+              />
             );
           })}
         </View>
       ))}
 
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginTop: spacing.sm,
-          gap: spacing.md,
-        }}
-      >
-        <LegendDot color={colors.success} label="Present" />
-        <LegendDot color={colors.surfaceAlt} label="Absent" />
-        <LegendDot color={colors.surface} label="—" border />
+      {/* Legend */}
+      <View style={styles.legendRow}>
+        <LegendDot
+          colors={['#22C55E', '#16A34A']}
+          label="Present"
+        />
+        <LegendDot
+          colors={['#F87171', '#DC2626']}
+          label="Absent"
+        />
+        <LegendDot
+          colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
+          label="—"
+          border
+        />
       </View>
+    </Animated.View>
+  );
+}
+
+// ---------- Cell ----------
+
+function GridCellView({
+  date,
+  state,
+  count,
+  showCount,
+  isToday,
+  onPress,
+}: {
+  date: string;
+  state: GridCellState;
+  count: number;
+  showCount: boolean;
+  isToday: boolean;
+  onPress?: (date: string) => void;
+}) {
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const scale = useRef(new Animated.Value(1)).current;
+  const to = (v: number) =>
+    Animated.spring(scale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 8,
+      useNativeDriver: true,
+    }).start();
+
+  const isPresent = state === 'PRESENT';
+  const isAbsent = state === 'ABSENT';
+  const isEmpty = state === 'EMPTY';
+
+  const gradient: readonly [string, string] = isPresent
+    ? ['#22C55E', '#16A34A']
+    : isAbsent
+      ? ['#F87171', '#DC2626']
+      : ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.04)'];
+
+  const shadowColor = isPresent ? '#16A34A' : isAbsent ? '#DC2626' : 'transparent';
+
+  return (
+    <Animated.View
+      style={{
+        flex: 1,
+        aspectRatio: 1,
+        margin: 2.5,
+        transform: [{ scale }],
+      }}
+    >
+      <Pressable
+        onPress={() => onPress?.(date)}
+        onPressIn={() => to(0.9)}
+        onPressOut={() => to(1)}
+        accessibilityRole="button"
+        accessibilityLabel={`${date} ${state.toLowerCase()}`}
+        style={{ flex: 1 }}
+      >
+        <LinearGradient
+          colors={gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[
+            styles.cell,
+            {
+              borderColor: isEmpty ? colors.border : 'transparent',
+              borderWidth: isEmpty ? 1 : 0,
+              shadowColor,
+              shadowOpacity: isEmpty ? 0 : 0.45,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: isEmpty ? 0 : 4,
+              // glow ring for today
+              ...(isToday
+                ? {
+                    borderWidth: 2,
+                    borderColor: BRAND.gold,
+                  }
+                : null),
+            },
+          ]}
+        >
+          {showCount && state !== 'EMPTY' ? (
+            <Text
+              style={[
+                styles.cellText,
+                { color: '#FFFFFF', fontWeight: '800' },
+              ]}
+            >
+              {count}
+            </Text>
+          ) : isToday ? (
+            <Ionicons name="ellipse" size={8} color={BRAND.gold} />
+          ) : null}
+        </LinearGradient>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function LegendDot({
+  colors,
+  label,
+  border,
+}: {
+  colors: readonly [string, string];
+  label: string;
+  border?: boolean;
+}) {
+  const { theme } = useTheme();
+  const { typography } = theme;
+  return (
+    <View style={styles.legendItem}>
+      <LinearGradient
+        colors={colors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[
+          styles.legendDot,
+          border ? { borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' } : null,
+        ]}
+      />
+      <Text
+        style={[
+          typography.caption,
+          { color: 'rgba(255,255,255,0.75)', fontWeight: '700' },
+        ]}
+      >
+        {label}
+      </Text>
     </View>
   );
-
-  function LegendDot({
-    color,
-    label,
-    border,
-  }: {
-    color: string;
-    label: string;
-    border?: boolean;
-  }) {
-    return (
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <View
-          style={{
-            width: 14,
-            height: 14,
-            borderRadius: 4,
-            backgroundColor: color,
-            borderWidth: border ? 1 : 0,
-            borderColor: colors.border,
-          }}
-        />
-        <Text style={[typography.caption, { color: colors.textSecondary }]}>
-          {label}
-        </Text>
-      </View>
-    );
-  }
 }
+
+const styles = StyleSheet.create({
+  weekdayRow: { flexDirection: 'row' },
+  weekdayCell: { flex: 1, alignItems: 'center', paddingVertical: 6 },
+  weekRow: { flexDirection: 'row' },
+  cell: {
+    flex: 1,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cellText: { fontSize: 11 },
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 14,
+    flexWrap: 'wrap',
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 14, height: 14, borderRadius: 4 },
+});

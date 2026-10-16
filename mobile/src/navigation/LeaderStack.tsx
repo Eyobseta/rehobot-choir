@@ -30,14 +30,14 @@ export type LeaderStackParamList = {
   LeaderAttendance: undefined;
   LeaderAttendanceMembers: undefined;
   MemberAttendanceGrid: { memberId: string; memberName: string };
-    LeaderAnnouncements: undefined;
+  LeaderAnnouncements: undefined;
   AnnouncementEditor: { id: string | null };
-    LeaderSongs: undefined;
+  LeaderSongs: undefined;
   SongEditor: { id: string | null };
   SongCategories: undefined;
   ZemaTeam: undefined;
   SongReview: undefined;
-    LeaderMemories: undefined;
+  LeaderMemories: undefined;
   MemoryReviewDetail: { id: string };
   MemoryVideo: { youtubeUrl: string; memoryTitle?: string };
 };
@@ -82,22 +82,25 @@ export default function LeaderStack() {
         component={EventEditorScreen}
         options={{ title: '' }}
       />
+
+      {/* Attendance — custom gradient heroes, native headers hidden */}
       <Stack.Screen
         name="LeaderAttendance"
         component={LeaderAttendanceScreen}
-        options={{ title: t('attendance.record') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="LeaderAttendanceMembers"
         component={LeaderAttendanceMembersScreen}
-        options={{ title: t('attendance.members') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="MemberAttendanceGrid"
         component={MemberAttendanceGridScreen}
-        options={{ title: t('attendance.grid') }}
+        options={{ headerShown: false }}
       />
-            <Stack.Screen
+
+      <Stack.Screen
         name="LeaderAnnouncements"
         component={LeaderAnnouncementsScreen}
         options={{ title: t('announcements.title') }}
@@ -107,7 +110,7 @@ export default function LeaderStack() {
         component={AnnouncementEditorScreen}
         options={{ title: '' }}
       />
-            <Stack.Screen
+      <Stack.Screen
         name="LeaderSongs"
         component={LeaderSongsScreen}
         options={{ title: t('leaderSongs.title') }}
@@ -132,7 +135,7 @@ export default function LeaderStack() {
         component={SongReviewScreen}
         options={{ title: t('leaderSongs.review') }}
       />
-            <Stack.Screen
+      <Stack.Screen
         name="LeaderMemories"
         component={LeaderMemoriesScreen}
         options={{ title: t('memories.reviewTitle') }}
@@ -143,11 +146,10 @@ export default function LeaderStack() {
         options={{ title: '' }}
       />
       <Stack.Screen
-  name="MemoryVideo"
-  component={MemoryVideoScreen}
-  options={{ headerShown: false, animation: 'slide_from_right' }}
-/>
+        name="MemoryVideo"
+        component={MemoryVideoScreen}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      />
     </Stack.Navigator>
-
   );
 }

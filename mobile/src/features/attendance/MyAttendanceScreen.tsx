@@ -7,12 +7,14 @@ import {
   RefreshControl,
   Animated,
   Easing,
+  Pressable,
   StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   getMyAttendance,
@@ -24,15 +26,17 @@ import {
 import { ApiError } from '../../services/api';
 import AttendanceGrid, { GridCell } from './AttendanceGrid';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
+import GlassBackButton from '../../components/GlassBackButton';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const PALETTE = ['#B6A0FF', '#6EDBD5', '#EE9BBD', '#E6C779', '#B8E986'];
 
-export default function MyAttendanceScreen() {
+export default function MyAttendanceScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
+  const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<AttendanceHistoryItem[]>([]);
   const [grid, setGrid] = useState<MyGridSummary | null>(null);
@@ -74,7 +78,7 @@ export default function MyAttendanceScreen() {
     state: d.status === 'PRESENT' ? 'PRESENT' : 'ABSENT',
   }));
 
-  // ---- Derived stats (computed only from data already loaded above) ----
+  // ---- Derived stats ----
   const total = cells.length;
   const present = cells.filter((c) => c.state === 'PRESENT').length;
   const absent = total - present;
@@ -94,7 +98,6 @@ export default function MyAttendanceScreen() {
     }
   }
 
-  // Per-gathering breakdown from the history list.
   const groups: { key: string; sample: AttendanceHistoryItem['gathering']; present: number; total: number }[] = [];
   for (const it of items) {
     const key = String(it.gathering);
@@ -116,7 +119,6 @@ export default function MyAttendanceScreen() {
           ? t('attendance.msgGood', { defaultValue: 'Good progress. Every rehearsal counts!' })
           : t('attendance.msgMissYou', { defaultValue: 'We miss you! Come sing with us.' });
 
-  // ---- Visual-only motion ----
   const enter = useRef(new Animated.Value(0)).current;
   const rateAnim = useRef(new Animated.Value(0)).current;
   const [shownRate, setShownRate] = useState(0);
@@ -134,21 +136,6 @@ export default function MyAttendanceScreen() {
     Animated.timing(rateAnim, { toValue: rate, duration: 1100, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
   }, [loading, rate, enter, rateAnim]);
 
-  if (loading) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.background,
-        }}
-      >
-        <ActivityIndicator size="large" color={BRAND.violet} />
-      </View>
-    );
-  }
-
   const fadeUp = (i: number) => ({
     opacity: enter,
     transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [24 + i * 10, 0] }) }],
@@ -156,202 +143,231 @@ export default function MyAttendanceScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <FlatList
-        data={items}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          padding: spacing.lg,
-          paddingBottom: spacing.xl * 2,
-        }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              void load();
-            }}
-            tintColor={BRAND.violet}
-            colors={[BRAND.violet]}
-          />
-        }
-        ListHeaderComponent={
-          <View>
-            {error && (
-              <View style={{ marginBottom: spacing.md }}>
-                <ErrorBanner message={error} />
-              </View>
-            )}
+      {/* ---------- Gradient hero with back arrow ---------- */}
+      <LinearGradient
+        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.screenHero, { paddingTop: insets.top + 16 }]}
+      >
+        <View
+          pointerEvents="none"
+          style={[styles.blob, { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.22) }]}
+        />
+        <View
+          pointerEvents="none"
+          style={[styles.blob, { bottom: -70, left: -50, backgroundColor: withAlpha(BRAND.water, 0.22) }]}
+        />
 
-            {/* ---------- Hero: attendance rate ---------- */}
-            <Animated.View style={fadeUp(0)}>
-              <LinearGradient
-                colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.hero}
-              >
-                <View pointerEvents="none" style={[styles.blob, { top: -50, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.2) }]} />
-                <View pointerEvents="none" style={[styles.blob, { bottom: -70, left: -40, backgroundColor: withAlpha(BRAND.water, 0.2) }]} />
-
-                <View style={styles.heroTop}>
-                  <View style={styles.heroIcon}>
-                    <Ionicons name="calendar" size={24} color={BRAND.deep} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text accessibilityRole="header" style={styles.heroTitle}>
-                      {t('attendance.history')}
-                    </Text>
-                    <Text style={styles.heroSubtitle}>
-                      {t('attendance.last120', { defaultValue: 'Last 120 days' })}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.rateRow}>
-                  <Text style={styles.rateNumber}>{shownRate}</Text>
-                  <Text style={styles.ratePercent}>%</Text>
-                  <Text style={styles.rateLabel}>
-                    {t('attendance.rateLabel', { defaultValue: 'Attendance rate' })}
-                  </Text>
-                </View>
-
-                <View style={styles.barTrack}>
-                  <Animated.View
-                    style={{
-                      height: 10,
-                      borderRadius: 5,
-                      overflow: 'hidden',
-                      width: rateAnim.interpolate({
-                        inputRange: [0, 100],
-                        outputRange: ['0%', '100%'],
-                        extrapolate: 'clamp',
-                      }),
-                    }}
-                  >
-                    <LinearGradient
-                      colors={[BRAND.gold, '#FFFFFF']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={{ flex: 1 }}
-                    />
-                  </Animated.View>
-                </View>
-
-                <Text style={styles.heroCount}>
-                  {t('attendance.attendedOf', {
-                    present,
-                    total,
-                    defaultValue: 'You attended {{present}} of {{total}} gatherings',
-                  })}
-                </Text>
-                {total > 0 && <Text style={styles.heroMessage}>{message}</Text>}
-              </LinearGradient>
-            </Animated.View>
-
-            {/* ---------- Stat tiles ---------- */}
-            <Animated.View style={[styles.tiles, fadeUp(1)]}>
-              <StatTile icon="checkmark-circle" tint={colors.success} value={present} label={t('attendance.present')} />
-              <StatTile icon="close-circle" tint={colors.error} value={absent} label={t('attendance.absent')} />
-              <StatTile
-                icon="flame"
-                tint="#F59E0B"
-                value={currentStreak}
-                label={t('attendance.streak', { defaultValue: 'Current streak' })}
-                glow={currentStreak >= 3}
-              />
-              <StatTile
-                icon="trophy"
-                tint="#E6C779"
-                value={bestStreak}
-                label={t('attendance.bestStreak', { defaultValue: 'Best streak' })}
-              />
-            </Animated.View>
-
-            {/* ---------- Activity grid (your existing component) ---------- */}
-            <Animated.View style={fadeUp(2)}>
-              <SectionTitle icon="grid" color={BRAND.violet} title={t('attendance.last120', { defaultValue: 'Last 120 days' })} />
-              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <AttendanceGrid cells={cells} />
-              </View>
-            </Animated.View>
-
-            {/* ---------- Breakdown by gathering ---------- */}
-            {groups.length > 0 && (
-              <Animated.View style={fadeUp(3)}>
-                <SectionTitle icon="people" color={BRAND.magenta} title={t('attendance.byGathering', { defaultValue: 'By gathering' })} />
-                <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  {groups.map((g, i) => (
-                    <GatheringBar
-                      key={g.key}
-                      label={t(gatheringLabelKey(g.sample))}
-                      present={g.present}
-                      total={g.total}
-                      tint={PALETTE[i % PALETTE.length]}
-                      last={i === groups.length - 1}
-                    />
-                  ))}
-                </View>
-              </Animated.View>
-            )}
-
-            {items.length > 0 && (
-              <Animated.View style={fadeUp(4)}>
-                <SectionTitle
-                  icon="time"
-                  color={BRAND.gold}
-                  title={t('attendance.recordsTitle', { defaultValue: 'All records' })}
-                  count={items.length}
-                />
-              </Animated.View>
-            )}
+        <View style={styles.heroTop}>
+          <View style={styles.heroIcon}>
+            <Ionicons name="calendar" size={24} color={BRAND.deep} />
           </View>
-        }
-        ListEmptyComponent={
-          <View style={{ padding: spacing.xl, alignItems: 'center' }}>
-            <LinearGradient
-              colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.emptyRing}
-            >
-              <View style={[styles.emptyInner, { backgroundColor: colors.background }]}>
-                <Ionicons name="calendar-outline" size={40} color={colors.textSecondary} />
-              </View>
-            </LinearGradient>
-            <Text
-              style={[
-                typography.body,
-                { color: colors.textSecondary, marginTop: spacing.lg, textAlign: 'center' },
-              ]}
-            >
-              {t('attendance.empty')}
+          <View style={{ flex: 1 }}>
+            <Text accessibilityRole="header" style={styles.heroTitle}>
+              {t('attendance.history')}
+            </Text>
+            <Text style={styles.heroSubtitle}>
+              {t('attendance.last120', { defaultValue: 'Last 120 days' })}
             </Text>
           </View>
-        }
-        renderItem={({ item, index }) => {
-          const iso = new Date(item.date).toISOString().slice(0, 10);
-          const prevIso = index > 0 ? new Date(items[index - 1].date).toISOString().slice(0, 10) : null;
-          const month = iso.slice(0, 7);
-          const showMonth = prevIso === null || prevIso.slice(0, 7) !== month;
-          return (
-            <HistoryCard
-              item={item}
-              index={index}
-              iso={iso}
-              monthLabel={showMonth ? month : null}
-              label={t(gatheringLabelKey(item.gathering))}
-              presentLabel={t('attendance.present')}
-              absentLabel={t('attendance.absent')}
+
+          <GlassBackButton
+  onPress={() => navigation.goBack()}
+  accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+/>
+        </View>
+      </LinearGradient>
+
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={BRAND.violet} />
+        </View>
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            padding: spacing.lg,
+            paddingBottom: spacing.xl * 2,
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                void load();
+              }}
+              tintColor={BRAND.violet}
+              colors={[BRAND.violet]}
             />
-          );
-        }}
-      />
+          }
+          ListHeaderComponent={
+            <View>
+              {error && (
+                <View style={{ marginBottom: spacing.md }}>
+                  <ErrorBanner message={error} />
+                </View>
+              )}
+
+              {/* ---------- Rate summary card (compact) ---------- */}
+              <Animated.View style={fadeUp(0)}>
+                <View
+                  style={[
+                    styles.rateCard,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                  ]}
+                >
+                  <View style={styles.rateRow}>
+                    <Text style={[styles.rateNumber, { color: colors.text }]}>{shownRate}</Text>
+                    <Text style={[styles.ratePercent, { color: BRAND.gold }]}>%</Text>
+                    <Text style={[styles.rateLabel, { color: colors.textSecondary }]}>
+                      {t('attendance.rateLabel', { defaultValue: 'Attendance rate' })}
+                    </Text>
+                  </View>
+
+                  <View style={[styles.barTrack, { backgroundColor: colors.border }]}>
+                    <Animated.View
+                      style={{
+                        height: 8,
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                        width: rateAnim.interpolate({
+                          inputRange: [0, 100],
+                          outputRange: ['0%', '100%'],
+                          extrapolate: 'clamp',
+                        }),
+                      }}
+                    >
+                      <LinearGradient
+                        colors={[BRAND.gold, BRAND.magenta]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={{ flex: 1 }}
+                      />
+                    </Animated.View>
+                  </View>
+
+                  <Text style={[styles.rateCount, { color: colors.text }]}>
+                    {t('attendance.attendedOf', {
+                      present,
+                      total,
+                      defaultValue: 'You attended {{present}} of {{total}} gatherings',
+                    })}
+                  </Text>
+                  {total > 0 && (
+                    <Text style={[styles.rateMessage, { color: colors.textSecondary }]}>
+                      {message}
+                    </Text>
+                  )}
+                </View>
+              </Animated.View>
+
+              {/* ---------- Stat tiles ---------- */}
+              <Animated.View style={[styles.tiles, fadeUp(1)]}>
+                <StatTile icon="checkmark-circle" tint={colors.success} value={present} label={t('attendance.present')} />
+                <StatTile icon="close-circle" tint={colors.error} value={absent} label={t('attendance.absent')} />
+                <StatTile
+                  icon="flame"
+                  tint="#F59E0B"
+                  value={currentStreak}
+                  label={t('attendance.streak', { defaultValue: 'Current streak' })}
+                  glow={currentStreak >= 3}
+                />
+                <StatTile
+                  icon="trophy"
+                  tint="#E6C779"
+                  value={bestStreak}
+                  label={t('attendance.bestStreak', { defaultValue: 'Best streak' })}
+                />
+              </Animated.View>
+
+              {/* ---------- Activity grid ---------- */}
+              <Animated.View style={fadeUp(2)}>
+                <SectionTitle icon="grid" color={BRAND.violet} title={t('attendance.last120', { defaultValue: 'Last 120 days' })} />
+                <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <AttendanceGrid cells={cells} />
+                </View>
+              </Animated.View>
+
+              {/* ---------- Breakdown by gathering ---------- */}
+              {groups.length > 0 && (
+                <Animated.View style={fadeUp(3)}>
+                  <SectionTitle icon="people" color={BRAND.magenta} title={t('attendance.byGathering', { defaultValue: 'By gathering' })} />
+                  <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    {groups.map((g, i) => (
+                      <GatheringBar
+                        key={g.key}
+                        label={t(gatheringLabelKey(g.sample))}
+                        present={g.present}
+                        total={g.total}
+                        tint={PALETTE[i % PALETTE.length]}
+                        last={i === groups.length - 1}
+                      />
+                    ))}
+                  </View>
+                </Animated.View>
+              )}
+
+              {items.length > 0 && (
+                <Animated.View style={fadeUp(4)}>
+                  <SectionTitle
+                    icon="time"
+                    color={BRAND.gold}
+                    title={t('attendance.recordsTitle', { defaultValue: 'All records' })}
+                    count={items.length}
+                  />
+                </Animated.View>
+              )}
+            </View>
+          }
+          ListEmptyComponent={
+            <View style={{ padding: spacing.xl, alignItems: 'center' }}>
+              <LinearGradient
+                colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.emptyRing}
+              >
+                <View style={[styles.emptyInner, { backgroundColor: colors.background }]}>
+                  <Ionicons name="calendar-outline" size={40} color={colors.textSecondary} />
+                </View>
+              </LinearGradient>
+              <Text
+                style={[
+                  typography.body,
+                  { color: colors.textSecondary, marginTop: spacing.lg, textAlign: 'center' },
+                ]}
+              >
+                {t('attendance.empty')}
+              </Text>
+            </View>
+          }
+          renderItem={({ item, index }) => {
+            const iso = new Date(item.date).toISOString().slice(0, 10);
+            const prevIso = index > 0 ? new Date(items[index - 1].date).toISOString().slice(0, 10) : null;
+            const month = iso.slice(0, 7);
+            const showMonth = prevIso === null || prevIso.slice(0, 7) !== month;
+            return (
+              <HistoryCard
+                item={item}
+                index={index}
+                iso={iso}
+                monthLabel={showMonth ? month : null}
+                label={t(gatheringLabelKey(item.gathering))}
+                presentLabel={t('attendance.present')}
+                absentLabel={t('attendance.absent')}
+              />
+            );
+          }}
+        />
+      )}
     </View>
   );
 }
 
-// ---------- Helpers (module scope so they never remount on parent re-render) ----------
+// ---------- Helpers ----------
 
 function SectionTitle({
   icon,
@@ -560,7 +576,14 @@ function HistoryCard({
 }
 
 const styles = StyleSheet.create({
-  hero: { padding: 22, borderRadius: 28, overflow: 'hidden' },
+  // Screen-level gradient hero
+  screenHero: {
+    paddingHorizontal: 16,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+  },
   blob: { position: 'absolute', width: 190, height: 190, borderRadius: 95 },
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   heroIcon: {
@@ -573,33 +596,38 @@ const styles = StyleSheet.create({
   },
   heroTitle: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
   heroSubtitle: { marginTop: 2, fontSize: 13, color: 'rgba(255,255,255,0.8)' },
-  rateRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: 22, flexWrap: 'wrap' },
-  rateNumber: { fontSize: 64, lineHeight: 70, fontWeight: '800', color: '#FFFFFF' },
-  ratePercent: { fontSize: 28, lineHeight: 46, fontWeight: '800', color: BRAND.gold, marginLeft: 2 },
-  rateLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.85)',
-    marginLeft: 12,
-    marginBottom: 12,
-    flexShrink: 1,
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
-  barTrack: {
-    height: 10,
-    borderRadius: 5,
-    marginTop: 6,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    overflow: 'hidden',
-  },
-  heroCount: { marginTop: 14, fontSize: 13, fontWeight: '600', color: '#FFFFFF' },
-  heroMessage: { marginTop: 6, fontSize: 13, lineHeight: 19, color: 'rgba(255,255,255,0.82)' },
 
+  // Rate summary card
+  rateCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 16,
+  },
+  rateRow: { flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap' },
+  rateNumber: { fontSize: 52, lineHeight: 58, fontWeight: '800' },
+  ratePercent: { fontSize: 24, lineHeight: 38, fontWeight: '800', marginLeft: 2 },
+  rateLabel: { fontSize: 13, fontWeight: '700', marginLeft: 12, marginBottom: 10, flexShrink: 1 },
+  barTrack: { height: 8, borderRadius: 4, marginTop: 6, overflow: 'hidden' },
+  rateCount: { marginTop: 12, fontSize: 13, fontWeight: '600' },
+  rateMessage: { marginTop: 6, fontSize: 13, lineHeight: 19 },
+
+  // Tiles
   tiles: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 16, rowGap: 12 },
   tile: { width: '48%', borderWidth: 1.5, borderRadius: 20, padding: 14 },
   tileIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   tileValue: { fontSize: 30, fontWeight: '800', marginTop: 10 },
   tileLabel: { fontSize: 12, fontWeight: '600', marginTop: 2 },
 
+  // Sections
   sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 26, marginBottom: 10 },
   sectionBar: { width: 4, height: 16, borderRadius: 2 },
   countBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },

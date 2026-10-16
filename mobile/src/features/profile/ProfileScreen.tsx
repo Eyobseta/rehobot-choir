@@ -11,9 +11,8 @@ import { getOwnProfile } from '../../services/members';
 import { getMyQuoteCount } from '../../services/quotes';
 import { setSessionState } from '../../services/session';
 import { setRole } from '../../services/role';
-import { AvatarRing, PrimaryButton, WaterDrops, BRAND, withAlpha } from '../auth/Auth_UI';
+import { AvatarRing, WaterDrops, BRAND, withAlpha } from '../auth/Auth_UI';
 
-// Soft accents for the icon tiles; theme tokens still control surfaces and text.
 const accents = {
   violet: '#B6A0FF', violetSoft: '#B6A0FF22',
   cyan: '#6EDBD5', cyanSoft: '#6EDBD522',
@@ -35,7 +34,6 @@ export default function ProfileScreen({ navigation }: any) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [quoteCount, setQuoteCount] = useState<number | null>(null);
 
-  // Motion: sections slide/fade in on focus, brand mark breathes.
   const brandIn = useRef(new Animated.Value(0)).current;
   const brandPulse = useRef(new Animated.Value(0)).current;
 
@@ -61,16 +59,12 @@ export default function ProfileScreen({ navigation }: any) {
           const res = await me();
           setPhone(res.user.phone);
           setRoleLabel(res.user.role);
-        } catch {
-          // ignore
-        }
+        } catch { /* ignore */ }
         try {
           const p = await getOwnProfile();
           setFullName(p.official.fullName || '');
           setPhotoUrl(p.editable.profilePhotoUrl);
-        } catch {
-          // ignore
-        }
+        } catch { /* ignore */ }
         try {
           setQuoteCount(await getMyQuoteCount());
         } catch {
@@ -96,7 +90,6 @@ export default function ProfileScreen({ navigation }: any) {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* ---------- Hero ---------- */}
-        {/* oversized top padding keeps the colour visible when iOS over-scrolls */}
         <View style={{ backgroundColor: BRAND.deep, marginTop: -1000, paddingTop: 1000 }}>
           <LinearGradient
             colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
@@ -131,7 +124,7 @@ export default function ProfileScreen({ navigation }: any) {
                 onPress={() => navigation.navigate('OwnProfile')}
               >
                 <AvatarRing
-                  size={112}
+                  size={160}
                   uri={photoUrl}
                   gapColor={BRAND.deep}
                   fallback={
@@ -141,7 +134,7 @@ export default function ProfileScreen({ navigation }: any) {
                   }
                 >
                   <View style={styles.editBadge}>
-                    <Ionicons name="pencil" size={14} color={BRAND.deep} />
+                    <Ionicons name="pencil" size={16} color={BRAND.deep} />
                   </View>
                 </AvatarRing>
               </Pressable>
@@ -162,12 +155,13 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
 
         <View style={styles.body}>
-          {/* Edit button straddles the hero edge */}
-          <Animated.View style={[{ marginTop: -27 }, fadeUp(1)]}>
-            <PrimaryButton
-              label={t('myProfile.title')}
+          {/* ---------- Personal information card ---------- */}
+          <Animated.View style={[{ marginTop: -32 }, fadeUp(1)]}>
+            <ProfileActionCard
+              icon="person-outline"
+              title={t('myProfile.title')}
+              subtitle={t('profile.personalInfo', { defaultValue: 'View and edit your details' })}
               onPress={() => navigation.navigate('OwnProfile')}
-              iconNode={<Ionicons name="person-outline" size={18} color="#FFFFFF" />}
             />
           </Animated.View>
 
@@ -233,7 +227,101 @@ export default function ProfileScreen({ navigation }: any) {
   );
 }
 
-// ---------- Helpers (module scope so they don't remount on every render) ----------
+// ---------- ProfileActionCard: branded gradient-bordered button ----------
+
+function ProfileActionCard({
+  icon,
+  title,
+  subtitle,
+  onPress,
+}: {
+  icon: IconName;
+  title: string;
+  subtitle?: string;
+  onPress: () => void;
+}) {
+  const { theme } = useTheme();
+  const { colors, typography } = theme;
+  const scale = useRef(new Animated.Value(1)).current;
+  const to = (v: number) =>
+    Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
+
+  return (
+    <Animated.View
+      style={{
+        transform: [{ scale }],
+        shadowColor: BRAND.violet,
+        shadowOpacity: 0.35,
+        shadowRadius: 18,
+        shadowOffset: { width: 0, height: 10 },
+        elevation: 8,
+        borderRadius: 22,
+      }}
+    >
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => to(0.97)}
+        onPressOut={() => to(1)}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+      >
+        <LinearGradient
+          colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ borderRadius: 22, padding: 1.5 }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 14,
+              paddingHorizontal: 14,
+              paddingVertical: 14,
+              borderRadius: 20.5,
+              backgroundColor: colors.surface,
+            }}
+          >
+            <LinearGradient
+              colors={[BRAND.violet, BRAND.magenta]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name={icon} size={22} color="#FFFFFF" />
+            </LinearGradient>
+
+            <View style={{ flex: 1 }}>
+              <Text style={[typography.body, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
+                {title}
+              </Text>
+              {subtitle ? (
+                <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={1}>
+                  {subtitle}
+                </Text>
+              ) : null}
+            </View>
+
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: withAlpha(BRAND.magenta, 0.16),
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="chevron-forward" size={18} color={BRAND.magenta} />
+            </View>
+          </View>
+        </LinearGradient>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+// ---------- Helpers ----------
 
 function SectionLabel({ color, text }: { color: string; text: string }) {
   const { theme } = useTheme();
@@ -288,7 +376,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 34, fontWeight: '800', color: '#FFFFFF', marginTop: 22 },
   subtitle: { marginTop: 6, fontSize: 14, lineHeight: 21, color: 'rgba(255,255,255,0.78)' },
   identity: { alignItems: 'center', paddingTop: 26 },
-  editBadge: { position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: BRAND.gold, borderWidth: 3, borderColor: BRAND.deep, alignItems: 'center', justifyContent: 'center' },
+  editBadge: { position: 'absolute', bottom: 0, right: 0, width: 34, height: 34, borderRadius: 17, backgroundColor: BRAND.gold, borderWidth: 3, borderColor: BRAND.deep, alignItems: 'center', justifyContent: 'center' },
   name: { fontSize: 25, fontWeight: '800', color: '#FFFFFF', marginTop: 16, textAlign: 'center' },
   phone: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 7 },
   phoneText: { fontSize: 14, color: 'rgba(255,255,255,0.85)' },

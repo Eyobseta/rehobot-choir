@@ -12,12 +12,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { getOwnProfile, OwnProfile } from '../../services/members';
 import { ApiError } from '../../services/api';
 import { AvatarRing, PrimaryButton, ErrorBanner, WaterDrops, BRAND, withAlpha } from '../auth/Auth_UI';
+import GlassBackButton from '../../components/GlassBackButton';
 
-// Soft accents for the icon tiles; theme tokens still drive surfaces and text.
 const accents = {
   violet: '#B6A0FF', violetSoft: '#B6A0FF22',
   cyan: '#6EDBD5', cyanSoft: '#6EDBD522',
@@ -32,6 +33,7 @@ export default function OwnProfileScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing } = theme;
+  const insets = useSafeAreaInsets();
 
   const [profile, setProfile] = useState<OwnProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,7 +54,6 @@ export default function OwnProfileScreen({ navigation }: any) {
     }, []),
   );
 
-  // Visual-only motion
   const enter = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (loading) return;
@@ -80,7 +81,7 @@ export default function OwnProfileScreen({ navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.xl * 2 }}
+        contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
@@ -89,12 +90,22 @@ export default function OwnProfileScreen({ navigation }: any) {
             colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.hero}
+            style={[styles.hero, { paddingTop: insets.top + 16 }]}
           >
             <View pointerEvents="none" style={[styles.blob, { top: -50, left: -50, backgroundColor: withAlpha(BRAND.gold, 0.18) }]} />
             <View pointerEvents="none" style={[styles.blob, { bottom: -70, right: -50, backgroundColor: withAlpha(BRAND.water, 0.2) }]} />
+
+            {/* Back button row */}
+            <View style={styles.heroTopRow}>
+              <View style={{ flex: 1 }} />
+              <GlassBackButton
+                onPress={() => navigation.goBack()}
+                accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+              />
+            </View>
+
             <AvatarRing
-              size={120}
+              size={160}
               uri={profile?.editable.profilePhotoUrl}
               gapColor={BRAND.deep}
               fallback={<Text style={{ fontSize: 44, fontWeight: '800', color: BRAND.gold }}>{initial}</Text>}
@@ -107,48 +118,50 @@ export default function OwnProfileScreen({ navigation }: any) {
           </LinearGradient>
         </Animated.View>
 
-        {/* Official */}
-        <Animated.View style={fadeUp(1)}>
-          <SectionTitle icon="shield-checkmark" color={BRAND.violet} title={t('myProfile.officialSection')} />
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <InfoRow icon="person" tint={accents.violet} soft={accents.violetSoft} label={t('register.fullName')} value={profile?.official.fullName ?? ''} />
-            <InfoRow icon="male-female" tint={accents.pink} soft={accents.pinkSoft} label={t('register.gender')} value={genderLabel} />
-            <InfoRow icon="gift" tint={accents.gold} soft={accents.goldSoft} label={t('register.dateOfBirth')} value={fmt(profile?.official.dateOfBirth)} />
-            <InfoRow icon="calendar" tint={accents.cyan} soft={accents.cyanSoft} label={t('register.joiningDate')} value={fmt(profile?.official.joiningDate)} last />
-          </View>
-        </Animated.View>
+        <View style={{ paddingHorizontal: spacing.xl }}>
+          {/* Official */}
+          <Animated.View style={fadeUp(1)}>
+            <SectionTitle icon="shield-checkmark" color={BRAND.violet} title={t('myProfile.officialSection')} />
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <InfoRow icon="person" tint={accents.violet} soft={accents.violetSoft} label={t('register.fullName')} value={profile?.official.fullName ?? ''} />
+              <InfoRow icon="male-female" tint={accents.pink} soft={accents.pinkSoft} label={t('register.gender')} value={genderLabel} />
+              <InfoRow icon="gift" tint={accents.gold} soft={accents.goldSoft} label={t('register.dateOfBirth')} value={fmt(profile?.official.dateOfBirth)} />
+              <InfoRow icon="calendar" tint={accents.cyan} soft={accents.cyanSoft} label={t('register.joiningDate')} value={fmt(profile?.official.joiningDate)} last />
+            </View>
+          </Animated.View>
 
-        {/* Editable */}
-        <Animated.View style={fadeUp(2)}>
-          <SectionTitle icon="create" color={BRAND.magenta} title={t('myProfile.editableSection')} />
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <InfoRow icon="call" tint={accents.lime} soft={accents.limeSoft} label={t('register.phone')} value={profile?.editable.phone ?? ''} />
-            <InfoRow icon="mail" tint={accents.cyan} soft={accents.cyanSoft} label={t('register.email')} value={profile?.editable.email ?? '—'} />
-            <InfoRow icon="heart" tint={accents.pink} soft={accents.pinkSoft} label={t('register.emergencyContactName')} value={profile?.editable.emergencyContactName ?? ''} />
-            <InfoRow icon="medkit" tint={accents.gold} soft={accents.goldSoft} label={t('register.emergencyContactPhone')} value={profile?.editable.emergencyContactPhone ?? ''} last />
-          </View>
-        </Animated.View>
+          {/* Editable */}
+          <Animated.View style={fadeUp(2)}>
+            <SectionTitle icon="create" color={BRAND.magenta} title={t('myProfile.editableSection')} />
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <InfoRow icon="call" tint={accents.lime} soft={accents.limeSoft} label={t('register.phone')} value={profile?.editable.phone ?? ''} />
+              <InfoRow icon="mail" tint={accents.cyan} soft={accents.cyanSoft} label={t('register.email')} value={profile?.editable.email ?? '—'} />
+              <InfoRow icon="heart" tint={accents.pink} soft={accents.pinkSoft} label={t('register.emergencyContactName')} value={profile?.editable.emergencyContactName ?? ''} />
+              <InfoRow icon="medkit" tint={accents.gold} soft={accents.goldSoft} label={t('register.emergencyContactPhone')} value={profile?.editable.emergencyContactPhone ?? ''} last />
+            </View>
+          </Animated.View>
 
-        {error && (
-          <View style={{ marginTop: spacing.lg }}>
-            <ErrorBanner message={error} />
-          </View>
-        )}
+          {error && (
+            <View style={{ marginTop: spacing.lg }}>
+              <ErrorBanner message={error} />
+            </View>
+          )}
 
-        <Animated.View style={[{ marginTop: 28 }, fadeUp(3)]}>
-          <PrimaryButton
-            label={t('profile.editProfile')}
-            onPress={() => navigation.navigate('EditProfile')}
-            iconNode={<Ionicons name="pencil" size={18} color="#FFFFFF" />}
-          />
-        </Animated.View>
+          <Animated.View style={[{ marginTop: 28 }, fadeUp(3)]}>
+            <PrimaryButton
+              label={t('profile.editProfile')}
+              onPress={() => navigation.navigate('EditProfile')}
+              iconNode={<Ionicons name="pencil" size={18} color="#FFFFFF" />}
+            />
+          </Animated.View>
+        </View>
       </ScrollView>
       <WaterDrops />
     </View>
   );
 }
 
-// ---------- Helpers (module scope) ----------
+// ---------- Helpers ----------
 
 function SectionTitle({ icon, color, title }: { icon: IconName; color: string; title: string }) {
   const { theme } = useTheme();
@@ -187,7 +200,20 @@ function InfoRow({
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20, borderRadius: 28, overflow: 'hidden' },
+  hero: {
+    alignItems: 'center',
+    paddingBottom: 28,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    overflow: 'hidden',
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    marginBottom: 4,
+  },
   blob: { position: 'absolute', width: 190, height: 190, borderRadius: 95 },
   heroName: { fontSize: 24, fontWeight: '800', color: '#FFFFFF', marginTop: 16, textAlign: 'center' },
   heroChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 13, paddingVertical: 6, borderRadius: 999, marginTop: 10, backgroundColor: 'rgba(255,255,255,0.16)' },

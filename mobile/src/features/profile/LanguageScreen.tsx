@@ -6,9 +6,9 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 import { changeLanguage, getCurrentLanguage, type SupportedLanguage } from '../../i18n';
 import { WaterDrops, BRAND, withAlpha } from '../auth/Auth_UI';
-import { SelectionCard, SettingsHero, fadeUp, useMotion } from './SettingsKit';
+import { ScreenHero, SelectionCard, fadeUp, useMotion } from './SettingsKit';
 
-export default function LanguageScreen() {
+export default function LanguageScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing } = theme;
@@ -25,7 +25,6 @@ export default function LanguageScreen() {
 
   const { reduceMotion, enter } = useMotion();
 
-  // `sample` shows each language in its own script, so it is intentionally not translated.
   const options: {
     value: SupportedLanguage;
     label: string;
@@ -40,21 +39,20 @@ export default function LanguageScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScreenHero
+        icon="language"
+        title={t('settings.languageTitle')}
+        subtitle={t('settings.languageSubtitle', { defaultValue: 'Choose the language of the app.' })}
+        onBack={() => navigation.goBack()}
+      />
+
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, paddingHorizontal: spacing.xl, paddingTop: 24, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View style={fadeUp(enter, 0)}>
-          <SettingsHero
-            icon="language"
-            title={t('settings.languageTitle')}
-            subtitle={t('settings.languageSubtitle', { defaultValue: 'Choose the language of the app.' })}
-          />
-        </Animated.View>
-
         <View accessibilityRole="radiogroup">
           {options.map((option, i) => (
-            <Animated.View key={option.value} style={fadeUp(enter, i + 1)}>
+            <Animated.View key={option.value} style={fadeUp(enter, i)}>
               <SelectionCard
                 active={current === option.value}
                 label={option.label}

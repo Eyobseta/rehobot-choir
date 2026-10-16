@@ -2,20 +2,17 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
-
-/**
- * Shared pieces for the Appearance and Language screens.
- * Put this file next to AppearanceScreen.tsx and LanguageScreen.tsx.
- */
+import GlassBackButton from '../../components/GlassBackButton';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const BORDER_GRADIENT = [BRAND.violet, BRAND.magenta, BRAND.gold] as const;
 const HERO_GRADIENT = [BRAND.deep, BRAND.violet, BRAND.magenta] as const;
+const DANGER_GRADIENT = ['#3B0D17', '#C0262D', '#E0405A'] as const;
 
-// Animation state is presentation-only and never changes saved settings.
 export function useMotion() {
   const [reduceMotion, setReduceMotion] = useState(true);
   const enter = useRef(new Animated.Value(1)).current;
@@ -52,7 +49,6 @@ export function useMotion() {
   return { reduceMotion, enter };
 }
 
-/** Slide/fade style for staggered entrance. */
 export function fadeUp(enter: Animated.Value, i: number) {
   return {
     opacity: enter,
@@ -60,6 +56,60 @@ export function fadeUp(enter: Animated.Value, i: number) {
   };
 }
 
+/**
+ * Full-width gradient hero with a GlassBackButton on the right.
+ * Place it at the top of a screen (outside any ScrollView that has horizontal padding).
+ */
+export function ScreenHero({
+  icon,
+  title,
+  subtitle,
+  onBack,
+  variant = 'brand',
+}: {
+  icon: IconName;
+  title: string;
+  subtitle?: string;
+  onBack?: () => void;
+  variant?: 'brand' | 'danger';
+}) {
+  const insets = useSafeAreaInsets();
+  const palette = variant === 'danger' ? DANGER_GRADIENT : HERO_GRADIENT;
+
+  return (
+    <LinearGradient
+      colors={palette}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.screenHero, { paddingTop: insets.top + 16 }]}
+    >
+      <View
+        pointerEvents="none"
+        style={[styles.blob, { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.22) }]}
+      />
+      <View
+        pointerEvents="none"
+        style={[styles.blob, { bottom: -70, left: -50, backgroundColor: withAlpha(BRAND.water, 0.22) }]}
+      />
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        <View style={styles.heroIcon}>
+          <Ionicons name={icon} size={24} color={BRAND.deep} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text accessibilityRole="header" style={styles.heroTitle}>
+            {title}
+          </Text>
+          {subtitle ? <Text style={styles.heroSubtitle}>{subtitle}</Text> : null}
+        </View>
+
+        {onBack ? <GlassBackButton onPress={onBack} accessibilityLabel="Back" /> : null}
+      </View>
+    </LinearGradient>
+  );
+}
+
+/** Legacy inline hero — still used inside ScrollViews elsewhere. */
 export function SettingsHero({
   icon,
   title,
@@ -156,7 +206,6 @@ export function SelectionCard({
         onPressOut={() => press(1)}
         style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}
       >
-        {/* border track: plain border colour, with the brand gradient fading in when selected */}
         <View style={{ borderRadius: 24, overflow: 'hidden', backgroundColor: colors.border }}>
           <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: check }]}>
             <LinearGradient
@@ -190,6 +239,13 @@ export function SelectionCard({
 }
 
 const styles = StyleSheet.create({
+  screenHero: {
+    paddingHorizontal: 16,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+  },
   hero: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -208,7 +264,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF' },
+  heroTitle: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
   heroSubtitle: { marginTop: 4, fontSize: 13, lineHeight: 19, color: 'rgba(255,255,255,0.8)' },
   footer: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 18 },
   label: { fontSize: 16, fontWeight: '800' },

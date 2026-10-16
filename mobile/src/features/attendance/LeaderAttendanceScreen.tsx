@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,14 @@ import {
   Image,
   ActivityIndicator,
   Modal,
+  Animated,
+  Easing,
+  StyleSheet,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   AttendanceRow,
@@ -22,12 +28,20 @@ import {
 } from '../../services/attendance';
 import { ApiError } from '../../services/api';
 import AttendanceGrid, { GridCell } from './AttendanceGrid';
+import { BRAND, withAlpha } from '../auth/Auth_UI';
+import GlassBackButton from '../../components/GlassBackButton';
 
 const GATHERINGS: GatheringType[] = [
   'TUESDAY_ZEMA',
   'THURSDAY_CHOIR',
   'SATURDAY_CHOIR',
 ];
+
+const GATHERING_TINTS: Record<GatheringType, readonly [string, string]> = {
+  TUESDAY_ZEMA: ['#6EDBD5', '#2E9A93'],
+  THURSDAY_CHOIR: ['#B6A0FF', '#7B5CFF'],
+  SATURDAY_CHOIR: ['#EE9BBD', '#D14879'],
+};
 
 function todayISO(): string {
   const d = new Date();
@@ -46,8 +60,10 @@ function monthsAgoISO(days: number): string {
 export default function LeaderAttendanceScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
+  const insets = useSafeAreaInsets();
 
+  // ------------------ state (UNCHANGED) ------------------
   const [gathering, setGathering] = useState<GatheringType>('SATURDAY_CHOIR');
   const [dateText, setDateText] = useState<string>(todayISO());
   const [view, setView] = useState<'record' | 'grid'>('record');
@@ -65,6 +81,7 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
   const [dayOpen, setDayOpen] = useState<string | null>(null);
   const [dayRows, setDayRows] = useState<AttendanceRow[]>([]);
 
+  // ------------------ data (UNCHANGED) ------------------
   const loadRoster = useCallback(async () => {
     setError(null);
     setSaved(false);
@@ -148,401 +165,378 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
     let state: 'PRESENT' | 'ABSENT' | 'EMPTY' = 'EMPTY';
     if (d.present > 0) state = 'PRESENT';
     else if (d.absent > 0) state = 'ABSENT';
-    return { date: d.date, state, count: d.present };
+    return { date: d.date, count: d.present, state };
   });
 
+  const tint = GATHERING_TINTS[gathering];
+  const presentCount = rows.filter((r) => r.status === 'PRESENT').length;
+
+  // ------------------ render ------------------
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: spacing.xl }}
+        contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View style={{ padding: spacing.lg }}>
-          <Text
+        {/* ---------- Gradient hero ---------- */}
+        <LinearGradient
+          colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.hero, { paddingTop: insets.top + 16 }]}
+        >
+          <View
+            pointerEvents="none"
             style={[
-              typography.bodySmall,
-              { color: colors.textSecondary, marginBottom: spacing.sm },
+              styles.blob,
+              { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.22) },
             ]}
-          >
-            {t('attendance.gathering')}
-          </Text>
-          <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              styles.blob,
+              { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.22) },
+            ]}
+          />
+
+          <View style={styles.heroRow}>
+            <View style={styles.heroIcon}>
+              <Ionicons name="calendar" size={22} color={BRAND.deep} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroKicker}>
+                {t('attendance.title', { defaultValue: 'Attendance' })}
+              </Text>
+              <Text style={styles.heroTitle}>
+                {t('attendance.record', { defaultValue: 'Record attendance' })}
+              </Text>
+            </View>
+
+            {/* Back button — right side, with gap */}
+            <GlassBackButton
+  onPress={() => navigation.goBack()}
+  accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+/>
+          </View>
+
+          {presentCount > 0 && (
+            <View style={styles.heroBadge}>
+              <Ionicons name="checkmark-circle" size={13} color="#FFFFFF" />
+              <Text style={styles.heroBadgeText}>{presentCount}</Text>
+            </View>
+          )}
+        </LinearGradient>
+
+        <View style={{ padding: spacing.lg }}>
+          {/* ---------- Gathering selector ---------- */}
+          <SectionLabel
+            icon="people"
+            tint={BRAND.magenta}
+            text={t('attendance.gathering')}
+          />
+          <View style={styles.gatheringRow}>
             {GATHERINGS.map((g) => {
               const active = gathering === g;
               const key =
                 g === 'TUESDAY_ZEMA'
                   ? 'attendance.tuesdayZema'
                   : g === 'THURSDAY_CHOIR'
-                  ? 'attendance.thursdayChoir'
-                  : 'attendance.saturdayChoir';
+                    ? 'attendance.thursdayChoir'
+                    : 'attendance.saturdayChoir';
               return (
-                <Pressable
+                <GatheringChip
                   key={g}
+                  label={t(key)}
+                  active={active}
+                  gradient={GATHERING_TINTS[g]}
                   onPress={() => {
                     setGathering(g);
                     setView('record');
                   }}
-                  style={{
-                    flex: 1,
-                    paddingVertical: spacing.sm,
-                    paddingHorizontal: spacing.xs,
-                    borderRadius: radius.md,
-                    borderWidth: 1,
-                    borderColor: active ? colors.primary : colors.border,
-                    backgroundColor: active ? colors.primary : colors.surface,
-                    alignItems: 'center',
-                    minHeight: 60,
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text
-                    style={[
-                      typography.caption,
-                      {
-                        color: active ? colors.primaryText : colors.text,
-                        textAlign: 'center',
-                      },
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {t(key)}
-                  </Text>
-                </Pressable>
+                />
               );
             })}
           </View>
 
-          <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
-            <Pressable
+          {/* ---------- Segmented control ---------- */}
+          <View
+            style={[
+              styles.segment,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <SegmentBtn
+              icon="create"
+              label={t('attendance.record')}
+              active={view === 'record'}
+              tint={tint[0]}
               onPress={() => setView('record')}
-              style={{
-                flex: 1,
-                paddingVertical: spacing.sm,
-                borderRadius: radius.md,
-                borderWidth: 1,
-                borderColor: view === 'record' ? colors.primary : colors.border,
-                alignItems: 'center',
-              }}
-            >
-              <Text
-                style={[
-                  typography.caption,
-                  { color: view === 'record' ? colors.primary : colors.text },
-                ]}
-              >
-                {t('attendance.record')}
-              </Text>
-            </Pressable>
-            <Pressable
+            />
+            <SegmentBtn
+              icon="grid"
+              label={t('attendance.grid')}
+              active={view === 'grid'}
+              tint={tint[0]}
               onPress={() => setView('grid')}
-              style={{
-                flex: 1,
-                paddingVertical: spacing.sm,
-                borderRadius: radius.md,
-                borderWidth: 1,
-                borderColor: view === 'grid' ? colors.primary : colors.border,
-                alignItems: 'center',
-              }}
-            >
-              <Text
-                style={[
-                  typography.caption,
-                  { color: view === 'grid' ? colors.primary : colors.text },
-                ]}
-              >
-                {t('attendance.grid')}
-              </Text>
-            </Pressable>
+            />
           </View>
 
+          {/* ---------- Banners ---------- */}
           {error && (
-            <Text
+            <View
               style={[
-                typography.bodySmall,
-                { color: colors.error, marginTop: spacing.sm },
+                styles.banner,
+                {
+                  backgroundColor: withAlpha(colors.error, 0.12),
+                  borderColor: withAlpha(colors.error, 0.4),
+                },
               ]}
             >
-              {error}
-            </Text>
+              <Ionicons name="alert-circle" size={16} color={colors.error} />
+              <Text
+                style={[
+                  typography.bodySmall,
+                  { color: colors.error, flex: 1, fontWeight: '700' },
+                ]}
+              >
+                {error}
+              </Text>
+            </View>
           )}
           {saved && (
-            <Text
+            <View
               style={[
-                typography.bodySmall,
-                { color: colors.success, marginTop: spacing.sm },
+                styles.banner,
+                {
+                  backgroundColor: withAlpha(colors.success, 0.12),
+                  borderColor: withAlpha(colors.success, 0.4),
+                },
               ]}
             >
-              {t('attendance.saved')}
-            </Text>
+              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+              <Text
+                style={[
+                  typography.bodySmall,
+                  { color: colors.success, flex: 1, fontWeight: '700' },
+                ]}
+              >
+                {t('attendance.saved')}
+              </Text>
+            </View>
           )}
 
           <Pressable
             onPress={() => navigation.navigate('LeaderAttendanceMembers')}
-            style={{
-              marginTop: spacing.md,
-              paddingVertical: spacing.md,
-              borderRadius: radius.md,
-              borderWidth: 1,
-              borderColor: colors.primary,
-              alignItems: 'center',
-            }}
+            style={[
+              styles.outlineBtn,
+              { borderColor: tint[0], backgroundColor: withAlpha(tint[0], 0.08) },
+            ]}
           >
-            <Text style={[typography.caption, { color: colors.primary }]}>
+            <Ionicons name="person-add" size={16} color={tint[0]} />
+            <Text
+              style={[
+                typography.caption,
+                { color: tint[0], fontWeight: '800', marginLeft: 8 },
+              ]}
+            >
               {t('attendance.members')}
             </Text>
           </Pressable>
         </View>
 
+        {/* ================= RECORD VIEW ================= */}
         {view === 'record' && (
           <>
             <View style={{ paddingHorizontal: spacing.lg }}>
-              <Text
-                style={[
-                  typography.bodySmall,
-                  { color: colors.textSecondary, marginBottom: spacing.xs },
-                ]}
-              >
-                {t('attendance.date')}
-              </Text>
+              <SectionLabel
+                icon="calendar"
+                tint={BRAND.gold}
+                text={t('attendance.date')}
+              />
               <TextInput
                 value={dateText}
                 onChangeText={setDateText}
                 autoCapitalize="none"
                 placeholder="YYYY-MM-DD"
                 placeholderTextColor={colors.textSecondary}
-                style={{
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                  borderWidth: 1,
-                  borderRadius: radius.md,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.sm,
-                  color: colors.text,
-                }}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    color: colors.text,
+                  },
+                ]}
               />
 
-              <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
-                <Pressable
+              <View style={styles.quickRow}>
+                <QuickAction
+                  icon="checkmark-done"
+                  label={t('attendance.markAllPresent')}
+                  tint={colors.success}
+                  disabled={locked}
                   onPress={() => markAll('PRESENT')}
+                />
+                <QuickAction
+                  icon="close"
+                  label={t('attendance.markAllAbsent')}
+                  tint={colors.error}
                   disabled={locked}
-                  style={{
-                    flex: 1,
-                    paddingVertical: spacing.sm,
-                    borderRadius: radius.md,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    alignItems: 'center',
-                    opacity: locked ? 0.5 : 1,
-                  }}
-                >
-                  <Text style={[typography.caption, { color: colors.text }]}>
-                    {t('attendance.markAllPresent')}
-                  </Text>
-                </Pressable>
-                <Pressable
                   onPress={() => markAll('ABSENT')}
-                  disabled={locked}
-                  style={{
-                    flex: 1,
-                    paddingVertical: spacing.sm,
-                    borderRadius: radius.md,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    alignItems: 'center',
-                    opacity: locked ? 0.5 : 1,
-                  }}
-                >
-                  <Text style={[typography.caption, { color: colors.text }]}>
-                    {t('attendance.markAllAbsent')}
-                  </Text>
-                </Pressable>
+                />
               </View>
 
               {locked && (
-                <Text
+                <View
                   style={[
-                    typography.bodySmall,
-                    { color: colors.warning, marginTop: spacing.md },
+                    styles.banner,
+                    {
+                      backgroundColor: withAlpha(colors.warning, 0.12),
+                      borderColor: withAlpha(colors.warning, 0.4),
+                    },
                   ]}
                 >
-                  {t('attendance.locked')}
-                </Text>
+                  <Ionicons name="lock-closed" size={16} color={colors.warning} />
+                  <Text
+                    style={[
+                      typography.bodySmall,
+                      { color: colors.warning, flex: 1, fontWeight: '700' },
+                    ]}
+                  >
+                    {t('attendance.locked')}
+                  </Text>
+                </View>
               )}
             </View>
 
             {loading ? (
-              <View style={{ padding: spacing.xl, alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={colors.primary} />
+              <View style={{ padding: spacing.xl * 2, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={BRAND.violet} />
               </View>
             ) : (
               <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
-                {rows.map((item) => (
-                  <View
+                {rows.map((item, index) => (
+                  <RosterRow
                     key={item.id}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: spacing.md,
-                      marginBottom: spacing.sm,
-                      backgroundColor: colors.surface,
-                      borderRadius: radius.md,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                    }}
-                  >
-                    {item.profilePhotoUrl ? (
-                      <Image
-                        source={{ uri: item.profilePhotoUrl }}
-                        style={{ width: 40, height: 40, borderRadius: 20 }}
-                      />
-                    ) : (
-                      <View
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 20,
-                          backgroundColor: colors.surfaceAlt,
-                        }}
-                      />
-                    )}
-                    <Text
-                      style={[
-                        typography.body,
-                        { color: colors.text, flex: 1, marginLeft: spacing.md },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {item.fullName}
-                    </Text>
-                    <StatusBtn
-                      label={t('attendance.present')}
-                      active={item.status === 'PRESENT'}
-                      color={colors.success}
-                      disabled={locked}
-                      onPress={() => setStatus(item.id, 'PRESENT')}
-                    />
-                    <StatusBtn
-                      label={t('attendance.absent')}
-                      active={item.status === 'ABSENT'}
-                      color={colors.error}
-                      disabled={locked}
-                      onPress={() => setStatus(item.id, 'ABSENT')}
-                    />
-                  </View>
+                    item={item}
+                    index={index}
+                    locked={locked}
+                    onPresent={() => setStatus(item.id, 'PRESENT')}
+                    onAbsent={() => setStatus(item.id, 'ABSENT')}
+                    presentLabel={t('attendance.present')}
+                    absentLabel={t('attendance.absent')}
+                  />
                 ))}
               </View>
             )}
 
             {!loading && !locked && (
               <View style={{ padding: spacing.lg }}>
-                <Pressable
-                  onPress={onSave}
-                  disabled={busy}
-                  style={{
-                    backgroundColor: colors.primary,
-                    borderRadius: radius.md,
-                    paddingVertical: spacing.md,
-                    alignItems: 'center',
-                    opacity: busy ? 0.6 : 1,
-                  }}
-                >
-                  {busy ? (
-                    <ActivityIndicator color={colors.primaryText} />
-                  ) : (
-                    <Text style={[typography.button, { color: colors.primaryText }]}>
-                      {t('attendance.save')}
-                    </Text>
-                  )}
-                </Pressable>
+                <SaveButton busy={busy} onPress={onSave} gradient={tint} />
               </View>
             )}
           </>
         )}
 
+        {/* ================= GRID VIEW ================= */}
         {view === 'grid' && (
           <View style={{ paddingHorizontal: spacing.lg }}>
             {gridLoading ? (
-              <ActivityIndicator size="large" color={colors.primary} />
+              <View style={{ padding: spacing.xl * 2, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={BRAND.violet} />
+              </View>
             ) : (
-              <AttendanceGrid
-                cells={gridCells}
-                onPressCell={(date) => void openDay(date)}
-                showCount
-              />
+              <LinearGradient
+                colors={[BRAND.deep, BRAND.violet]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gridCard}
+              >
+                <AttendanceGrid
+                  cells={gridCells}
+                  onPressCell={(date) => void openDay(date)}
+                  showCount
+                />
+              </LinearGradient>
             )}
           </View>
         )}
       </ScrollView>
 
+      {/* ---------- Day-detail modal ---------- */}
       <Modal
         visible={dayOpen !== null}
         transparent
         animationType="slide"
         onRequestClose={() => setDayOpen(null)}
       >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            justifyContent: 'flex-end',
-          }}
-        >
+        <View style={styles.backdrop}>
           <View
-            style={{
-              backgroundColor: colors.background,
-              padding: spacing.lg,
-              borderTopLeftRadius: radius.lg,
-              borderTopRightRadius: radius.lg,
-              maxHeight: '80%',
-            }}
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: colors.background,
+                paddingBottom: insets.bottom + spacing.lg,
+              },
+            ]}
           >
-            <Text style={[typography.h3, { color: colors.text }]}>
-              {t('attendance.dayDetail', { date: dayOpen ?? '' })}
-            </Text>
-
-            <ScrollView style={{ marginTop: spacing.lg }}>
-              <Text style={[typography.bodySmall, { color: colors.success }]}>
-                {t('attendance.dayPresent', {
-                  count: dayRows.filter((r) => r.status === 'PRESENT').length,
-                })}
-              </Text>
-              {dayRows
-                .filter((r) => r.status === 'PRESENT')
-                .map((r) => (
-                  <Text
-                    key={r.id}
-                    style={[typography.body, { color: colors.text, marginTop: 4 }]}
-                  >
-                    • {r.fullName}
-                  </Text>
-                ))}
-
-              <Text
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <View
                 style={[
-                  typography.bodySmall,
-                  { color: colors.error, marginTop: spacing.md },
+                  styles.sheetIcon,
+                  { backgroundColor: withAlpha(BRAND.violet, 0.16) },
                 ]}
               >
-                {t('attendance.dayAbsent', {
+                <Ionicons name="calendar" size={20} color={BRAND.violet} />
+              </View>
+              <Text
+                style={[
+                  typography.h3,
+                  { color: colors.text, flex: 1, fontWeight: '800' },
+                ]}
+                numberOfLines={1}
+              >
+                {t('attendance.dayDetail', { date: dayOpen ?? '' })}
+              </Text>
+            </View>
+
+            <ScrollView
+              style={{ marginTop: spacing.md }}
+              showsVerticalScrollIndicator={false}
+            >
+              <DayGroup
+                tone={colors.success}
+                icon="checkmark-circle"
+                label={t('attendance.dayPresent', {
+                  count: dayRows.filter((r) => r.status === 'PRESENT').length,
+                })}
+                names={dayRows
+                  .filter((r) => r.status === 'PRESENT')
+                  .map((r) => r.fullName)}
+              />
+              <DayGroup
+                tone={colors.error}
+                icon="close-circle"
+                label={t('attendance.dayAbsent', {
                   count: dayRows.filter((r) => r.status === 'ABSENT').length,
                 })}
-              </Text>
-              {dayRows
-                .filter((r) => r.status === 'ABSENT')
-                .map((r) => (
-                  <Text
-                    key={r.id}
-                    style={[typography.body, { color: colors.text, marginTop: 4 }]}
-                  >
-                    • {r.fullName}
-                  </Text>
-                ))}
+                names={dayRows
+                  .filter((r) => r.status === 'ABSENT')
+                  .map((r) => r.fullName)}
+              />
 
               {dayRows.every((r) => !r.status) && (
                 <Text
                   style={[
                     typography.body,
-                    { color: colors.textSecondary, marginTop: spacing.md },
+                    {
+                      color: colors.textSecondary,
+                      marginTop: spacing.md,
+                      textAlign: 'center',
+                    },
                   ]}
                 >
                   {t('attendance.dayNoRecords')}
@@ -552,14 +546,10 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
 
             <Pressable
               onPress={() => setDayOpen(null)}
-              style={{
-                marginTop: spacing.lg,
-                paddingVertical: spacing.md,
-                alignItems: 'center',
-                borderRadius: radius.md,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
+              style={[
+                styles.outlineBtn,
+                { borderColor: colors.border, marginTop: spacing.lg },
+              ]}
             >
               <Text style={[typography.button, { color: colors.text }]}>
                 {t('common.cancel')}
@@ -570,44 +560,667 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
       </Modal>
     </View>
   );
+}
 
-  function StatusBtn({
-    label,
-    active,
-    color,
-    disabled,
-    onPress,
-  }: {
-    label: string;
-    active: boolean;
-    color: string;
-    disabled: boolean;
-    onPress: () => void;
-  }) {
-    return (
+// ---------- Sub-components ----------
+
+function SectionLabel({
+  icon,
+  tint,
+  text,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  tint: string;
+  text: string;
+}) {
+  const { theme } = useTheme();
+  const { colors, typography } = theme;
+  return (
+    <View style={styles.sectionLabel}>
+      <View style={[styles.sectionBar, { backgroundColor: tint }]} />
+      <Ionicons name={icon} size={14} color={tint} />
+      <Text
+        style={[
+          typography.caption,
+          {
+            color: colors.textSecondary,
+            letterSpacing: 1.2,
+            textTransform: 'uppercase',
+            fontWeight: '800',
+          },
+        ]}
+      >
+        {text}
+      </Text>
+    </View>
+  );
+}
+
+function GatheringChip({
+  label,
+  active,
+  gradient,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  gradient: readonly [string, string];
+  onPress: () => void;
+}) {
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const scale = useRef(new Animated.Value(1)).current;
+  const to = (v: number) =>
+    Animated.spring(scale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 8,
+      useNativeDriver: true,
+    }).start();
+
+  return (
+    <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => to(0.96)}
+        onPressOut={() => to(1)}
+        style={{ flex: 1 }}
+      >
+        {active ? (
+          <LinearGradient
+            colors={gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.gatheringChip, { borderColor: 'transparent' }]}
+          >
+            <Text style={[styles.gatheringText, { color: '#FFFFFF' }]} numberOfLines={2}>
+              {label}
+            </Text>
+          </LinearGradient>
+        ) : (
+          <View
+            style={[
+              styles.gatheringChip,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <Text
+              style={[styles.gatheringText, { color: colors.text }]}
+              numberOfLines={2}
+            >
+              {label}
+            </Text>
+          </View>
+        )}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function SegmentBtn({
+  icon,
+  label,
+  active,
+  tint,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  active: boolean;
+  tint: string;
+  onPress: () => void;
+}) {
+  const { theme } = useTheme();
+  const { colors, typography } = theme;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.segmentBtn,
+        active
+          ? { backgroundColor: withAlpha(tint, 0.16) }
+          : { backgroundColor: 'transparent' },
+      ]}
+    >
+      <Ionicons name={icon} size={16} color={active ? tint : colors.textSecondary} />
+      <Text
+        style={[
+          typography.caption,
+          {
+            color: active ? tint : colors.textSecondary,
+            fontWeight: active ? '800' : '600',
+            marginLeft: 6,
+          },
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function QuickAction({
+  icon,
+  label,
+  tint,
+  disabled,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  tint: string;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const { theme } = useTheme();
+  const { typography } = theme;
+  const scale = useRef(new Animated.Value(1)).current;
+  const to = (v: number) =>
+    Animated.spring(scale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 6,
+      useNativeDriver: true,
+    }).start();
+  return (
+    <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
       <Pressable
         onPress={onPress}
         disabled={disabled}
-        style={{
-          paddingHorizontal: spacing.sm,
-          paddingVertical: spacing.xs,
-          borderRadius: radius.sm,
-          marginLeft: spacing.xs,
-          borderWidth: 1,
-          borderColor: active ? color : colors.border,
-          backgroundColor: active ? color : colors.surface,
-          opacity: disabled ? 0.5 : 1,
-        }}
+        onPressIn={() => to(0.96)}
+        onPressOut={() => to(1)}
+        style={[
+          styles.quickAction,
+          {
+            borderColor: withAlpha(tint, 0.45),
+            backgroundColor: withAlpha(tint, 0.1),
+            opacity: disabled ? 0.5 : 1,
+          },
+        ]}
       >
+        <Ionicons name={icon} size={16} color={tint} />
         <Text
           style={[
             typography.caption,
-            { color: active ? '#FFFFFF' : colors.text, fontWeight: '600' },
+            { color: tint, fontWeight: '800', marginLeft: 6, flexShrink: 1 },
           ]}
+          numberOfLines={1}
         >
           {label}
         </Text>
       </Pressable>
-    );
-  }
+    </Animated.View>
+  );
 }
+
+function RosterRow({
+  item,
+  index,
+  locked,
+  onPresent,
+  onAbsent,
+  presentLabel,
+  absentLabel,
+}: {
+  item: AttendanceRow;
+  index: number;
+  locked: boolean;
+  onPresent: () => void;
+  onAbsent: () => void;
+  presentLabel: string;
+  absentLabel: string;
+}) {
+  const { theme } = useTheme();
+  const { colors, typography } = theme;
+  const enter = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const a = Animated.timing(enter, {
+      toValue: 1,
+      duration: 400,
+      delay: Math.min(index, 8) * 45,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+    a.start();
+    return () => a.stop();
+  }, [enter, index]);
+
+  const initial = item.fullName.trim().charAt(0).toUpperCase();
+  const tone =
+    item.status === 'PRESENT'
+      ? colors.success
+      : item.status === 'ABSENT'
+        ? colors.error
+        : colors.textSecondary;
+
+  return (
+    <Animated.View
+      style={{
+        opacity: enter,
+        transform: [
+          { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) },
+        ],
+        marginBottom: 10,
+      }}
+    >
+      <View
+        style={[
+          styles.rosterCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
+        <View style={[styles.rosterBar, { backgroundColor: tone }]} />
+
+        <View
+          style={[styles.rosterAvatar, { backgroundColor: withAlpha(tone, 0.16) }]}
+        >
+          {item.profilePhotoUrl ? (
+            <Image
+              source={{ uri: item.profilePhotoUrl }}
+              style={styles.rosterAvatarImg}
+            />
+          ) : (
+            <Text style={{ color: tone, fontWeight: '800', fontSize: 16 }}>
+              {initial}
+            </Text>
+          )}
+        </View>
+
+        <Text
+          style={[
+            typography.body,
+            { color: colors.text, flex: 1, marginLeft: 12, fontWeight: '700' },
+          ]}
+          numberOfLines={1}
+        >
+          {item.fullName}
+        </Text>
+
+        <StatusBtn
+          label={presentLabel}
+          icon="checkmark"
+          active={item.status === 'PRESENT'}
+          tint={colors.success}
+          disabled={locked}
+          onPress={onPresent}
+        />
+        <StatusBtn
+          label={absentLabel}
+          icon="close"
+          active={item.status === 'ABSENT'}
+          tint={colors.error}
+          disabled={locked}
+          onPress={onAbsent}
+        />
+      </View>
+    </Animated.View>
+  );
+}
+
+function StatusBtn({
+  icon,
+  active,
+  tint,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  active: boolean;
+  tint: string;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const to = (v: number) =>
+    Animated.spring(scale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 8,
+      useNativeDriver: true,
+    }).start();
+
+  return (
+    <Animated.View style={{ transform: [{ scale }], marginLeft: 6 }}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => to(0.9)}
+        onPressOut={() => to(1)}
+        disabled={disabled}
+        style={{ opacity: disabled ? 0.5 : 1 }}
+      >
+        {active ? (
+          <LinearGradient
+            colors={[tint, withAlpha(tint, 0.75)]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.statusBtn}
+          >
+            <Ionicons name={icon} size={14} color="#FFFFFF" />
+          </LinearGradient>
+        ) : (
+          <View
+            style={[
+              styles.statusBtn,
+              { borderWidth: 1.5, borderColor: withAlpha(tint, 0.6) },
+            ]}
+          >
+            <Ionicons name={icon} size={14} color={tint} />
+          </View>
+        )}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function SaveButton({
+  busy,
+  onPress,
+  gradient,
+}: {
+  busy: boolean;
+  onPress: () => void;
+  gradient: readonly [string, string];
+}) {
+  const { typography } = useTheme().theme;
+  const scale = useRef(new Animated.Value(1)).current;
+  const to = (v: number) =>
+    Animated.spring(scale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 6,
+      useNativeDriver: true,
+    }).start();
+
+  return (
+    <Animated.View
+      style={{
+        transform: [{ scale }],
+        shadowColor: gradient[1],
+        shadowOpacity: 0.45,
+        shadowRadius: 14,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 6,
+      }}
+    >
+      <Pressable
+        onPress={onPress}
+        disabled={busy}
+        onPressIn={() => to(0.97)}
+        onPressOut={() => to(1)}
+        style={{ opacity: busy ? 0.7 : 1 }}
+      >
+        <LinearGradient
+          colors={gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.saveBtn}
+        >
+          {busy ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <>
+              <Ionicons name="cloud-upload" size={18} color="#FFFFFF" />
+              <Text
+                style={[
+                  typography.button,
+                  { color: '#FFFFFF', fontWeight: '800', marginLeft: 8 },
+                ]}
+              >
+                {'Save attendance'}
+              </Text>
+            </>
+          )}
+        </LinearGradient>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DayGroup({
+  tone,
+  icon,
+  label,
+  names,
+}: {
+  tone: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  names: string[];
+}) {
+  const { theme } = useTheme();
+  const { colors, typography } = theme;
+  if (names.length === 0) return null;
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <View style={styles.dayGroupHeader}>
+        <Ionicons name={icon} size={16} color={tone} />
+        <Text
+          style={[
+            typography.bodySmall,
+            { color: tone, fontWeight: '800', marginLeft: 6 },
+          ]}
+        >
+          {label}
+        </Text>
+      </View>
+      {names.map((n, i) => (
+        <View key={`${n}-${i}`} style={styles.dayRow}>
+          <View style={[styles.dayBullet, { backgroundColor: tone }]} />
+          <Text
+            style={[typography.body, { color: colors.text, flex: 1 }]}
+            numberOfLines={1}
+          >
+            {n}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  hero: {
+    paddingHorizontal: 16,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
+  },
+  blob: { position: 'absolute', width: 180, height: 180, borderRadius: 90 },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  heroIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: BRAND.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroKicker: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  heroTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 2 },
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'flex-start',
+    marginTop: 14,
+  },
+  heroBadgeText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
+
+  sectionLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  sectionBar: { width: 4, height: 14, borderRadius: 2 },
+
+  gatheringRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  gatheringChip: {
+    minHeight: 62,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gatheringText: { fontSize: 12, fontWeight: '800', textAlign: 'center' },
+
+  segment: {
+    flexDirection: 'row',
+    padding: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  segmentBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+
+  outlineBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+
+  input: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  quickRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  quickAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+
+  rosterCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    paddingLeft: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  rosterBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 },
+  rosterAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  rosterAvatarImg: { width: '100%', height: '100%' },
+  statusBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveBtn: {
+    minHeight: 54,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  gridCard: { borderRadius: 22, padding: 14 },
+
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    padding: 20,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '85%',
+  },
+  sheetHandle: {
+    width: 44,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(150,150,150,0.4)',
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sheetIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  dayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+  },
+  dayBullet: { width: 6, height: 6, borderRadius: 3 },
+});

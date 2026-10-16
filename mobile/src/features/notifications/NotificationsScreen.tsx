@@ -27,6 +27,7 @@ import {
 import { ApiError } from '../../services/api';
 import { setUnread } from '../../services/unreadStore';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
+import { ScreenHero } from '../profile/SettingsKit';
 
 type Props = {
   navigation: any;
@@ -80,7 +81,6 @@ export default function NotificationsScreen({ navigation }: Props) {
   };
 
   const onOpen = async (item: NotificationItem) => {
-    // Mark as read (best-effort).
     if (!item.readAt) {
       try {
         await markRead(item.id);
@@ -94,7 +94,6 @@ export default function NotificationsScreen({ navigation }: Props) {
       }
     }
 
-    // Deep-link based on relatedEntityType.
     const entityType = item.relatedEntityType;
     const entityId = item.relatedEntityId;
     if (!entityType || !entityId) return;
@@ -102,36 +101,21 @@ export default function NotificationsScreen({ navigation }: Props) {
     const parent = navigation.getParent();
     switch (entityType) {
       case 'Announcement':
-        parent?.navigate('Home', {
-          screen: 'AnnouncementDetail',
-          params: { id: entityId },
-        });
+        parent?.navigate('Home', { screen: 'AnnouncementDetail', params: { id: entityId } });
         break;
       case 'Song':
-        parent?.navigate('Songs', {
-          screen: 'SongDetail',
-          params: { id: entityId },
-        });
+        parent?.navigate('Songs', { screen: 'SongDetail', params: { id: entityId } });
         break;
       case 'Memory':
-        parent?.navigate('Memories', {
-          screen: 'MemoryDetail',
-          params: { id: entityId },
-        });
+        parent?.navigate('Memories', { screen: 'MemoryDetail', params: { id: entityId } });
         break;
       case 'Event':
-        parent?.navigate('Home', {
-          screen: 'EventDetail',
-          params: { id: entityId },
-        });
+        parent?.navigate('Home', { screen: 'EventDetail', params: { id: entityId } });
         break;
       case 'DailyQuote':
-        parent?.navigate('Home', {
-          screen: 'DailyQuoteHistory',
-        });
+        parent?.navigate('Home', { screen: 'DailyQuoteHistory' });
         break;
       default:
-        // Unknown target — do nothing.
         break;
     }
   };
@@ -159,61 +143,35 @@ export default function NotificationsScreen({ navigation }: Props) {
 
   const iconFor = (type: NotificationType): IconName => {
     switch (type) {
-      case 'ANNOUNCEMENT':
-        return 'megaphone-outline';
-      case 'EVENT_REMINDER':
-        return 'calendar-outline';
-      case 'CHAT_MESSAGE':
-        return 'chatbubble-ellipses-outline';
-      case 'BIRTHDAY':
-        return 'gift-outline';
-      case 'SONG_PUBLISHED':
-        return 'musical-notes-outline';
-      case 'MEMORY_PUBLISHED':
-        return 'images-outline';
-      case 'LEADERSHIP_CHANGE':
-        return 'people-outline';
-      case 'DAILY_QUOTE':
-        return 'book-outline';
-      default:
-        return 'notifications-outline';
+      case 'ANNOUNCEMENT': return 'megaphone-outline';
+      case 'EVENT_REMINDER': return 'calendar-outline';
+      case 'CHAT_MESSAGE': return 'chatbubble-ellipses-outline';
+      case 'BIRTHDAY': return 'gift-outline';
+      case 'SONG_PUBLISHED': return 'musical-notes-outline';
+      case 'MEMORY_PUBLISHED': return 'images-outline';
+      case 'LEADERSHIP_CHANGE': return 'people-outline';
+      case 'DAILY_QUOTE': return 'book-outline';
+      default: return 'notifications-outline';
     }
   };
 
-  // Visual only: each type gets its own accent colour.
   const tintFor = (type: NotificationType): string => {
     switch (type) {
-      case 'ANNOUNCEMENT':
-        return '#B6A0FF';
-      case 'EVENT_REMINDER':
-        return '#6EDBD5';
-      case 'CHAT_MESSAGE':
-        return '#B8E986';
-      case 'BIRTHDAY':
-        return '#EE9BBD';
-      case 'SONG_PUBLISHED':
-        return '#E6C779';
-      case 'MEMORY_PUBLISHED':
-        return '#6EDBD5';
-      case 'LEADERSHIP_CHANGE':
-        return '#B6A0FF';
-      case 'DAILY_QUOTE':
-        return '#E6C779';
-      default:
-        return '#B6A0FF';
+      case 'ANNOUNCEMENT': return '#B6A0FF';
+      case 'EVENT_REMINDER': return '#6EDBD5';
+      case 'CHAT_MESSAGE': return '#B8E986';
+      case 'BIRTHDAY': return '#EE9BBD';
+      case 'SONG_PUBLISHED': return '#E6C779';
+      case 'MEMORY_PUBLISHED': return '#6EDBD5';
+      case 'LEADERSHIP_CHANGE': return '#B6A0FF';
+      case 'DAILY_QUOTE': return '#E6C779';
+      default: return '#B6A0FF';
     }
   };
 
   if (loading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.background,
-        }}
-      >
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={BRAND.violet} />
       </View>
     );
@@ -223,6 +181,46 @@ export default function NotificationsScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScreenHero
+        icon="notifications"
+        title={t('notifications.title')}
+        subtitle={
+          unreadCount > 0
+            ? t('notifications.unreadCount', { count: unreadCount, defaultValue: '{{count}} unread' })
+            : t('notifications.allCaughtUp', { defaultValue: "You're all caught up" })
+        }
+        onBack={() => navigation.goBack()}
+      />
+
+      {error && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <ErrorBanner message={error} />
+        </View>
+      )}
+
+      {unreadCount > 0 && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <Pressable
+            onPress={onMarkAllRead}
+            accessibilityRole="button"
+            accessibilityLabel={t('notifications.markAllRead')}
+            style={({ pressed }) => [
+              styles.markAll,
+              {
+                backgroundColor: withAlpha(BRAND.violet, 0.14),
+                borderColor: withAlpha(BRAND.violet, 0.45),
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <Ionicons name="checkmark-done" size={16} color={BRAND.violet} />
+            <Text style={[typography.caption, { color: BRAND.violet, fontWeight: '800', marginLeft: 6 }]}>
+              {t('notifications.markAllRead')}
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -241,56 +239,6 @@ export default function NotificationsScreen({ navigation }: Props) {
             tintColor={BRAND.violet}
             colors={[BRAND.violet]}
           />
-        }
-        ListHeaderComponent={
-          <View>
-            <LinearGradient
-              colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.hero}
-            >
-              <View pointerEvents="none" style={[styles.blob, { top: -50, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.2) }]} />
-              <View pointerEvents="none" style={[styles.blob, { bottom: -70, left: -40, backgroundColor: withAlpha(BRAND.water, 0.2) }]} />
-
-              <View style={styles.heroIcon}>
-                <Ionicons name="notifications" size={26} color={BRAND.deep} />
-                {unreadCount > 0 && <View style={styles.heroDot} />}
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text accessibilityRole="header" style={styles.heroTitle}>
-                  {t('notifications.title')}
-                </Text>
-                <Text style={styles.heroSubtitle}>
-                  {unreadCount > 0
-                    ? t('notifications.unreadCount', { count: unreadCount, defaultValue: '{{count}} unread' })
-                    : t('notifications.allCaughtUp', { defaultValue: "You're all caught up" })}
-                </Text>
-              </View>
-
-              {unreadCount > 0 && (
-                <Pressable
-                  onPress={onMarkAllRead}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('notifications.markAllRead')}
-                  style={({ pressed }) => [styles.markAll, { opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <Ionicons name="checkmark-done" size={16} color={BRAND.gold} />
-                  <Text style={styles.markAllText} numberOfLines={1}>
-                    {t('notifications.markAllRead')}
-                  </Text>
-                </Pressable>
-              )}
-            </LinearGradient>
-
-            {error && (
-              <View style={{ marginTop: spacing.md }}>
-                <ErrorBanner message={error} />
-              </View>
-            )}
-            <View style={{ height: spacing.md }} />
-          </View>
         }
         ListEmptyComponent={
           <View style={{ padding: spacing.xl, alignItems: 'center' }}>
@@ -329,7 +277,7 @@ export default function NotificationsScreen({ navigation }: Props) {
   );
 }
 
-// ---------- Card (module scope so it never remounts on parent re-render) ----------
+// ---------- Card ----------
 
 function NotificationCard({
   item,
@@ -440,48 +388,15 @@ function NotificationCard({
 }
 
 const styles = StyleSheet.create({
-  hero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    padding: 20,
-    borderRadius: 28,
-    overflow: 'hidden',
-    flexWrap: 'wrap',
-  },
-  blob: { position: 'absolute', width: 170, height: 170, borderRadius: 85 },
-  heroIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: BRAND.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroDot: {
-    position: 'absolute',
-    top: 8,
-    right: 9,
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-    backgroundColor: BRAND.magenta,
-    borderWidth: 2,
-    borderColor: BRAND.gold,
-  },
-  heroTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF' },
-  heroSubtitle: { marginTop: 3, fontSize: 13, color: 'rgba(255,255,255,0.82)' },
   markAll: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    alignSelf: 'flex-start',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    maxWidth: '100%',
+    borderWidth: 1.5,
   },
-  markAllText: { color: BRAND.gold, fontSize: 12, fontWeight: '800', flexShrink: 1 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

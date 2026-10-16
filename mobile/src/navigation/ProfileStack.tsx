@@ -13,7 +13,6 @@ import MyAttendanceScreen from '../features/attendance/MyAttendanceScreen';
 import NotificationsScreen from '../features/notifications/NotificationsScreen';
 import NotificationPreferencesScreen from '../features/notifications/NotificationPreferencesScreen';
 
-
 export type ProfileStackParamList = {
   ProfileHome: undefined;
   ChangePassword: undefined;
@@ -22,8 +21,8 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
   Appearance: undefined;
   Language: undefined;
-    MyAttendance: undefined;
-      Notifications: undefined;
+  MyAttendance: undefined;
+  Notifications: undefined;
   NotificationPreferences: undefined;
 };
 
@@ -48,49 +47,27 @@ export default function ProfileStack() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="OwnProfile"
-        component={OwnProfileScreen}
-        options={{ title: t('myProfile.title') }}
-      />
-      <Stack.Screen
-        name="EditProfile"
-        component={EditProfileScreen}
-        options={{ title: t('profile.editProfile') }}
-      />
-      <Stack.Screen
-        name="ChangePassword"
-        component={ChangePasswordScreen}
-        options={{ title: t('password.changeTitle') }}
-      />
-      <Stack.Screen
-        name="DeleteAccount"
-        component={DeleteAccountScreen}
-        options={{ title: t('deleteAccount.title') }}
-      />
-      <Stack.Screen
-        name="Appearance"
-        component={AppearanceScreen}
-        options={{ title: t('settings.appearanceTitle') }}
-      />
-      <Stack.Screen
-        name="Language"
-        component={LanguageScreen}
-        options={{ title: t('settings.languageTitle') }}
-      />
-            <Stack.Screen
-        name="MyAttendance"
-        component={MyAttendanceScreen}
-        options={{ title: t('attendance.historyTitle') }}
-      />
-            <Stack.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-        options={{ title: t('notifications.title') }}
-      />
+  name="OwnProfile"
+  component={OwnProfileScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+  name="EditProfile"
+  component={EditProfileScreen}
+  options={{ headerShown: false }}
+/>
+
+      {/* All gradient-hero screens: native header hidden */}
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="DeleteAccount"  component={DeleteAccountScreen}  options={{ headerShown: false }} />
+      <Stack.Screen name="Appearance"     component={AppearanceScreen}     options={{ headerShown: false }} />
+      <Stack.Screen name="Language"       component={LanguageScreen}       options={{ headerShown: false }} />
+      <Stack.Screen name="MyAttendance"   component={MyAttendanceScreen}   options={{ headerShown: false }} />
+      <Stack.Screen name="Notifications"  component={NotificationsScreen}  options={{ headerShown: false }} />
       <Stack.Screen
         name="NotificationPreferences"
         component={NotificationPreferencesScreen}
-        options={{ title: t('notifications.preferences') }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

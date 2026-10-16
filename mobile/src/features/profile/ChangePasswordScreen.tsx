@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
@@ -14,9 +13,8 @@ import {
   BRAND,
   withAlpha,
 } from '../auth/Auth_UI';
+import { ScreenHero } from './SettingsKit';
 
-// Visual-only helper: scores the new password 0..4 for the strength bar.
-// It never blocks submit; the real validation stays in onSubmit below.
 function strengthOf(p: string): number {
   if (!p) return 0;
   if (p.length < 8) return 1;
@@ -42,7 +40,6 @@ export default function ChangePasswordScreen({ navigation }: any) {
   const onSubmit = async () => {
     setError(null);
     setSuccess(null);
-
     if (next.length < 8) return setError(t('password.tooShort'));
     if (next !== confirm) return setError(t('password.mismatch'));
 
@@ -59,7 +56,6 @@ export default function ChangePasswordScreen({ navigation }: any) {
     }
   };
 
-  // ---- Visual-only motion ----
   const enter = useRef(new Animated.Value(0)).current;
   const strengthAnim = useRef(new Animated.Value(0)).current;
   const successPop = useRef(new Animated.Value(0)).current;
@@ -115,31 +111,14 @@ export default function ChangePasswordScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Water drops are on by default; pass drops={false} to KeyboardAwareScroll to hide them. */}
-      <KeyboardAwareScroll contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.xl * 2 }}>
-        <Animated.View style={fadeUp(0)}>
-          <LinearGradient
-            colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.hero}
-          >
-            <View pointerEvents="none" style={[styles.blob, { top: -50, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.2) }]} />
-            <View pointerEvents="none" style={[styles.blob, { bottom: -70, left: -40, backgroundColor: withAlpha(BRAND.water, 0.2) }]} />
-            <View style={styles.heroIcon}>
-              <Ionicons name="lock-closed" size={26} color={BRAND.deep} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text accessibilityRole="header" style={styles.heroTitle}>
-                {t('password.changeTitle')}
-              </Text>
-              <Text style={styles.heroSubtitle}>
-                {t('password.changeSubtitle', { defaultValue: 'Keep your account safe with a strong password.' })}
-              </Text>
-            </View>
-          </LinearGradient>
-        </Animated.View>
+      <ScreenHero
+        icon="lock-closed"
+        title={t('password.changeTitle')}
+        subtitle={t('password.changeSubtitle', { defaultValue: 'Keep your account safe with a strong password.' })}
+        onBack={() => navigation.goBack()}
+      />
 
+      <KeyboardAwareScroll contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.xl * 2 }}>
         <Animated.View
           style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, fadeUp(1)]}
         >
@@ -160,7 +139,6 @@ export default function ChangePasswordScreen({ navigation }: any) {
             autoCapitalize="none"
           />
 
-          {/* Strength meter */}
           {next.length > 0 && (
             <View style={{ marginTop: -4, marginBottom: spacing.md }}>
               <View style={[styles.track, { backgroundColor: colors.border }]}>
@@ -249,26 +227,7 @@ export default function ChangePasswordScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  hero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    padding: 22,
-    borderRadius: 28,
-    overflow: 'hidden',
-  },
-  blob: { position: 'absolute', width: 170, height: 170, borderRadius: 85 },
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: BRAND.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF' },
-  heroSubtitle: { marginTop: 4, fontSize: 13, lineHeight: 19, color: 'rgba(255,255,255,0.8)' },
-  card: { borderWidth: 1, borderRadius: 24, padding: 16, marginTop: 20 },
+  card: { borderWidth: 1, borderRadius: 24, padding: 16 },
   fieldIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   track: { height: 6, borderRadius: 3, overflow: 'hidden' },
   matchRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: -4 },

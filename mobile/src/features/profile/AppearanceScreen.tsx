@@ -5,14 +5,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 import { WaterDrops, BRAND } from '../auth/Auth_UI';
-import { SelectionCard, SettingsHero, fadeUp, useMotion } from './SettingsKit';
+import { ScreenHero, SelectionCard, fadeUp, useMotion } from './SettingsKit';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
-// Miniatures intentionally depict both themes, independent of the currently selected theme.
 const previewTokens = {
   light: { background: '#F4F7FA', surface: '#FFFFFF', text: '#253040', muted: '#6B7785', border: '#D9E1E8', accent: BRAND.violet, accentSoft: '#6C3FE01F' },
-  dark: { background: '#17171D', surface: '#25252D', text: '#F2F2F5', muted: '#9494A3', border: '#3C3C47', accent: '#B6A0FF', accentSoft: '#B6A0FF1F' },
+  dark:  { background: '#17171D', surface: '#25252D', text: '#F2F2F5', muted: '#9494A3', border: '#3C3C47', accent: '#B6A0FF', accentSoft: '#B6A0FF1F' },
 };
 const dots = ['#B6A0FF', '#6EDBD5', '#EE9BBD'];
 
@@ -61,7 +60,7 @@ function ThemePreview({ dark }: { dark: boolean }) {
   );
 }
 
-export default function AppearanceScreen() {
+export default function AppearanceScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme, mode, setTheme } = useTheme();
   const { colors, spacing } = theme;
@@ -69,26 +68,25 @@ export default function AppearanceScreen() {
 
   const options = [
     { value: 'light' as const, label: t('settings.lightMode'), hint: t('settings.lightHint', { defaultValue: 'Bright and clean' }) },
-    { value: 'dark' as const, label: t('settings.darkMode'), hint: t('settings.darkHint', { defaultValue: 'Easy on the eyes' }) },
+    { value: 'dark'  as const, label: t('settings.darkMode'),  hint: t('settings.darkHint',  { defaultValue: 'Easy on the eyes' }) },
   ];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScreenHero
+        icon="color-palette"
+        title={t('settings.appearanceTitle')}
+        subtitle={t('settings.appearanceSubtitle', { defaultValue: 'Choose how Rehobot Choir looks on your phone.' })}
+        onBack={() => navigation.goBack()}
+      />
+
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, paddingHorizontal: spacing.xl, paddingTop: 24, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View style={fadeUp(enter, 0)}>
-          <SettingsHero
-            icon="color-palette"
-            title={t('settings.appearanceTitle')}
-            subtitle={t('settings.appearanceSubtitle', { defaultValue: 'Choose how Rehobot Choir looks on your phone.' })}
-          />
-        </Animated.View>
-
         <View accessibilityRole="radiogroup">
           {options.map((option, i) => (
-            <Animated.View key={option.value} style={fadeUp(enter, i + 1)}>
+            <Animated.View key={option.value} style={fadeUp(enter, i)}>
               <SelectionCard
                 active={mode === option.value}
                 label={option.label}
