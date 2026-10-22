@@ -3,6 +3,7 @@ import {
   View,
   Text,
   FlatList,
+  Pressable,
   ActivityIndicator,
   RefreshControl,
   Animated,
@@ -28,7 +29,7 @@ const PENDING_COLOR = '#F59E0B';
 export default function MyMemoriesScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, typography } = theme;
+  const { colors, spacing } = theme;
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<MyMemoryRow[]>([]);
@@ -95,6 +96,13 @@ export default function MyMemoriesScreen({ navigation }: any) {
     }
   };
 
+  const openDetail = (item: MyMemoryRow) => {
+    navigation.navigate('MemoryDetail', {
+      id: item.id,
+      mineOnly: true,
+    });
+  };
+
   if (loading) {
     return (
       <View
@@ -116,71 +124,11 @@ export default function MyMemoriesScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ---------- Full-bleed hero (sibling of the list) ---------- */}
-      <LinearGradient
-        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.hero, { paddingTop: insets.top + 16 }]}
-      >
-        <View
-          pointerEvents="none"
-          style={[
-            styles.blob,
-            { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.22) },
-          ]}
-        />
-        <View
-          pointerEvents="none"
-          style={[
-            styles.blob,
-            { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.22) },
-          ]}
-        />
-
-        <View style={styles.heroRow}>
-          <View style={styles.heroIcon}>
-            <Ionicons name="albums" size={22} color={BRAND.deep} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.heroKicker}>{t('memories.mine')}</Text>
-            <Text style={styles.heroTitle} numberOfLines={1}>
-              {t('memories.myCount', {
-                count: items.length,
-                defaultValue: '{{count}} memories shared',
-              })}
-            </Text>
-          </View>
-
-          <GlassBackButton
-            onPress={() => navigation.goBack()}
-            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
-            size={44}
-          />
-        </View>
-
-        <View style={styles.summary}>
-          <SummaryTile icon="checkmark-circle" value={published} label={t('memories.statusPublished')} />
-          <SummaryTile icon="time" value={pending} label={t('memories.statusPending')} />
-          <SummaryTile icon="close-circle" value={rejected} label={t('memories.statusRejected')} />
-        </View>
-      </LinearGradient>
-
-      {error && (
-        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-          <ErrorBanner message={error} />
-        </View>
-      )}
-
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: spacing.lg,
-          paddingTop: spacing.md,
-          paddingBottom: spacing.xl * 2,
-        }}
+        contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -191,6 +139,64 @@ export default function MyMemoriesScreen({ navigation }: any) {
             tintColor={BRAND.violet}
             colors={[BRAND.violet]}
           />
+        }
+        ListHeaderComponent={
+          <View>
+            <LinearGradient
+              colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.hero, { paddingTop: insets.top + 16 }]}
+            >
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.blob,
+                  { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.22) },
+                ]}
+              />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.blob,
+                  { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.22) },
+                ]}
+              />
+
+              <View style={styles.heroRow}>
+                <View style={styles.heroIcon}>
+                  <Ionicons name="albums" size={22} color={BRAND.deep} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.heroKicker}>{t('memories.mine')}</Text>
+                  <Text style={styles.heroTitle} numberOfLines={1}>
+                    {t('memories.myCount', {
+                      count: items.length,
+                      defaultValue: '{{count}} memories shared',
+                    })}
+                  </Text>
+                </View>
+
+                <GlassBackButton
+                  onPress={() => navigation.goBack()}
+                  accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+                  size={44}
+                />
+              </View>
+
+              <View style={styles.summary}>
+                <SummaryTile icon="checkmark-circle" value={published} label={t('memories.statusPublished')} />
+                <SummaryTile icon="time" value={pending} label={t('memories.statusPending')} />
+                <SummaryTile icon="close-circle" value={rejected} label={t('memories.statusRejected')} />
+              </View>
+            </LinearGradient>
+
+            {error && (
+              <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+                <ErrorBanner message={error} />
+              </View>
+            )}
+          </View>
         }
         ListEmptyComponent={
           <EmptyState icon="albums-outline" text={t('memories.emptyMine')} />
@@ -203,6 +209,7 @@ export default function MyMemoriesScreen({ navigation }: any) {
             icon={statusIcon(item.status)}
             label={statusLabel(item.status)}
             reasonLabel={t('memories.rejectionReason')}
+            onPress={() => openDetail(item)}
           />
         )}
       />
@@ -237,6 +244,7 @@ function MyMemoryCard({
   icon,
   label,
   reasonLabel,
+  onPress,
 }: {
   item: MyMemoryRow;
   index: number;
@@ -244,11 +252,15 @@ function MyMemoryCard({
   icon: IconName;
   label: string;
   reasonLabel: string;
+  onPress: () => void;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
 
   const enter = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
     const a = Animated.timing(enter, {
       toValue: 1,
@@ -261,56 +273,94 @@ function MyMemoryCard({
     return () => a.stop();
   }, [enter, index]);
 
+  const to = (v: number) =>
+    Animated.spring(scale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 6,
+      useNativeDriver: true,
+    }).start();
+
   return (
     <Animated.View
       style={{
         opacity: enter,
         transform: [
           { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) },
+          { scale },
         ],
+        marginHorizontal: spacing.lg,
         marginBottom: spacing.sm + 4,
       }}
     >
-      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => to(0.98)}
+        onPressOut={() => to(1)}
+        accessibilityRole="button"
+        accessibilityLabel={item.title}
+        style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      >
         <View style={[styles.bar, { backgroundColor: tone }]} />
 
-        <View style={{ flex: 1 }}>
-          <View style={styles.topRow}>
-            <Text
-              style={[typography.body, { color: colors.text, fontWeight: '800', flex: 1 }]}
-              numberOfLines={1}
-            >
-              {item.title}
-            </Text>
-            <StatusPill label={label} color={tone} icon={icon} />
-          </View>
-
-          <View style={{ marginTop: 8, alignSelf: 'flex-start' }}>
-            <DatePill text={new Date(item.date).toISOString().slice(0, 10)} />
-          </View>
-
-          {item.status === 'REJECTED' && item.rejectionReason && (
-            <View
-              style={[
-                styles.reason,
-                {
-                  backgroundColor: withAlpha(colors.error, 0.1),
-                  borderLeftColor: colors.error,
-                },
-              ]}
-            >
+        <Pressable onPress={onPress} style={{ flex: 1 }}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.topRow}>
               <Text
-                style={[typography.caption, { color: colors.error, fontWeight: '800' }]}
+                style={[typography.body, { color: colors.text, fontWeight: '800', flex: 1 }]}
+                numberOfLines={1}
               >
-                {reasonLabel}
+                {item.title}
               </Text>
-              <Text style={[typography.bodySmall, { color: colors.text, marginTop: 3 }]}>
-                {item.rejectionReason}
-              </Text>
+              <StatusPill label={label} color={tone} icon={icon} />
             </View>
-          )}
-        </View>
-      </View>
+
+            <View style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+              <DatePill text={new Date(item.date).toISOString().slice(0, 10)} />
+            </View>
+
+            {item.status === 'REJECTED' && item.rejectionReason && (
+              <View
+                style={[
+                  styles.reason,
+                  {
+                    backgroundColor: withAlpha(colors.error, 0.1),
+                    borderLeftColor: colors.error,
+                  },
+                ]}
+              >
+                <Text
+                  style={[typography.caption, { color: colors.error, fontWeight: '800' }]}
+                >
+                  {reasonLabel}
+                </Text>
+                <Text style={[typography.bodySmall, { color: colors.text, marginTop: 3 }]}>
+                  {item.rejectionReason}
+                </Text>
+              </View>
+            )}
+
+            {/* Tap hint */}
+            <View style={styles.hintRow}>
+              <Ionicons
+                name="eye-outline"
+                size={13}
+                color={colors.textSecondary}
+              />
+              <Text
+                style={[
+                  typography.caption,
+                  { color: colors.textSecondary, fontWeight: '700', marginLeft: 4, flex: 1 },
+                ]}
+                numberOfLines={1}
+              >
+                {t('memories.tapToView', { defaultValue: 'Tap to view' })}
+              </Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
+            </View>
+          </View>
+        </Pressable>
+      </Pressable>
     </Animated.View>
   );
 }
@@ -365,4 +415,12 @@ const styles = StyleSheet.create({
   bar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   reason: { marginTop: 12, padding: 12, borderRadius: 12, borderLeftWidth: 4 },
+  hintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(120,120,140,0.22)',
+  },
 });

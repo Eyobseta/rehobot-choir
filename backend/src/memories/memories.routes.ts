@@ -5,6 +5,7 @@ import {
   listPublishedMemories,
   listMemoryYears,
   getPublishedMemory,
+  getMyMemory,
   submitMemory,
   listMyMemories,
 } from './memories.service';
@@ -40,6 +41,7 @@ router.get('/years', async (_req, res, next) => {
   }
 });
 
+// ---- Mine: list ----------------------------------------------------------
 router.get('/mine', async (req, res, next) => {
   try {
     if (!req.auth) throw ApiError.unauthorized();
@@ -50,6 +52,21 @@ router.get('/mine', async (req, res, next) => {
   }
 });
 
+// ---- Mine: single (regardless of status, own items only) -----------------
+// MUST come BEFORE the generic '/:id' route.
+router.get('/mine/:id', async (req, res, next) => {
+  try {
+    if (!req.auth) throw ApiError.unauthorized();
+    const id = req.params.id;
+    if (typeof id !== 'string') throw ApiError.badRequest('Invalid id.');
+    const item = await getMyMemory(req.auth.userId, id);
+    res.json({ item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// ---- Public single -------------------------------------------------------
 router.get('/:id', async (req, res, next) => {
   try {
     const id = req.params.id;

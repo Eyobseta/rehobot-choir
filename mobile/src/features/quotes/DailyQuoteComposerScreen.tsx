@@ -14,17 +14,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { publishTodayQuote } from '../../services/quotes';
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
+import GlassBackButton from '../../components/GlassBackButton';
 
 type IconName = keyof typeof Ionicons.glyphMap;
+
+const CREAM = '#FFF4E0';
 
 export default function DailyQuoteComposerScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
+  const insets = useSafeAreaInsets();
 
   const [quoteText, setQuoteText] = useState('');
   const [source, setSource] = useState('');
@@ -68,11 +73,9 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
         audioName,
         audioMime,
       });
-      Alert.alert(
-        t('quote.published'),
-        t('quote.publishedBody'),
-        [{ text: t('common.continue'), onPress: () => navigation.goBack() }],
-      );
+      Alert.alert(t('quote.published'), t('quote.publishedBody'), [
+        { text: t('common.continue'), onPress: () => navigation.goBack() },
+      ]);
     } catch (e) {
       const err = e as ApiError;
       if (err.code === 'QUOTE_ALREADY_PUBLISHED') {
@@ -91,248 +94,296 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={{
-          padding: spacing.lg,
-          paddingBottom: spacing.xxl * 2,
-        }}
+        contentContainerStyle={{ paddingBottom: spacing.xxl * 2 }}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
       >
-        {/* header banner */}
+        {/* ---------- Full-bleed amber hero ---------- */}
         <LinearGradient
-          colors={['#B98045', '#9A6735', '#6E4220']}
+          colors={['#C98B4A', '#A56B36', '#6E4220']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
-            borderRadius: 28,
-            padding: spacing.lg,
+            paddingHorizontal: 16,
+            paddingTop: insets.top + 16,
+            paddingBottom: 22,
+            borderBottomLeftRadius: 28,
+            borderBottomRightRadius: 28,
             overflow: 'hidden',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing.md,
           }}
         >
+          {/* giant quote mark */}
           <Text
             pointerEvents="none"
             style={{
               position: 'absolute',
-              top: -30,
+              top: -34,
               right: 6,
-              fontSize: 140,
-              lineHeight: 160,
+              fontSize: 170,
+              lineHeight: 190,
               fontWeight: '800',
-              color: 'rgba(255,255,255,0.12)',
+              color: 'rgba(255,255,255,0.14)',
             }}
           >
             “
           </Text>
           <View
+            pointerEvents="none"
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 16,
-              backgroundColor: 'rgba(255,255,255,0.22)',
-              alignItems: 'center',
-              justifyContent: 'center',
+              position: 'absolute',
+              top: -40,
+              right: -30,
+              width: 140,
+              height: 140,
+              borderRadius: 70,
+              backgroundColor: 'rgba(255,215,140,0.14)',
             }}
-          >
-            <Ionicons name="create" size={24} color="#FFF4E0" />
-          </View>
-          <Text
-            style={[typography.h2, { color: '#FFFFFF', flex: 1, fontWeight: '800' }]}
-          >
-            {t('quote.addToday')}
-          </Text>
-        </LinearGradient>
-
-        {/* quote + source */}
-        <Card>
-          <Field
-            icon="chatbubble-ellipses-outline"
-            label={t('quote.quoteField')}
-            value={quoteText}
-            onChange={setQuoteText}
-            multiline
           />
-          <Field
-            icon="bookmark-outline"
-            label={t('quote.sourceField')}
-            value={source}
-            onChange={setSource}
-            placeholder="Psalm 23:1"
-            autoCapitalize="words"
-          />
-        </Card>
-
-        {/* media */}
-        <Card>
-          <Field
-            icon="logo-youtube"
-            label={t('quote.youtubeField')}
-            value={youtubeUrl}
-            onChange={setYoutubeUrl}
-            placeholder="https://www.youtube.com/watch?v=..."
-            autoCapitalize="none"
-          />
-
-          <Text
-            style={[
-              typography.bodySmall,
-              {
-                color: colors.textSecondary,
-                marginTop: spacing.md,
-                marginBottom: spacing.xs,
-                fontWeight: '700',
-              },
-            ]}
-          >
-            {t('quote.audioField')}
-          </Text>
           <View
+            pointerEvents="none"
             style={{
-              padding: spacing.md,
-              borderRadius: radius.md + 4,
-              borderWidth: 1.5,
-              borderStyle: audioUri ? 'solid' : 'dashed',
-              borderColor: audioUri ? BRAND.violet : colors.border,
-              backgroundColor: audioUri
-                ? withAlpha(BRAND.violet, 0.07)
-                : colors.background,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.sm + 2,
+              position: 'absolute',
+              bottom: -70,
+              left: -50,
+              width: 180,
+              height: 180,
+              borderRadius: 90,
+              backgroundColor: 'rgba(255,232,180,0.14)',
             }}
-          >
+          />
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <View
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 14,
-                backgroundColor: audioUri
-                  ? withAlpha(BRAND.violet, 0.18)
-                  : withAlpha(colors.textSecondary, 0.12),
+                width: 50,
+                height: 50,
+                borderRadius: 16,
+                backgroundColor: 'rgba(255,255,255,0.24)',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Ionicons
-                name={audioUri ? 'musical-notes' : 'musical-note-outline'}
-                size={20}
-                color={audioUri ? BRAND.violet : colors.textSecondary}
-              />
+              <Ionicons name="create" size={22} color={CREAM} />
             </View>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  color: 'rgba(255,255,255,0.78)',
+                  fontSize: 11,
+                  fontWeight: '800',
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {t('quote.title')}
+              </Text>
+              <Text
+                style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 2 }}
+                numberOfLines={1}
+              >
+                {t('quote.addToday')}
+              </Text>
+            </View>
+
+            <GlassBackButton
+              onPress={() => navigation.goBack()}
+              accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+              size={44}
+            />
+          </View>
+        </LinearGradient>
+
+        {/* ---------- Content ---------- */}
+        <View style={{ paddingHorizontal: spacing.lg }}>
+          {/* Quote + source */}
+          <Card>
+            <Field
+              icon="chatbubble-ellipses-outline"
+              label={t('quote.quoteField')}
+              value={quoteText}
+              onChange={setQuoteText}
+              multiline
+            />
+            <Field
+              icon="bookmark-outline"
+              label={t('quote.sourceField')}
+              value={source}
+              onChange={setSource}
+              placeholder="Psalm 23:1"
+              autoCapitalize="words"
+            />
+          </Card>
+
+          {/* Media */}
+          <Card>
+            <Field
+              icon="logo-youtube"
+              label={t('quote.youtubeField')}
+              value={youtubeUrl}
+              onChange={setYoutubeUrl}
+              placeholder="https://www.youtube.com/watch?v=..."
+              autoCapitalize="none"
+            />
+
             <Text
               style={[
                 typography.bodySmall,
-                { color: audioUri ? colors.text : colors.textSecondary, flex: 1 },
+                {
+                  color: colors.textSecondary,
+                  marginTop: spacing.md,
+                  marginBottom: spacing.xs,
+                  fontWeight: '700',
+                },
               ]}
-              numberOfLines={1}
             >
-              {audioUri ? audioName : t('quote.audioNone')}
+              {t('quote.audioField')}
             </Text>
-            {audioUri ? (
-              <Pressable
-                onPress={() => {
-                  setAudioUri(null);
-                  setAudioName(null);
-                  setAudioMime(null);
-                }}
-                hitSlop={8}
+            <View
+              style={{
+                padding: spacing.md,
+                borderRadius: radius.md + 4,
+                borderWidth: 1.5,
+                borderStyle: audioUri ? 'solid' : 'dashed',
+                borderColor: audioUri ? BRAND.violet : colors.border,
+                backgroundColor: audioUri
+                  ? withAlpha(BRAND.violet, 0.07)
+                  : colors.background,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm + 2,
+              }}
+            >
+              <View
                 style={{
-                  paddingHorizontal: spacing.sm + 2,
-                  paddingVertical: spacing.xs + 2,
-                  borderRadius: 12,
-                  backgroundColor: withAlpha(colors.error, 0.12),
-                }}
-              >
-                <Text style={[typography.caption, { color: colors.error, fontWeight: '800' }]}>
-                  {t('quote.removeAudio')}
-                </Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={pickAudio}
-                hitSlop={8}
-                style={{
-                  flexDirection: 'row',
+                  width: 40,
+                  height: 40,
+                  borderRadius: 14,
+                  backgroundColor: audioUri
+                    ? withAlpha(BRAND.violet, 0.18)
+                    : withAlpha(colors.textSecondary, 0.12),
                   alignItems: 'center',
-                  gap: 4,
-                  paddingHorizontal: spacing.sm + 2,
-                  paddingVertical: spacing.xs + 2,
-                  borderRadius: 12,
-                  backgroundColor: withAlpha(BRAND.violet, 0.12),
+                  justifyContent: 'center',
                 }}
               >
-                <Ionicons name="cloud-upload-outline" size={14} color={BRAND.violet} />
-                <Text style={[typography.caption, { color: BRAND.violet, fontWeight: '800' }]}>
-                  {t('quote.pickAudio')}
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        </Card>
+                <Ionicons
+                  name={audioUri ? 'musical-notes' : 'musical-note-outline'}
+                  size={20}
+                  color={audioUri ? BRAND.violet : colors.textSecondary}
+                />
+              </View>
+              <Text
+                style={[
+                  typography.bodySmall,
+                  { color: audioUri ? colors.text : colors.textSecondary, flex: 1 },
+                ]}
+                numberOfLines={1}
+              >
+                {audioUri ? audioName : t('quote.audioNone')}
+              </Text>
+              {audioUri ? (
+                <Pressable
+                  onPress={() => {
+                    setAudioUri(null);
+                    setAudioName(null);
+                    setAudioMime(null);
+                  }}
+                  hitSlop={8}
+                  style={{
+                    paddingHorizontal: spacing.sm + 2,
+                    paddingVertical: spacing.xs + 2,
+                    borderRadius: 12,
+                    backgroundColor: withAlpha(colors.error, 0.12),
+                  }}
+                >
+                  <Text style={[typography.caption, { color: colors.error, fontWeight: '800' }]}>
+                    {t('quote.removeAudio')}
+                  </Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  onPress={pickAudio}
+                  hitSlop={8}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    paddingHorizontal: spacing.sm + 2,
+                    paddingVertical: spacing.xs + 2,
+                    borderRadius: 12,
+                    backgroundColor: withAlpha(BRAND.violet, 0.12),
+                  }}
+                >
+                  <Ionicons name="cloud-upload-outline" size={14} color={BRAND.violet} />
+                  <Text style={[typography.caption, { color: BRAND.violet, fontWeight: '800' }]}>
+                    {t('quote.pickAudio')}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          </Card>
 
-        {error && (
-          <View
+          {error && (
+            <View
+              style={{
+                marginTop: spacing.md,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                padding: spacing.md,
+                borderRadius: radius.md + 2,
+                backgroundColor: withAlpha(colors.error, 0.1),
+                borderWidth: 1,
+                borderColor: withAlpha(colors.error, 0.35),
+              }}
+            >
+              <Ionicons name="alert-circle" size={18} color={colors.error} />
+              <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
+                {error}
+              </Text>
+            </View>
+          )}
+
+          <Pressable
+            onPress={onSubmit}
+            disabled={busy}
             style={{
-              marginTop: spacing.md,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.sm,
-              padding: spacing.md,
-              borderRadius: radius.md + 2,
-              backgroundColor: withAlpha(colors.error, 0.1),
-              borderWidth: 1,
-              borderColor: withAlpha(colors.error, 0.35),
+              marginTop: spacing.xl,
+              borderRadius: radius.md + 6,
+              overflow: 'hidden',
+              opacity: busy ? 0.6 : 1,
+              shadowColor: '#3A1F08',
+              shadowOpacity: 0.4,
+              shadowRadius: 14,
+              shadowOffset: { width: 0, height: 8 },
+              elevation: 6,
             }}
           >
-            <Ionicons name="alert-circle" size={18} color={colors.error} />
-            <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
-              {error}
-            </Text>
-          </View>
-        )}
-
-        <Pressable
-          onPress={onSubmit}
-          disabled={busy}
-          style={{
-            marginTop: spacing.xl,
-            borderRadius: radius.md + 6,
-            overflow: 'hidden',
-            opacity: busy ? 0.6 : 1,
-            shadowColor: BRAND.violet,
-            shadowOpacity: 0.35,
-            shadowRadius: 12,
-            shadowOffset: { width: 0, height: 6 },
-            elevation: 6,
-          }}
-        >
-          <LinearGradient
-            colors={[BRAND.violet, BRAND.magenta]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
-              paddingVertical: spacing.md + 2,
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: 'row',
-              gap: spacing.sm,
-            }}
-          >
-            {busy ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="paper-plane" size={18} color="#FFFFFF" />
-                <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}>
-                  {t('quote.publish')}
-                </Text>
-              </>
-            )}
-          </LinearGradient>
-        </Pressable>
+            <LinearGradient
+              colors={['#C98B4A', '#A56B36']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                paddingVertical: spacing.md + 2,
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexDirection: 'row',
+                gap: spacing.sm,
+              }}
+            >
+              {busy ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="paper-plane" size={18} color="#FFFFFF" />
+                  <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}>
+                    {t('quote.publish')}
+                  </Text>
+                </>
+              )}
+            </LinearGradient>
+          </Pressable>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -394,7 +445,7 @@ function Field({
           alignItems: multiline ? 'flex-start' : 'center',
           gap: spacing.sm,
           backgroundColor: colors.background,
-          borderColor: focused ? BRAND.violet : colors.border,
+          borderColor: focused ? '#A56B36' : colors.border,
           borderWidth: 1.5,
           borderRadius: radius.md + 4,
           paddingHorizontal: spacing.md,
@@ -403,7 +454,7 @@ function Field({
         <Ionicons
           name={icon}
           size={18}
-          color={focused ? BRAND.violet : colors.textSecondary}
+          color={focused ? '#A56B36' : colors.textSecondary}
           style={{ marginTop: multiline ? spacing.md : 0 }}
         />
         <TextInput

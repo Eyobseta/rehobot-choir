@@ -20,6 +20,7 @@ import SongReviewScreen from '../features/leader/SongReviewScreen';
 import LeaderMemoriesScreen from '../features/memories/LeaderMemoriesScreen';
 import MemoryReviewDetailScreen from '../features/memories/MemoryReviewDetailScreen';
 import MemoryVideoScreen from '../features/memories/MemoryVideoScreen';
+import SongVideoScreen from '../features/songs/SongVideoScreen';
 
 export type LeaderStackParamList = {
   ApprovalsList: undefined;
@@ -40,12 +41,12 @@ export type LeaderStackParamList = {
   LeaderMemories: undefined;
   MemoryReviewDetail: { id: string };
   MemoryVideo: { youtubeUrl: string; memoryTitle?: string };
+  SongVideo: { youtubeUrl: string; title: string };
 };
 
 const Stack = createNativeStackNavigator<LeaderStackParamList>();
 
 export default function LeaderStack() {
-  const { t } = useTranslation();
   const { theme } = useTheme();
 
   return (
@@ -60,12 +61,12 @@ export default function LeaderStack() {
       <Stack.Screen
         name="ApprovalsList"
         component={ApprovalsListScreen}
-        options={{ title: t('leader.approvalsTab') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ApplicantDetail"
         component={ApplicantDetailScreen}
-        options={{ title: t('leader.applicantDetail') }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
 
       {/* Manage member — custom gradient hero */}
@@ -116,31 +117,34 @@ export default function LeaderStack() {
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
 
+      {/* Songs — custom gradient heroes */}
       <Stack.Screen
         name="LeaderSongs"
         component={LeaderSongsScreen}
-        options={{ title: t('leaderSongs.title') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="SongEditor"
         component={SongEditorScreen}
-        options={{ title: '' }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="SongCategories"
         component={SongCategoriesScreen}
-        options={{ title: t('leaderSongs.categories') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ZemaTeam"
         component={ZemaTeamScreen}
-        options={{ title: t('leaderSongs.zemaTeam') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="SongReview"
         component={SongReviewScreen}
-        options={{ title: t('leaderSongs.review') }}
+        options={{ headerShown: false }}
       />
+
+      {/* Memories — custom gradient heroes */}
       <Stack.Screen
         name="LeaderMemories"
         component={LeaderMemoriesScreen}
@@ -149,13 +153,18 @@ export default function LeaderStack() {
       <Stack.Screen
         name="MemoryReviewDetail"
         component={MemoryReviewDetailScreen}
-        options={{ title: '' }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="MemoryVideo"
         component={MemoryVideoScreen}
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
+      <Stack.Screen
+  name="SongVideo"
+  component={SongVideoScreen}
+  options={{ headerShown: false, animation: 'slide_from_right' }}
+/>
     </Stack.Navigator>
   );
 }

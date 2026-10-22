@@ -11,13 +11,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { listRecentQuotes, DailyQuote } from '../../services/quotes';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
+import GlassBackButton from '../../components/GlassBackButton';
 
 const BROWN = '#9A6735';
+const CREAM = '#FFF4E0';
 
-/** Who published the quote (from DailyQuote.submittedBy). */
 function publisherOf(item: DailyQuote): { name: string | null; photo: string | null } {
   const mp = item.submittedBy?.memberProfile;
   return {
@@ -26,10 +28,11 @@ function publisherOf(item: DailyQuote): { name: string | null; photo: string | n
   };
 }
 
-export default function DailyQuoteHistoryScreen() {
+export default function DailyQuoteHistoryScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
+  const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<DailyQuote[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,175 +56,264 @@ export default function DailyQuoteHistoryScreen() {
     }, [load]),
   );
 
-  if (loading) {
-    return (
-      <View
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* ---------- Full-bleed amber hero ---------- */}
+      <LinearGradient
+        colors={['#C98B4A', '#A56B36', '#6E4220']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.background,
+          paddingHorizontal: 16,
+          paddingTop: insets.top + 16,
+          paddingBottom: 22,
+          borderBottomLeftRadius: 28,
+          borderBottomRightRadius: 28,
+          overflow: 'hidden',
         }}
       >
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
-
-  return (
-    <FlatList
-      data={items}
-      keyExtractor={(item) => item.id}
-      style={{ backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: spacing.lg, paddingBottom: spacing.xxl }}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => {
-            setRefreshing(true);
-            void load();
+        <Text
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -34,
+            right: 6,
+            fontSize: 170,
+            lineHeight: 190,
+            fontWeight: '800',
+            color: 'rgba(255,255,255,0.14)',
           }}
-          tintColor={colors.primary}
+        >
+          “
+        </Text>
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -40,
+            right: -30,
+            width: 140,
+            height: 140,
+            borderRadius: 70,
+            backgroundColor: 'rgba(255,215,140,0.14)',
+          }}
         />
-      }
-      ListEmptyComponent={
-        <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <View
             style={{
-              width: 72,
-              height: 72,
-              borderRadius: 24,
-              backgroundColor: withAlpha(BROWN, 0.12),
+              width: 50,
+              height: 50,
+              borderRadius: 16,
+              backgroundColor: 'rgba(255,255,255,0.24)',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="chatbubble-ellipses-outline" size={32} color={BROWN} />
+            <Ionicons name="time" size={22} color={CREAM} />
           </View>
-          <Text
-            style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}
-          >
-            {t('quote.empty')}
-          </Text>
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                color: 'rgba(255,255,255,0.78)',
+                fontSize: 11,
+                fontWeight: '800',
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+              }}
+            >
+              {t('quote.title')}
+            </Text>
+            <Text
+              style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '800', marginTop: 2 }}
+              numberOfLines={1}
+            >
+              {t('quote.previous7')}
+            </Text>
+          </View>
+
+          <GlassBackButton
+            onPress={() => navigation.goBack()}
+            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+            size={44}
+          />
         </View>
-      }
-      renderItem={({ item, index }) => {
-        const isLatest = index === 0;
-        const isLast = index === items.length - 1;
-        return (
-          <View style={{ flexDirection: 'row' }}>
-            {/* timeline rail */}
-            <View style={{ width: 22, alignItems: 'center', marginRight: spacing.sm }}>
-              <View
+      </LinearGradient>
+
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={BROWN} />
+        </View>
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{
+            padding: spacing.lg,
+            paddingTop: spacing.lg,
+            paddingBottom: spacing.xxl,
+          }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                void load();
+              }}
+              tintColor={BROWN}
+              colors={[BROWN]}
+            />
+          }
+          ListEmptyComponent={
+            <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
+              <LinearGradient
+                colors={['#C98B4A', '#A56B36', '#6E4220']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: 7,
-                  marginTop: spacing.lg,
-                  borderWidth: 3,
-                  borderColor: BROWN,
-                  backgroundColor: isLatest ? BROWN : colors.background,
+                  width: 112,
+                  height: 112,
+                  borderRadius: 56,
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
-              />
-              {!isLast && (
+              >
+                <View
+                  style={{
+                    width: 104,
+                    height: 104,
+                    borderRadius: 52,
+                    backgroundColor: colors.background,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name="chatbubble-ellipses-outline" size={40} color={BROWN} />
+                </View>
+              </LinearGradient>
+              <Text
+                style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}
+              >
+                {t('quote.empty')}
+              </Text>
+            </View>
+          }
+          renderItem={({ item, index }) => {
+            const isLatest = index === 0;
+            const isLast = index === items.length - 1;
+            const pub = publisherOf(item);
+            const name =
+              pub.name ?? t('quote.unknownPublisher', { defaultValue: 'a choir member' });
+
+            return (
+              <View style={{ flexDirection: 'row' }}>
+                {/* timeline rail */}
+                <View style={{ width: 22, alignItems: 'center', marginRight: spacing.sm }}>
+                  <View
+                    style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: 7,
+                      marginTop: spacing.lg,
+                      borderWidth: 3,
+                      borderColor: BROWN,
+                      backgroundColor: isLatest ? BROWN : colors.background,
+                    }}
+                  />
+                  {!isLast && (
+                    <View
+                      style={{
+                        flex: 1,
+                        width: 2,
+                        marginTop: 4,
+                        borderRadius: 1,
+                        backgroundColor: withAlpha(BROWN, 0.28),
+                      }}
+                    />
+                  )}
+                </View>
+
+                {/* card */}
                 <View
                   style={{
                     flex: 1,
-                    width: 2,
-                    marginTop: 4,
-                    borderRadius: 1,
-                    backgroundColor: withAlpha(BROWN, 0.28),
+                    padding: spacing.md + 2,
+                    marginBottom: spacing.md,
+                    borderRadius: 22,
+                    borderWidth: 1,
+                    borderColor: isLatest ? withAlpha(BROWN, 0.55) : colors.border,
+                    backgroundColor: colors.surface,
+                    overflow: 'hidden',
                   }}
-                />
-              )}
-            </View>
-
-            {/* card */}
-            <View
-              style={{
-                flex: 1,
-                padding: spacing.md + 2,
-                marginBottom: spacing.md,
-                borderRadius: 22,
-                borderWidth: 1,
-                borderColor: isLatest ? withAlpha(BROWN, 0.55) : colors.border,
-                backgroundColor: colors.surface,
-                overflow: 'hidden',
-              }}
-            >
-              <Text
-                pointerEvents="none"
-                style={{
-                  position: 'absolute',
-                  top: -14,
-                  right: 10,
-                  fontSize: 84,
-                  lineHeight: 100,
-                  fontWeight: '800',
-                  color: withAlpha(BROWN, 0.1),
-                }}
-              >
-                “
-              </Text>
-
-              <View
-                style={{
-                  alignSelf: 'flex-start',
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 5,
-                  paddingHorizontal: spacing.sm + 2,
-                  paddingVertical: 4,
-                  borderRadius: 10,
-                  backgroundColor: withAlpha(BRAND.violet, 0.12),
-                }}
-              >
-                <Ionicons name="calendar-outline" size={12} color={colors.primary} />
-                <Text style={[typography.caption, { color: colors.primary, fontWeight: '800' }]}>
-                  {item.dateOnly.slice(0, 10)}
-                </Text>
-              </View>
-
-              <Text
-                style={[
-                  typography.body,
-                  {
-                    color: colors.text,
-                    marginTop: spacing.sm,
-                    fontStyle: 'italic',
-                    lineHeight: 24,
-                  },
-                ]}
-              >
-                {item.quoteText}
-              </Text>
-
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginTop: spacing.sm + 2,
-                }}
-              >
-                <View style={{ width: 18, height: 2, borderRadius: 1, backgroundColor: BROWN }} />
-                <Text
-                  style={[
-                    typography.caption,
-                    { color: colors.textSecondary, fontWeight: '700', flexShrink: 1 },
-                  ]}
                 >
-                  {item.source}
-                </Text>
-              </View>
+                  <Text
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      top: -14,
+                      right: 10,
+                      fontSize: 84,
+                      lineHeight: 100,
+                      fontWeight: '800',
+                      color: withAlpha(BROWN, 0.1),
+                    }}
+                  >
+                    “
+                  </Text>
 
-              {/* published by */}
-              {(() => {
-                const pub = publisherOf(item);
-                const name =
-                  pub.name ?? t('quote.unknownPublisher', { defaultValue: 'a choir member' });
-                return (
+                  <View
+                    style={{
+                      alignSelf: 'flex-start',
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 5,
+                      paddingHorizontal: spacing.sm + 2,
+                      paddingVertical: 4,
+                      borderRadius: 10,
+                      backgroundColor: withAlpha(BROWN, 0.14),
+                    }}
+                  >
+                    <Ionicons name="calendar-outline" size={12} color={BROWN} />
+                    <Text style={[typography.caption, { color: BROWN, fontWeight: '800' }]}>
+                      {item.dateOnly.slice(0, 10)}
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={[
+                      typography.body,
+                      {
+                        color: colors.text,
+                        marginTop: spacing.sm,
+                        fontStyle: 'italic',
+                        lineHeight: 24,
+                        fontSize: 15.5,
+                      },
+                    ]}
+                  >
+                    {item.quoteText}
+                  </Text>
+
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 8,
+                      marginTop: spacing.sm + 2,
+                    }}
+                  >
+                    <View style={{ width: 18, height: 2, borderRadius: 1, backgroundColor: BROWN }} />
+                    <Text
+                      style={[
+                        typography.caption,
+                        { color: colors.textSecondary, fontWeight: '700', flexShrink: 1 },
+                      ]}
+                    >
+                      {item.source}
+                    </Text>
+                  </View>
+
                   <View
                     style={{
                       flexDirection: 'row',
@@ -257,10 +349,7 @@ export default function DailyQuoteHistoryScreen() {
                       </LinearGradient>
                     )}
                     <Text
-                      style={[
-                        typography.caption,
-                        { color: colors.textSecondary, flex: 1 },
-                      ]}
+                      style={[typography.caption, { color: colors.textSecondary, flex: 1 }]}
                       numberOfLines={1}
                     >
                       {t('quote.publishedBy', {
@@ -269,12 +358,12 @@ export default function DailyQuoteHistoryScreen() {
                       })}
                     </Text>
                   </View>
-                );
-              })()}
-            </View>
-          </View>
-        );
-      }}
-    />
+                </View>
+              </View>
+            );
+          }}
+        />
+      )}
+    </View>
   );
 }

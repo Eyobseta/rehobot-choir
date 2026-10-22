@@ -43,44 +43,60 @@ export default function DailyQuoteCard() {
       style={{
         marginBottom: spacing.lg,
         borderRadius: 28,
-        shadowColor: '#5A3414',
-        shadowOpacity: 0.35,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 10 },
-        elevation: 8,
+        shadowColor: '#3A1F08',
+        shadowOpacity: 0.4,
+        shadowRadius: 20,
+        shadowOffset: { width: 0, height: 12 },
+        elevation: 10,
       }}
     >
       <LinearGradient
-        colors={['#B98045', '#9A6735', '#6E4220']}
+        colors={['#C98B4A', '#A56B36', '#6E4220']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ borderRadius: 28, padding: spacing.lg, overflow: 'hidden' }}
       >
-        {/* decorative giant quote mark + glow */}
+        {/* decorative giant quote mark */}
         <Text
           pointerEvents="none"
           style={{
             position: 'absolute',
-            top: -26,
-            right: 8,
-            fontSize: 150,
-            lineHeight: 170,
+            top: -30,
+            right: 6,
+            fontSize: 170,
+            lineHeight: 190,
             fontWeight: '800',
-            color: 'rgba(255,255,255,0.12)',
+            color: 'rgba(255,255,255,0.14)',
           }}
         >
           “
         </Text>
+
+        {/* soft bottom-left glow */}
         <View
           pointerEvents="none"
           style={{
             position: 'absolute',
-            bottom: -60,
-            left: -40,
-            width: 160,
-            height: 160,
-            borderRadius: 80,
-            backgroundColor: 'rgba(255,230,180,0.14)',
+            bottom: -70,
+            left: -50,
+            width: 180,
+            height: 180,
+            borderRadius: 90,
+            backgroundColor: 'rgba(255,232,180,0.16)',
+          }}
+        />
+
+        {/* top-right gold shimmer */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -40,
+            right: -30,
+            width: 140,
+            height: 140,
+            borderRadius: 70,
+            backgroundColor: 'rgba(255,215,140,0.14)',
           }}
         />
 
@@ -95,18 +111,18 @@ export default function DailyQuoteCard() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
             <View
               style={{
-                width: 30,
-                height: 30,
+                width: 32,
+                height: 32,
                 borderRadius: 11,
-                backgroundColor: 'rgba(255,255,255,0.2)',
+                backgroundColor: 'rgba(255,255,255,0.22)',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Ionicons name="sunny" size={16} color={CREAM} />
+              <Ionicons name="sunny" size={17} color={CREAM} />
             </View>
             <Text
-              style={[typography.bodySmall, { color: CREAM, fontWeight: '800' }]}
+              style={[typography.bodySmall, { color: CREAM, fontWeight: '800', letterSpacing: 0.4 }]}
               numberOfLines={1}
             >
               {t('quote.title')}
@@ -119,15 +135,17 @@ export default function DailyQuoteCard() {
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              gap: 2,
+              gap: 3,
               paddingLeft: spacing.sm + 2,
               paddingRight: spacing.xs + 2,
-              paddingVertical: spacing.xs,
+              paddingVertical: spacing.xs + 1,
               borderRadius: 14,
-              backgroundColor: 'rgba(255,255,255,0.16)',
+              backgroundColor: 'rgba(255,255,255,0.18)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.22)',
             }}
           >
-            <Text style={[typography.caption, { color: CREAM, fontWeight: '700' }]}>
+            <Text style={[typography.caption, { color: CREAM, fontWeight: '800' }]}>
               {t('quote.previous7')}
             </Text>
             <Ionicons name="chevron-forward" size={13} color={CREAM} />
@@ -152,10 +170,11 @@ export default function DailyQuoteCard() {
                 {
                   color: '#FFFFFF',
                   marginTop: spacing.lg,
-                  fontSize: 19,
-                  lineHeight: 28,
+                  fontSize: 20,
+                  lineHeight: 30,
                   fontStyle: 'italic',
                   fontWeight: '500',
+                  letterSpacing: 0.2,
                 },
               ]}
             >
@@ -166,14 +185,14 @@ export default function DailyQuoteCard() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 8,
-                marginTop: spacing.md,
+                marginTop: spacing.md + 2,
               }}
             >
-              <View style={{ width: 22, height: 2, borderRadius: 1, backgroundColor: SAND }} />
+              <View style={{ width: 24, height: 2, borderRadius: 1, backgroundColor: SAND }} />
               <Text
                 style={[
                   typography.caption,
-                  { color: SAND, fontWeight: '800', flexShrink: 1 },
+                  { color: SAND, fontWeight: '800', flexShrink: 1, letterSpacing: 0.3 },
                 ]}
               >
                 {quote.source}
@@ -218,12 +237,16 @@ export default function DailyQuoteCard() {
             borderWidth: 1,
             borderColor: published ? 'rgba(255,255,255,0.3)' : CREAM,
             opacity: published ? 0.75 : 1,
+            shadowColor: published ? 'transparent' : '#3A1F08',
+            shadowOpacity: published ? 0 : 0.35,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 6 },
           }}
         >
           <Ionicons
             name={published ? 'checkmark-circle' : 'add-circle'}
             size={16}
-            color={published ? CREAM : '#9A6735'}
+            color={published ? CREAM : '#7A4B22'}
           />
           <Text
             style={[

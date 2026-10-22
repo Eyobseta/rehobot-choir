@@ -8,6 +8,7 @@ import {
 } from '@prisma/client';
 import { uploadBuffer, deleteByPublicId } from '../storage/cloudinary';
 import { fanOut } from '../notifications/notifications.service';
+
 // ---------- Member ----------
 
 export async function listPublishedMemories(search?: string) {
@@ -82,6 +83,35 @@ export async function getPublishedMemory(id: string) {
   if (!m || m.status !== MemoryStatus.PUBLISHED || m.deletedAt) {
     throw ApiError.notFound('Memory not found.');
   }
+  return m;
+}
+
+/**
+ * Returns a memory regardless of status, but ONLY if it belongs to the
+ * requesting user. Used by the "My submissions" detail view so members can
+ * see their own pending / rejected items.
+ */
+export async function getMyMemory(userId: string, id: string) {
+  const m = await prisma.memory.findUnique({
+    where: { id },
+    include: {
+      media: {
+        select: {
+          id: true,
+          type: true,
+          storageUrl: true,
+          youtubeUrl: true,
+        },
+      },
+    },
+  });
+
+  if (!m || m.deletedAt) throw ApiError.notFound('Memory not found.');
+
+  if (m.submittedByUserId !== userId) {
+    throw ApiError.forbidden('This memory does not belong to you.');
+  }
+
   return m;
 }
 
@@ -257,7 +287,6 @@ export async function approveMemory(id: string, leaderUserId: string) {
     },
   });
 
-  // Safe to always notify here — we already threw above if it was already PUBLISHED.
   await fanOutNotification(
     updated.id,
     updated.title,

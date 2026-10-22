@@ -1,17 +1,15 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTranslation } from 'react-i18next';
 import { useTheme } from '../theme/ThemeContext';
 import MemoriesScreen from '../features/memories/MemoriesScreen';
 import MemoryDetailScreen from '../features/memories/MemoryDetailScreen';
 import SubmitMemoryScreen from '../features/memories/SubmitMemoryScreen';
 import MyMemoriesScreen from '../features/memories/MyMemoriesScreen';
 import MemoryVideoScreen from '../features/memories/MemoryVideoScreen';
-import MemoriesHeader from '../features/memories/MemoriesHeader';
 
 export type MemoriesStackParamList = {
   MemoriesList: undefined;
-  MemoryDetail: { id: string };
+  MemoryDetail: { id: string; mineOnly?: boolean };
   SubmitMemory: undefined;
   MyMemories: undefined;
   MemoryVideo: { youtubeUrl: string; memoryTitle?: string };
@@ -34,7 +32,7 @@ export default function MemoriesStack() {
       <Stack.Screen
         name="MemoriesList"
         component={MemoriesScreen}
-        options={{ header: () => <MemoriesHeader /> }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="MemoryDetail"

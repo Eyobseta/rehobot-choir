@@ -1,6 +1,5 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTranslation } from 'react-i18next';
 import { useTheme } from '../theme/ThemeContext';
 import SongsScreen from '../features/songs/SongsScreen';
 import SongDetailScreen from '../features/songs/SongDetailScreen';
@@ -18,14 +17,13 @@ export type SongsStackParamList = {
   Offline: undefined;
   SongVideo: { youtubeUrl: string; title: string };
   Player: { title?: string; subtitle?: string } | undefined;
-    ZemaSubmissions: undefined;
+  ZemaSubmissions: undefined;
   ZemaEditor: { id: string | null };
 };
 
 const Stack = createNativeStackNavigator<SongsStackParamList>();
 
 export default function SongsStack() {
-  const { t } = useTranslation();
   const { theme } = useTheme();
 
   return (
@@ -40,27 +38,27 @@ export default function SongsStack() {
       <Stack.Screen
         name="SongsList"
         component={SongsScreen}
-        options={{ title: t('tabs.songs') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="SongDetail"
         component={SongDetailScreen}
-        options={{ title: '' }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="Favorites"
         component={FavoritesScreen}
-        options={{ title: t('songs.favorites') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Offline"
         component={OfflineSongsScreen}
-        options={{ title: t('songs.offline') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="SongVideo"
         component={SongVideoScreen}
-        options={{ title: '' }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
       <Stack.Screen
         name="Player"
@@ -71,15 +69,15 @@ export default function SongsStack() {
           animation: 'slide_from_bottom',
         }}
       />
-            <Stack.Screen
+      <Stack.Screen
         name="ZemaSubmissions"
         component={ZemaSubmissionsScreen}
-        options={{ title: t('zema.team') }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ZemaEditor"
         component={ZemaEditorScreen}
-        options={{ title: '' }}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
       />
     </Stack.Navigator>
   );

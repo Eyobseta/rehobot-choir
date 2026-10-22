@@ -40,18 +40,45 @@ export async function isOffline(songId: string): Promise<boolean> {
   return entries.some((e) => e.songId === songId);
 }
 
+/**
+ * Download and persist a song for offline use.
+ *
+ * @param onProgress Optional. Called with a 0..1 fraction whenever the
+ *   download reports byte progress. Fires at least once (with 1) on success.
+ */
 export async function saveOffline(
   songId: string,
   title: string,
   remoteUrl: string,
+  onProgress?: (pct: number) => void,
 ): Promise<OfflineEntry> {
   await ensureDir();
+
   const ext = remoteUrl.split('.').pop()?.split('?')[0] || 'mp3';
   const fileUri = `${DIR}${songId}.${ext}`;
 
-  const info = await FileSystem.getInfoAsync(fileUri);
-  if (!info.exists) {
-    await FileSystem.downloadAsync(remoteUrl, fileUri);
+  // If we already have the file, skip the download but still report 100%.
+  const existing = await FileSystem.getInfoAsync(fileUri);
+  if (!existing.exists) {
+    const download = FileSystem.createDownloadResumable(
+      remoteUrl,
+      fileUri,
+      {},
+      (p) => {
+        if (!onProgress) return;
+        const total = p.totalBytesExpectedToWrite;
+        const written = p.totalBytesWritten;
+        if (total > 0) {
+          // Cap at 0.99 so the UI can show 100% only after the file is on disk.
+          onProgress(Math.min(0.99, written / total));
+        }
+      },
+    );
+
+    const res = await download.downloadAsync();
+    if (!res?.uri) {
+      throw new Error('Download failed.');
+    }
   }
 
   const entry: OfflineEntry = {
@@ -64,6 +91,10 @@ export async function saveOffline(
   const entries = (await readIndex()).filter((e) => e.songId !== songId);
   entries.unshift(entry);
   await writeIndex(entries);
+
+  // Now that it's persisted, signal 100%.
+  if (onProgress) onProgress(1);
+
   return entry;
 }
 

@@ -11,8 +11,12 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
 import {
@@ -22,14 +26,26 @@ import {
   ApplicationDetail,
 } from '../../services/leaders';
 import { ApiError } from '../../services/api';
+import { BRAND, withAlpha } from '../auth/Auth_UI';
+import GlassBackButton from '../../components/GlassBackButton';
 import type { LeaderStackParamList } from '../../navigation/LeaderStack';
 
 type Props = NativeStackScreenProps<LeaderStackParamList, 'ApplicantDetail'>;
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const accents = {
+  violet: '#B6A0FF', violetSoft: '#B6A0FF22',
+  cyan: '#6EDBD5', cyanSoft: '#6EDBD522',
+  pink: '#EE9BBD', pinkSoft: '#EE9BBD22',
+  gold: '#E6C779', goldSoft: '#E6C77922',
+  lime: '#B8E986', limeSoft: '#B8E98622',
+};
 
 export default function ApplicantDetailScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
+  const insets = useSafeAreaInsets();
   const { id } = route.params;
 
   const [item, setItem] = useState<ApplicationDetail | null>(null);
@@ -116,7 +132,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={BRAND.violet} />
         <Text
           style={[
             typography.bodySmall,
@@ -138,126 +154,306 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
           justifyContent: 'center',
           backgroundColor: colors.background,
           padding: spacing.xl,
+          gap: spacing.md,
         }}
       >
-        <Text style={[typography.body, { color: colors.error }]}>
+        <View
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: 24,
+            backgroundColor: withAlpha(colors.error, 0.12),
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="person-outline" size={32} color={colors.error} />
+        </View>
+        <Text style={[typography.body, { color: colors.error, textAlign: 'center' }]}>
           {error ?? 'Not found'}
         </Text>
+
+        <View style={{ position: 'absolute', top: insets.top + 12, right: 16 }}>
+          <GlassBackButton onPress={() => navigation.goBack()} size={44} />
+        </View>
       </View>
     );
   }
 
+  const initial = item.fullName.trim().charAt(0).toUpperCase();
+  const genderLabel = item.gender
+    ? t(`register.${item.gender}`, { defaultValue: item.gender })
+    : '';
+
   return (
     <>
       <ScrollView
-        contentContainerStyle={{
-          padding: spacing.xl,
-          backgroundColor: colors.background,
-          paddingBottom: spacing.xxl,
-        }}
+        style={{ backgroundColor: colors.background }}
+        contentContainerStyle={{ paddingBottom: spacing.xxl }}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={{ alignItems: 'center' }}>
-          <Image
-            source={{ uri: item.profilePhotoUrl }}
-            style={{ width: 140, height: 140, borderRadius: 70 }}
+        {/* ---------- Hero ---------- */}
+        <LinearGradient
+          colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{
+            paddingHorizontal: 20,
+            paddingTop: insets.top + 16,
+            paddingBottom: 28,
+            borderBottomLeftRadius: 32,
+            borderBottomRightRadius: 32,
+            overflow: 'hidden',
+            alignItems: 'center',
+          }}
+        >
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: -60,
+              left: -70,
+              width: 210,
+              height: 210,
+              borderRadius: 105,
+              backgroundColor: withAlpha(BRAND.gold, 0.18),
+            }}
           />
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              bottom: -80,
+              right: -60,
+              width: 230,
+              height: 230,
+              borderRadius: 115,
+              backgroundColor: withAlpha(BRAND.water, 0.2),
+            }}
+          />
+
+          {/* Back — top-right of hero */}
+          <View
+            pointerEvents="box-none"
+            style={{ alignSelf: 'flex-end', marginBottom: 8 }}
+          >
+            <GlassBackButton
+              onPress={() => navigation.goBack()}
+              accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+              size={44}
+            />
+          </View>
+
+          {/* Avatar with gradient ring */}
+          <LinearGradient
+            colors={[BRAND.gold, BRAND.magenta, BRAND.violet, BRAND.water, BRAND.gold]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ width: 148, height: 148, borderRadius: 74, padding: 4 }}
+          >
+            {item.profilePhotoUrl ? (
+              <Image
+                source={{ uri: item.profilePhotoUrl }}
+                style={{ width: '100%', height: '100%', borderRadius: 70 }}
+              />
+            ) : (
+              <View
+                style={{
+                  flex: 1,
+                  borderRadius: 70,
+                  backgroundColor: BRAND.deep,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 54, fontWeight: '800', color: BRAND.gold }}>
+                  {initial}
+                </Text>
+              </View>
+            )}
+          </LinearGradient>
+
           <Text
             style={[
               typography.h2,
-              { color: colors.text, marginTop: spacing.md, textAlign: 'center' },
+              { color: '#FFFFFF', marginTop: 16, textAlign: 'center', fontWeight: '800' },
             ]}
           >
             {item.fullName}
           </Text>
-        </View>
 
-        <View style={{ marginTop: spacing.xl }}>
-          <Row label={t('register.phone')} value={item.phone} />
-          <Row label={t('register.email')} value={item.email} />
-          <Row label={t('register.gender')} value={item.gender} />
-          <Row
-            label={t('register.dateOfBirth')}
-            value={new Date(item.dateOfBirth).toISOString().slice(0, 10)}
-          />
-          <Row
-            label={t('register.emergencyContactName')}
-            value={item.emergencyContactName}
-          />
-          <Row
-            label={t('register.emergencyContactPhone')}
-            value={item.emergencyContactPhone}
-          />
-          {item.joiningDate && (
-            <Row
-              label={t('register.joiningDate')}
-              value={new Date(item.joiningDate).toISOString().slice(0, 10)}
-            />
-          )}
-          <Row
-            label={t('leader.submittedAt', { when: '' })}
-            value={new Date(item.createdAt).toLocaleString()}
-          />
-        </View>
-
-        {error && (
-          <Text
-            style={[
-              typography.bodySmall,
-              { color: colors.error, marginTop: spacing.md },
-            ]}
-          >
-            {error}
-          </Text>
-        )}
-
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: spacing.md,
-            marginTop: spacing.xl,
-          }}
-        >
-          <Pressable
-            onPress={() => setRejectModalOpen(true)}
-            disabled={busy}
+          {/* Pending chip */}
+          <View
             style={{
-              flex: 1,
-              paddingVertical: spacing.md,
-              borderRadius: radius.md,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              marginTop: 10,
+              backgroundColor: withAlpha('#F59E0B', 0.24),
               borderWidth: 1,
-              borderColor: colors.error,
-              alignItems: 'center',
-              opacity: busy ? 0.6 : 1,
+              borderColor: withAlpha('#F59E0B', 0.5),
             }}
           >
-            <Text style={[typography.button, { color: colors.error }]}>
-              {t('leader.reject')}
+            <Ionicons name="time" size={12} color="#FDE68A" />
+            <Text style={{ color: '#FDE68A', fontSize: 11, fontWeight: '800', letterSpacing: 0.6 }}>
+              {t('status.pendingTitle', { defaultValue: 'PENDING' })}
             </Text>
-          </Pressable>
+          </View>
+        </LinearGradient>
 
-          <Pressable
-            onPress={onApprove}
-            disabled={busy}
+        {/* ---------- Info card ---------- */}
+        <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.lg }}>
+          <View
             style={{
-              flex: 1,
-              paddingVertical: spacing.md,
-              borderRadius: radius.md,
-              backgroundColor: colors.primary,
-              alignItems: 'center',
-              opacity: busy ? 0.6 : 1,
+              borderRadius: 22,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              paddingHorizontal: 14,
+              overflow: 'hidden',
             }}
           >
-            {busy ? (
-              <ActivityIndicator color={colors.primaryText} />
-            ) : (
-              <Text style={[typography.button, { color: colors.primaryText }]}>
-                {t('leader.approve')}
-              </Text>
+            <InfoRow icon="call" tint={accents.lime} soft={accents.limeSoft} label={t('register.phone')} value={item.phone} />
+            <InfoRow icon="mail" tint={accents.cyan} soft={accents.cyanSoft} label={t('register.email')} value={item.email} />
+            <InfoRow icon="male-female" tint={accents.pink} soft={accents.pinkSoft} label={t('register.gender')} value={genderLabel} />
+            <InfoRow
+              icon="gift"
+              tint={accents.gold}
+              soft={accents.goldSoft}
+              label={t('register.dateOfBirth')}
+              value={new Date(item.dateOfBirth).toISOString().slice(0, 10)}
+            />
+            <InfoRow
+              icon="heart"
+              tint={accents.pink}
+              soft={accents.pinkSoft}
+              label={t('register.emergencyContactName')}
+              value={item.emergencyContactName}
+            />
+            <InfoRow
+              icon="medkit"
+              tint={accents.gold}
+              soft={accents.goldSoft}
+              label={t('register.emergencyContactPhone')}
+              value={item.emergencyContactPhone}
+            />
+            {item.joiningDate && (
+              <InfoRow
+                icon="calendar"
+                tint={accents.violet}
+                soft={accents.violetSoft}
+                label={t('register.joiningDate')}
+                value={new Date(item.joiningDate).toISOString().slice(0, 10)}
+              />
             )}
-          </Pressable>
+            <InfoRow
+              icon="time"
+              tint={accents.cyan}
+              soft={accents.cyanSoft}
+              label={t('leader.submittedAt', { when: '' })}
+              value={new Date(item.createdAt).toLocaleString()}
+              last
+            />
+          </View>
+
+          {error && (
+            <View
+              style={{
+                marginTop: spacing.md,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                padding: spacing.md,
+                borderRadius: 14,
+                backgroundColor: withAlpha(colors.error, 0.1),
+                borderWidth: 1,
+                borderColor: withAlpha(colors.error, 0.35),
+              }}
+            >
+              <Ionicons name="alert-circle" size={18} color={colors.error} />
+              <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
+                {error}
+              </Text>
+            </View>
+          )}
+
+          {/* Decision buttons */}
+          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl }}>
+            <Pressable
+              onPress={() => setRejectModalOpen(true)}
+              disabled={busy}
+              style={{ flex: 1, opacity: busy ? 0.6 : 1 }}
+              accessibilityRole="button"
+            >
+              <LinearGradient
+                colors={['#C0262D', '#E0405A']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  minHeight: 54,
+                  borderRadius: radius.md,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  shadowColor: '#C0262D',
+                  shadowOpacity: 0.4,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: 6,
+                }}
+              >
+                <Ionicons name="close-circle" size={18} color="#FFFFFF" />
+                <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}>
+                  {t('leader.reject')}
+                </Text>
+              </LinearGradient>
+            </Pressable>
+
+            <Pressable
+              onPress={onApprove}
+              disabled={busy}
+              style={{ flex: 1, opacity: busy ? 0.6 : 1 }}
+              accessibilityRole="button"
+            >
+              <LinearGradient
+                colors={['#16A34A', '#22C55E']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  minHeight: 54,
+                  borderRadius: radius.md,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  shadowColor: '#16A34A',
+                  shadowOpacity: 0.4,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: 6,
+                }}
+              >
+                {busy ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                    <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}>
+                      {t('leader.approve')}
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
 
+      {/* ---------- Reject modal ---------- */}
       <Modal
         visible={rejectModalOpen}
         transparent
@@ -271,7 +467,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
           <View
             style={{
               flex: 1,
-              backgroundColor: colors.overlay,
+              backgroundColor: 'rgba(0,0,0,0.55)',
               justifyContent: 'center',
               padding: spacing.xl,
             }}
@@ -279,18 +475,35 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
             <View
               style={{
                 backgroundColor: colors.surface,
-                borderRadius: radius.lg,
-                padding: spacing.xl,
+                borderRadius: 28,
+                padding: 22,
               }}
             >
-              <Text style={[typography.h3, { color: colors.text }]}>
-                {t('leader.rejectReasonTitle')}
-              </Text>
+              <View
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 16,
+                  backgroundColor: withAlpha(colors.error, 0.16),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="close-circle" size={26} color={colors.error} />
+              </View>
 
               <Text
                 style={[
+                  typography.h3,
+                  { color: colors.text, marginTop: 12, fontWeight: '800' },
+                ]}
+              >
+                {t('leader.rejectReasonTitle')}
+              </Text>
+              <Text
+                style={[
                   typography.bodySmall,
-                  { color: colors.textSecondary, marginTop: spacing.md },
+                  { color: colors.textSecondary, marginTop: 4 },
                 ]}
               >
                 {t('leader.rejectReasonLabel')}
@@ -308,8 +521,8 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
                   minHeight: 100,
                   backgroundColor: colors.background,
                   borderColor: colors.border,
-                  borderWidth: 1,
-                  borderRadius: radius.md,
+                  borderWidth: 1.5,
+                  borderRadius: radius.md + 2,
                   padding: spacing.md,
                   color: colors.text,
                   textAlignVertical: 'top',
@@ -330,32 +543,48 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
                   }}
                   style={{
                     flex: 1,
-                    paddingVertical: spacing.md,
+                    minHeight: 54,
                     borderRadius: radius.md,
-                    borderWidth: 1,
+                    borderWidth: 1.5,
                     borderColor: colors.border,
                     alignItems: 'center',
+                    justifyContent: 'center',
                   }}
                 >
                   <Text style={[typography.button, { color: colors.text }]}>
                     {t('common.cancel')}
                   </Text>
                 </Pressable>
+
                 <Pressable
                   onPress={onReject}
                   disabled={busy}
-                  style={{
-                    flex: 1,
-                    paddingVertical: spacing.md,
-                    borderRadius: radius.md,
-                    backgroundColor: colors.error,
-                    alignItems: 'center',
-                    opacity: busy ? 0.6 : 1,
-                  }}
+                  style={{ flex: 1, opacity: busy ? 0.7 : 1 }}
                 >
-                  <Text style={[typography.button, { color: '#FFFFFF' }]}>
-                    {t('leader.rejectSubmit')}
-                  </Text>
+                  <LinearGradient
+                    colors={['#C0262D', '#E0405A']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      minHeight: 54,
+                      borderRadius: radius.md,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    {busy ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="close-circle" size={16} color="#FFFFFF" />
+                        <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}>
+                          {t('leader.rejectSubmit')}
+                        </Text>
+                      </>
+                    )}
+                  </LinearGradient>
                 </Pressable>
               </View>
             </View>
@@ -364,15 +593,57 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
       </Modal>
     </>
   );
+}
 
-  function Row({ label, value }: { label: string; value: string }) {
-    return (
-      <View style={{ marginBottom: spacing.md }}>
-        <Text style={[typography.caption, { color: colors.textSecondary }]}>
-          {label}
-        </Text>
-        <Text style={[typography.body, { color: colors.text }]}>{value}</Text>
+function InfoRow({
+  icon,
+  tint,
+  soft,
+  label,
+  value,
+  last,
+}: {
+  icon: IconName;
+  tint: string;
+  soft: string;
+  label: string;
+  value: string;
+  last?: boolean;
+}) {
+  const { theme } = useTheme();
+  const { colors, typography } = theme;
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 13,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: colors.border,
+      }}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 12,
+          backgroundColor: soft,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Ionicons name={icon} size={18} color={tint} />
       </View>
-    );
-  }
+      <View style={{ flex: 1 }}>
+        <Text style={[typography.caption, { color: colors.textSecondary }]}>{label}</Text>
+        <Text
+          style={[typography.body, { color: colors.text, fontWeight: '600' }]}
+          numberOfLines={1}
+        >
+          {value || '—'}
+        </Text>
+      </View>
+    </View>
+  );
 }

@@ -22,7 +22,8 @@ export type MemoryDetail = {
   title: string;
   description: string | null;
   date: string;
-  status: string;
+  status: 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'DELETED';
+  rejectionReason?: string | null;
   media: MemoryMediaItem[];
 };
 
@@ -56,6 +57,12 @@ export async function listMemoryYears(): Promise<MemoryYear[]> {
 
 export async function getMemory(id: string): Promise<MemoryDetail> {
   const res = await apiGet<{ item: MemoryDetail }>(`/memories/${id}`);
+  return res.item;
+}
+
+/** Returns the memory regardless of status, only if it belongs to the caller. */
+export async function getMyMemory(id: string): Promise<MemoryDetail> {
+  const res = await apiGet<{ item: MemoryDetail }>(`/memories/mine/${id}`);
   return res.item;
 }
 

@@ -27,6 +27,7 @@ import {
 import { ApiError } from '../../services/api';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
 import { DatePill, EmptyState } from './Memorykit';
+import MemoriesHeader from './MemoriesHeader';
 
 const PLACEHOLDERS: readonly [string, string][] = [
   [BRAND.violet, BRAND.magenta],
@@ -83,119 +84,126 @@ export default function MemoriesScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View
-          pointerEvents="none"
-          style={[
-            styles.blob,
-            { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.2) },
-          ]}
-        />
-        <View
-          pointerEvents="none"
-          style={[
-            styles.blob,
-            { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.2) },
-          ]}
-        />
-
-        <SearchBox
-          value={search}
-          onChangeText={setSearch}
-          placeholder={t('memories.searchPlaceholder')}
-        />
-
-        <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
-          <HeaderButton
-            solid
-            icon="add-circle"
-            label={t('memories.submit')}
-            onPress={() => navigation.navigate('SubmitMemory')}
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              void load(search);
+            }}
+            tintColor={BRAND.violet}
+            colors={[BRAND.violet]}
           />
-          <HeaderButton
-            icon="albums"
-            label={t('memories.mine')}
-            onPress={() => navigation.navigate('MyMemories')}
-          />
-        </View>
+        }
+        ListHeaderComponent={
+          <View>
+            {/* Custom header — now scrolls with the list */}
+            <MemoriesHeader />
 
-        {years.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ marginTop: spacing.md }}
-            contentContainerStyle={{ paddingRight: spacing.lg }}
-          >
-            <YearChip
-              label={t('memories.allYears')}
-              active={year === null}
-              onPress={() => setYear(null)}
-            />
-            {years.map((y) => {
-              const active = year === y.year;
-              return (
-                <YearChip
-                  key={y.year}
-                  label={`${y.year} (${y.count})`}
-                  active={active}
-                  onPress={() => setYear(active ? null : y.year)}
+            <LinearGradient
+              colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.header}
+            >
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.blob,
+                  { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.2) },
+                ]}
+              />
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.blob,
+                  { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.2) },
+                ]}
+              />
+
+              <SearchBox
+                value={search}
+                onChangeText={setSearch}
+                placeholder={t('memories.searchPlaceholder')}
+              />
+
+              <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
+                <HeaderButton
+                  solid
+                  icon="add-circle"
+                  label={t('memories.submit')}
+                  onPress={() => navigation.navigate('SubmitMemory')}
                 />
-              );
-            })}
-          </ScrollView>
-        )}
-      </LinearGradient>
+                <HeaderButton
+                  icon="albums"
+                  label={t('memories.mine')}
+                  onPress={() => navigation.navigate('MyMemories')}
+                />
+              </View>
 
-      {error && (
-        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-          <ErrorBanner message={error} />
-        </View>
-      )}
+              {years.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ marginTop: spacing.md }}
+                  contentContainerStyle={{ paddingRight: spacing.lg }}
+                >
+                  <YearChip
+                    label={t('memories.allYears')}
+                    active={year === null}
+                    onPress={() => setYear(null)}
+                  />
+                  {years.map((y) => {
+                    const active = year === y.year;
+                    return (
+                      <YearChip
+                        key={y.year}
+                        label={`${y.year} (${y.count})`}
+                        active={active}
+                        onPress={() => setYear(active ? null : y.year)}
+                      />
+                    );
+                  })}
+                </ScrollView>
+              )}
+            </LinearGradient>
 
-      {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={BRAND.violet} />
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            padding: spacing.lg,
-            paddingBottom: spacing.xl * 2,
-          }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                void load(search);
-              }}
-              tintColor={BRAND.violet}
-              colors={[BRAND.violet]}
-            />
-          }
-          ListEmptyComponent={
+            {error && (
+              <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+                <ErrorBanner message={error} />
+              </View>
+            )}
+
+            {loading && (
+              <View style={{ paddingVertical: spacing.xl * 2, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={BRAND.violet} />
+              </View>
+            )}
+          </View>
+        }
+        ListEmptyComponent={
+          !loading ? (
             <EmptyState icon="images-outline" text={t('memories.empty')} />
-          }
-          renderItem={({ item, index }) => (
-            <MemoryCard
-              item={item}
-              index={index}
-              onPress={() => navigation.navigate('MemoryDetail', { id: item.id })}
-            />
-          )}
-        />
-      )}
+          ) : null
+        }
+        renderItem={({ item, index }) => (
+          <MemoryCard
+            item={item}
+            index={index}
+            onPress={() => navigation.navigate('MemoryDetail', { id: item.id })}
+          />
+        )}
+      />
     </View>
   );
 }
+
+// ---------- Helpers ----------
 
 function SearchBox({
   value,
@@ -394,6 +402,7 @@ function MemoryCard({
   return (
     <Animated.View
       style={{
+        marginHorizontal: spacing.lg,
         marginBottom: spacing.lg,
         opacity: enter,
         transform: [

@@ -13,7 +13,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { getMemory, MemoryDetail, MemoryMediaItem } from '../../services/memories';
+import {
+  getMemory,
+  getMyMemory,
+  MemoryDetail,
+  MemoryMediaItem,
+} from '../../services/memories';
 import { ApiError } from '../../services/api';
 import {
   playTrack,
@@ -42,7 +47,7 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
-  const { id } = route.params;
+  const { id, mineOnly } = route.params as { id: string; mineOnly?: boolean };
 
   const [item, setItem] = useState<MemoryDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,7 +59,8 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
   useEffect(() => {
     (async () => {
       try {
-        setItem(await getMemory(id));
+        const data = mineOnly ? await getMyMemory(id) : await getMemory(id);
+        setItem(data);
       } catch (e) {
         const err = e as ApiError;
         setError(`${err.message} [${err.code}]`);
@@ -62,7 +68,7 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, mineOnly]);
 
   useEffect(() => {
     const unsub = subscribe(setPlayerStatus);
@@ -101,8 +107,7 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
       >
         <ErrorBanner message={error ?? t('memories.notFound')} />
 
-        {/* Back button still reachable if the memory failed to load */}
-        <View style={{ position: 'absolute', top: insets.top + 12, left: 16 }}>
+        <View style={{ position: 'absolute', top: insets.top + 12, right: 16 }}>
           <GlassBackButton onPress={() => navigation.goBack()} size={44} />
         </View>
       </View>
@@ -141,6 +146,8 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
     id: p.id,
     uri: p.storageUrl ?? undefined,
   }));
+
+  const isNonPublished = mineOnly && item.status !== 'PUBLISHED';
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -191,12 +198,116 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
             </View>
           </Animated.View>
 
+          {/* Status banner — only when opened from "My submissions" */}
+          {isNonPublished && (
+            <Animated.View
+              style={[
+                {
+                  marginTop: 16,
+                  padding: 14,
+                  borderRadius: 16,
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                },
+                item.status === 'PENDING_REVIEW'
+                  ? {
+                      backgroundColor: 'rgba(245,158,11,0.12)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(245,158,11,0.4)',
+                    }
+                  : {
+                      backgroundColor: 'rgba(220,38,38,0.10)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(220,38,38,0.35)',
+                    },
+                fadeUp(1),
+              ]}
+            >
+              <Ionicons
+                name={item.status === 'PENDING_REVIEW' ? 'time' : 'close-circle'}
+                size={18}
+                color={item.status === 'PENDING_REVIEW' ? '#F59E0B' : colors.error}
+                style={{ marginTop: 2 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[
+                    typography.caption,
+                    {
+                      color:
+                        item.status === 'PENDING_REVIEW'
+                          ? '#B45309'
+                          : colors.error,
+                      fontWeight: '800',
+                      letterSpacing: 0.4,
+                      textTransform: 'uppercase',
+                    },
+                  ]}
+                >
+                  {item.status === 'PENDING_REVIEW'
+                    ? t('memories.statusPending')
+                    : t('memories.statusRejected')}
+                </Text>
+                <Text
+                  style={[
+                    typography.bodySmall,
+                    { color: colors.text, marginTop: 4, lineHeight: 20 },
+                  ]}
+                >
+                  {item.status === 'PENDING_REVIEW'
+                    ? t('memories.pendingBanner', {
+                        defaultValue:
+                          'Waiting for a choir leader to review and publish this memory.',
+                      })
+                    : t('memories.rejectedBanner', {
+                        defaultValue:
+                          'This memory was rejected. See the reason below.',
+                      })}
+                </Text>
+              </View>
+            </Animated.View>
+          )}
+
+          {/* Rejection reason */}
+          {isNonPublished &&
+            item.status === 'REJECTED' &&
+            item.rejectionReason && (
+              <Animated.View
+                style={[
+                  {
+                    marginTop: 12,
+                    padding: 14,
+                    borderRadius: 14,
+                    borderLeftWidth: 4,
+                    borderLeftColor: colors.error,
+                    backgroundColor: 'rgba(220,38,38,0.08)',
+                  },
+                  fadeUp(2),
+                ]}
+              >
+                <Text
+                  style={[
+                    typography.caption,
+                    { color: colors.error, fontWeight: '800' },
+                  ]}
+                >
+                  {t('memories.rejectionReason')}
+                </Text>
+                <Text
+                  style={[typography.bodySmall, { color: colors.text, marginTop: 4 }]}
+                >
+                  {item.rejectionReason}
+                </Text>
+              </Animated.View>
+            )}
+
           {item.description && (
             <Animated.View
               style={[
                 styles.descCard,
                 { backgroundColor: colors.surface, borderColor: colors.border },
-                fadeUp(1),
+                fadeUp(3),
               ]}
             >
               <View style={[styles.quoteBar, { backgroundColor: BRAND.gold }]} />
@@ -209,7 +320,7 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
           )}
 
           {audio?.storageUrl && (
-            <Animated.View style={[{ marginTop: spacing.lg }, fadeUp(2)]}>
+            <Animated.View style={[{ marginTop: spacing.lg }, fadeUp(4)]}>
               <Animated.View
                 style={{
                   transform: [{ scale: audioScale }],
@@ -260,7 +371,7 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
 
           {youtubes.length > 0 && (
             <Animated.View
-              style={[{ marginTop: spacing.lg, gap: spacing.sm }, fadeUp(3)]}
+              style={[{ marginTop: spacing.lg, gap: spacing.sm }, fadeUp(5)]}
             >
               {youtubes.map((y) => (
                 <GradientButton
@@ -287,10 +398,9 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
         </View>
       </ScrollView>
 
-      {/* Floating back button over the carousel */}
       <View
         pointerEvents="box-none"
-        style={{ position: 'absolute', top: insets.top + 12, left: 16, zIndex: 10 }}
+        style={{ position: 'absolute', top: insets.top + 12, right: 16, zIndex: 10 }}
       >
         <GlassBackButton
           onPress={() => navigation.goBack()}

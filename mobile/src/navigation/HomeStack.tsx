@@ -43,10 +43,17 @@ export default function HomeStack() {
       }}
     >
       <Stack.Screen name="HomeMain" component={HomeScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Directory" component={DirectoryScreen} options={{ title: t('directory.title') }} />
-      <Stack.Screen name="MemberProfile" component={MemberProfileScreen} options={{ title: t('memberProfile.title') }} />
+      <Stack.Screen
+  name="Directory"
+  component={DirectoryScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen
+  name="MemberProfile"
+  component={MemberProfileScreen}
+  options={{ headerShown: false, animation: 'slide_from_right' }}
+/>
 
-      {/* Events — custom gradient heroes */}
       <Stack.Screen name="EventsList" component={EventsScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="EventDetail"
@@ -54,7 +61,6 @@ export default function HomeStack() {
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
 
-      {/* Announcements — custom gradient heroes */}
       <Stack.Screen name="AnnouncementsList" component={AnnouncementsScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="AnnouncementDetail"
@@ -62,8 +68,17 @@ export default function HomeStack() {
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
 
-      <Stack.Screen name="DailyQuoteComposer" component={DailyQuoteComposerScreen} options={{ title: '' }} />
-      <Stack.Screen name="DailyQuoteHistory" component={DailyQuoteHistoryScreen} options={{ title: t('quote.title') }} />
+      <Stack.Screen
+        name="DailyQuoteComposer"
+        component={DailyQuoteComposerScreen}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="DailyQuoteHistory"
+        component={DailyQuoteHistoryScreen}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      />
+
       <Stack.Screen name="BirthdayDetail" component={BirthdayDetailScreen} options={{ title: t('birthdays.title') }} />
     </Stack.Navigator>
   );

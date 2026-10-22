@@ -21,7 +21,7 @@ const APP_ENV: AppEnv = 'development';
 // ---- Configure your LAN IP here ----
 // Run `ipconfig` on Windows to find the IPv4 Address of your Wi-Fi adapter.
 // Example: 192.168.1.42
-const DEV_LAN_IP = '192.168.19.145';
+const DEV_LAN_IP = '192.168.43.19';
 const DEV_PORT = 3000;
 
 const DEV_BASE_URL = `http://${DEV_LAN_IP}:${DEV_PORT}`;
