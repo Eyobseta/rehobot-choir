@@ -28,7 +28,7 @@ import debugRoutes from './scheduler/debug.routes';
 import birthdayRoutes from './birthdays/birthdays.routes';
 import chatRoutes from './chat/chat.routes';
 import chatStreamRoutes from './chat/chat.stream.routes';
-import chatActionsRoutes from './chat/chat.actions.routes';
+// NOTE: chat.actions.routes.ts is deleted — its routes now live in chat.routes.ts.
 
 export function createApp(): Application {
   const app = express();
@@ -62,20 +62,17 @@ export function createApp(): Application {
   api.use('/songs', songRoutes);
   api.use('/leaders', leaderSongRoutes);
   api.use('/zema', zemaRoutes);
-    api.use('/memories', memoryRoutes);
+  api.use('/memories', memoryRoutes);
   api.use('/leaders/memories', leaderMemoryRoutes);
   api.use('/quotes', quoteRoutes);
   api.use('/notifications', notificationRoutes);
-    api.use('/debug', debugRoutes);
-      api.use('/birthdays', birthdayRoutes);
-    api.use('/chats', chatRoutes);
-      api.use('/chats', chatStreamRoutes);
-  api.use('/chats', chatRoutes);
-    api.use('/chats', chatStreamRoutes);
-  api.use('/chats', chatActionsRoutes);
+  api.use('/debug', debugRoutes);
+  api.use('/birthdays', birthdayRoutes);
+
+  // Chat: stream FIRST (own auth, must not hit the "/:id" route), then REST. Each ONCE.
+  api.use('/chats', chatStreamRoutes);
   api.use('/chats', chatRoutes);
 
-    
   app.use('/api/v1', api);
 
   app.use(notFoundHandler);

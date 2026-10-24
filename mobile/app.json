@@ -30,8 +30,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Rehobot Choir needs access to your photos so you can upload a profile picture.",
-          "cameraPermission": "Rehobot Choir needs camera access so you can take a profile picture."
+          "photosPermission": "Rehobot Choir needs access to your photos so you can upload a profile picture and send photos in chat.",
+          "cameraPermission": "Rehobot Choir needs camera access so you can take a profile picture or a photo to send in chat."
         }
       ],
       [
@@ -42,7 +42,15 @@
           "androidMode": "default",
           "androidCollapsedTitle": "Rehobot Choir"
         }
-      ]
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Rehobot Choir uses the microphone so you can record voice messages in chat."
+        }
+      ],
+      "expo-sqlite",
+      "expo-image"
     ],
     "extra": {
       "eas": {

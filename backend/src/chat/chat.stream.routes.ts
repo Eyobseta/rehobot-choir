@@ -1,94 +1,95 @@
 import { Router, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import { env } from '../config/env';
+import { verifyAccessToken, AccessTokenPayload } from '../auth/jwt';
 import { prisma } from '../db/prisma';
 import {
   registerStream,
   unregisterStream,
   setOpenConversationsForUser,
-  sendKeepAlive,
+  ensureKeepAliveLoop,
+  broadcastPresence,
   isOnline,
   onlineUserIds,
-  sendToUsers,
+  Stream,
 } from '../realtime/sseHub';
 
+/**
+ * IMPORTANT: mount this router BEFORE chat.routes in app.ts, otherwise
+ * GET /chats/stream is swallowed by the authenticated "/:id" route.
+ */
 const router = Router();
 
-type AccessPayload = {
-  sub: string;
-  role: string;
-  sid: string;
-};
-
-let keepAliveStarted = false;
-function ensureKeepAliveLoop(): void {
-  if (keepAliveStarted) return;
-  keepAliveStarted = true;
-  setInterval(() => sendKeepAlive(), 25_000);
-}
-
-function readAuthHeader(req: Request): string | null {
-  const header = req.header('authorization') ?? req.header('Authorization');
+function readBearer(req: Request): string | null {
+  const header = req.header('authorization');
   if (!header || !header.startsWith('Bearer ')) return null;
-  return header.slice('Bearer '.length).trim();
+  return header.slice('Bearer '.length).trim() || null;
 }
 
-async function validateToken(token: string): Promise<AccessPayload | null> {
-  let payload: AccessPayload;
+async function validateToken(token: string): Promise<AccessTokenPayload | null> {
+  let payload: AccessTokenPayload;
   try {
-    payload = jwt.verify(token, env.jwtAccessSecret) as AccessPayload;
+    payload = verifyAccessToken(token);
   } catch {
     return null;
   }
-  const session = await prisma.session.findUnique({ where: { id: payload.sid } });
+  const session = await prisma.session.findUnique({
+    where: { id: payload.sid },
+    select: {
+      revokedAt: true,
+      userId: true,
+      user: { select: { status: true, deletedAt: true } },
+    },
+  });
   if (!session || session.revokedAt || session.userId !== payload.sub) return null;
-  const user = await prisma.user.findUnique({ where: { id: payload.sub } });
-  if (!user || user.deletedAt || user.status !== 'APPROVED') return null;
+  if (session.user.deletedAt || session.user.status !== 'APPROVED') return null;
   return payload;
 }
 
+function reject(res: Response, code: string, message: string): void {
+  res.status(401).json({ status: 401, code, message });
+}
+
 /**
- * GET /api/v1/chats/stream?token=<jwt>
+ * GET /api/v1/chats/stream
+ * Auth: `Authorization: Bearer <jwt>` (preferred) or `?token=<jwt>`.
  */
 router.get('/stream', async (req: Request, res: Response) => {
-  const token = String(req.query.token ?? '');
-  if (!token) {
-    res.status(401).json({ status: 401, code: 'UNAUTHORIZED', message: 'Token required.' });
-    return;
-  }
+  const token = readBearer(req) ?? String(req.query.token ?? '');
+  if (!token) return reject(res, 'UNAUTHORIZED', 'Token required.');
+
   const payload = await validateToken(token);
-  if (!payload) {
-    res.status(401).json({ status: 401, code: 'INVALID_TOKEN', message: 'Invalid or expired token.' });
-    return;
-  }
+  if (!payload) return reject(res, 'INVALID_TOKEN', 'Invalid or expired token.');
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
+  req.socket.setTimeout(0);
+  req.socket.setNoDelay(true);
 
-  res.write(`event: hello\n`);
-  res.write(`data: ${JSON.stringify({ userId: payload.sub })}\n\n`);
+  res.write('retry: 3000\n\n');
+  res.write(`event: hello\ndata: ${JSON.stringify({ userId: payload.sub })}\n\n`);
 
-  const stream = {
+  const stream: Stream = {
     res,
     openConversationIds: new Set<string>(),
     connectedAt: Date.now(),
   };
 
-  registerStream(payload.sub, stream);
+  const cameOnline = registerStream(payload.sub, stream);
   ensureKeepAliveLoop();
+  if (cameOnline) broadcastPresence(payload.sub, true);
 
-  // Presence broadcast: on stream start, tell others.
-  broadcastPresence(payload.sub, true).catch(() => {});
-
+  let cleaned = false;
   const cleanup = () => {
-    unregisterStream(payload.sub, stream);
-    broadcastPresence(payload.sub, false).catch(() => {});
+    if (cleaned) return;
+    cleaned = true;
+    const wentOffline = unregisterStream(payload.sub, stream);
+    if (wentOffline) broadcastPresence(payload.sub, false);
   };
   req.on('close', cleanup);
   req.on('error', cleanup);
+  res.on('close', cleanup);
 });
 
 /**
@@ -96,44 +97,37 @@ router.get('/stream', async (req: Request, res: Response) => {
  * Body: { conversationIds: string[] }
  */
 router.post('/stream/open-conversations', async (req: Request, res: Response) => {
-  const token = readAuthHeader(req);
-  if (!token) {
-    res.status(401).json({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication required.' });
-    return;
-  }
+  const token = readBearer(req);
+  if (!token) return reject(res, 'UNAUTHORIZED', 'Authentication required.');
   const payload = await validateToken(token);
-  if (!payload) {
-    res.status(401).json({ status: 401, code: 'INVALID_TOKEN', message: 'Invalid or expired token.' });
-    return;
-  }
+  if (!payload) return reject(res, 'INVALID_TOKEN', 'Invalid or expired token.');
+
   const ids = Array.isArray(req.body?.conversationIds)
     ? (req.body.conversationIds as unknown[]).map((v) => String(v))
     : [];
   setOpenConversationsForUser(payload.sub, ids);
-  res.json({ ok: true, count: ids.length });
+  res.json({ ok: true, count: Math.min(ids.length, 20) });
 });
 
 /**
- * GET /api/v1/chats/stream/presence?ids=id1,id2,id3
+ * GET /api/v1/chats/stream/presence?ids=id1,id2
  */
 router.get('/stream/presence', async (req: Request, res: Response) => {
-  const token = readAuthHeader(req);
-  if (!token) {
-    res.status(401).json({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication required.' });
-    return;
-  }
+  const token = readBearer(req);
+  if (!token) return reject(res, 'UNAUTHORIZED', 'Authentication required.');
   const payload = await validateToken(token);
-  if (!payload) {
-    res.status(401).json({ status: 401, code: 'INVALID_TOKEN', message: 'Invalid or expired token.' });
+  if (!payload) return reject(res, 'INVALID_TOKEN', 'Invalid or expired token.');
+
+  const ids = String(req.query.ids ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 200);
+  if (ids.length === 0) {
+    res.json({ items: [], onlineCount: onlineUserIds().length });
     return;
   }
 
-  const idsParam = String(req.query.ids ?? '');
-  const ids = idsParam ? idsParam.split(',').map((s) => s.trim()).filter(Boolean) : [];
-  if (ids.length === 0) {
-    res.json({ items: [] });
-    return;
-  }
   const users = await prisma.user.findMany({
     where: { id: { in: ids } },
     select: { id: true, lastActiveAt: true },
@@ -147,17 +141,5 @@ router.get('/stream/presence', async (req: Request, res: Response) => {
     onlineCount: onlineUserIds().length,
   });
 });
-
-async function broadcastPresence(userId: string, online: boolean): Promise<void> {
-  const recipients = await prisma.user.findMany({
-    where: { status: 'APPROVED', deletedAt: null },
-    select: { id: true },
-  });
-  sendToUsers(
-    recipients.map((r) => r.id),
-    'presence:changed',
-    { userId, online, at: new Date().toISOString() },
-  );
-}
 
 export default router;

@@ -6,13 +6,15 @@ import { subscribeRole, isLeader } from '../services/role';
 
 import HomeStack from './HomeStack';
 import SongsStack from './SongsStack';
-import ChatScreen from '../features/chat/ChatScreen';
+import ChatStack from './ChatStack';
 import ProfileStack from './ProfileStack';
 import LeaderStack from './LeaderStack';
 import NowPlayingBar from '../features/songs/NowPlayingBar';
 import MemoriesStack from './MemoriesStack';
 import { getUnread, subscribeUnread } from '../services/unreadStore';
 import AnimatedTabBar from './AnimatedTabBar';
+import { useChatBootstrap } from '../features/chat/useChatBootstrap';
+import { useChatState } from '../features/chat/chatStore';
 
 const Tab = createBottomTabNavigator();
 
@@ -21,6 +23,10 @@ export default function RootTabs() {
   const [unread, setUnreadState] = useState(getUnread());
 
   const [leader, setLeader] = useState(isLeader());
+
+  // Realtime chat connection + conversation list + unread counts (whole app).
+  useChatBootstrap();
+  const { unreadTotal: chatUnread } = useChatState();
 
   useEffect(() => {
     setLeader(isLeader());
@@ -60,8 +66,12 @@ export default function RootTabs() {
       />
       <Tab.Screen
         name="Chat"
-        component={ChatScreen}
-        options={{ tabBarLabel: t('tabs.chat') }}
+        component={ChatStack}
+        options={{
+          tabBarLabel: t('tabs.chat'),
+          // Unread chat messages across all conversations.
+          tabBarBadge: chatUnread > 0 ? chatUnread : undefined,
+        }}
       />
 
       {leader && (

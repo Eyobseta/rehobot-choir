@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { v2 as cloudinary } from 'cloudinary';
 import { env } from '../config/env';
 
@@ -13,43 +14,46 @@ export type UploadResult = {
   publicId: string;
 };
 
+export type UploadOptions = {
+  /**
+   * Skip the 1024px / auto-quality transformation (images only).
+   * Chat photos use this so "Original" really is original (SRS 19.10).
+   * Backwards compatible: existing callers keep the old behaviour.
+   */
+  keepOriginal?: boolean;
+};
+
 /**
  * Upload an in-memory buffer to Cloudinary.
  *
- * @param buffer          File contents from multer memoryStorage
- * @param folder          Cloudinary folder (e.g. "rehobot/profile-photos")
- * @param publicIdPrefix  Optional prefix used in the generated public_id
- * @param resourceType    'image' (default) | 'video' | 'raw' | 'auto'
- *   - 'image' for photos.
- *   - 'video' for audio AND video (Cloudinary stores audio under the
- *     video resource type).
- *   - 'raw' for generic files.
- *   - 'auto' lets Cloudinary detect — slower, less predictable.
+ * @param resourceType 'image' (default) | 'video' | 'raw' | 'auto'
+ *   'video' is also used for audio (Cloudinary stores audio under video).
  */
 export function uploadBuffer(
   buffer: Buffer,
   folder: string,
   publicIdPrefix?: string,
   resourceType: 'image' | 'video' | 'raw' | 'auto' = 'image',
+  options: UploadOptions = {},
 ): Promise<UploadResult> {
   return new Promise((resolve, reject) => {
-    // Only images get the resize/compress transformation.
     const transformation =
-      resourceType === 'image'
+      resourceType === 'image' && !options.keepOriginal
         ? [
             { width: 1024, height: 1024, crop: 'limit' },
             { quality: 'auto', fetch_format: 'auto' },
           ]
         : undefined;
 
+    // Random suffix: parallel uploads in the same millisecond must not collide.
+    const suffix = `${Date.now()}_${randomBytes(4).toString('hex')}`;
+
     const stream = cloudinary.uploader.upload_stream(
       {
         folder,
         resource_type: resourceType,
         transformation,
-        public_id: publicIdPrefix
-          ? `${publicIdPrefix}_${Date.now()}`
-          : undefined,
+        public_id: publicIdPrefix ? `${publicIdPrefix}_${suffix}` : undefined,
       },
       (err, result) => {
         if (err || !result) {

@@ -1,13 +1,20 @@
 // Rehobot Choir — Prisma schema
 // Phase 1 (SRS v1.0)
+//
+// Chat changes vs previous version:
+//  - datasource: directUrl (Neon pooled URL cannot run migrations)
+//  - ChatGroup.createdByUserId is optional (SetNull on a required field was invalid)
+//  - ChatMessage.clientId + @@unique([senderId, clientId])  (idempotent sends)
+//  - MessageReport @@unique([messageId, reporterId])        (one report per user)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ------------------------------------------------------------
@@ -59,8 +66,8 @@ model User {
   zemaMemberships    ZemaMembership[] @relation("ZemaMember")
   zemaAssigned       ZemaMembership[] @relation("ZemaAssignedBy")
   songSubmissions    SongSubmission[] @relation("SongSubmissions")
-  
-    chatMemberships      ConversationMember[]
+
+  chatMemberships      ConversationMember[]
   chatMessages         ChatMessage[]
   chatReactions        MessageReaction[]
   chatPins             MessagePin[]
@@ -75,10 +82,10 @@ model User {
   birthdayCommentLikes  BirthdayCommentLike[]  @relation("BirthdayCommentLikes")
   birthdayReactions     BirthdayReaction[]     @relation("BirthdayReactions")
 
-    submittedMemories Memory[] @relation("SubmittedMemories")
+  submittedMemories Memory[] @relation("SubmittedMemories")
   reviewedMemories  Memory[] @relation("ReviewedMemories")
-    submittedQuotes DailyQuote[] @relation("SubmittedQuotes")
-      pushTokens            PushToken[]
+  submittedQuotes   DailyQuote[] @relation("SubmittedQuotes")
+  pushTokens        PushToken[]
   notificationPreference NotificationPreference?
 
   @@index([status])
@@ -502,8 +509,6 @@ model SongSubmission {
   @@map("song_submissions")
 }
 
-
-
 // ------------------------------------------------------------
 // MEMORIES (SRS 14)
 // ------------------------------------------------------------
@@ -572,7 +577,6 @@ model MemoryMedia {
   @@map("memory_media")
 }
 
-
 // ------------------------------------------------------------
 // DAILY BIBLE QUOTE (feature added beyond base SRS)
 // One quote per calendar day, enforced by a unique index.
@@ -612,9 +616,6 @@ model DailyQuote {
 // ------------------------------------------------------------
 // PUSH TOKENS (SRS 32)
 // One row per device that has opted in to notifications.
-// A user may have multiple devices, but only one is active per
-// the one-device login rule (SRS 6.5). We keep at most one row
-// per user by replacing on each registration.
 // ------------------------------------------------------------
 
 model PushToken {
@@ -635,9 +636,6 @@ model PushToken {
 
 // ------------------------------------------------------------
 // NOTIFICATION PREFERENCES (SRS 16.4)
-// One row per user. All types default to enabled except none.
-// Chat notifications are always enabled by SRS 16.4 and are
-// forced ON in the mobile UI.
 // ------------------------------------------------------------
 
 model NotificationPreference {
@@ -660,8 +658,6 @@ model NotificationPreference {
 
 // ------------------------------------------------------------
 // BIRTHDAY POSTS, COMMENTS, LIKES, REACTIONS
-// A mini social feed scoped to birthdays.
-// One post per birthday person per year.
 // ------------------------------------------------------------
 
 model BirthdayPost {
@@ -774,9 +770,8 @@ model ChatConversation {
   id             String           @id @default(cuid())
   type           ConversationType
 
-  // For DIRECT, we store a deterministic "participant hash" so that
-  // opening a DM with the same person twice does not create a second
-  // conversation. Format: sorted userId1 + "|" + userId2.
+  // DIRECT: sorted "userId1|userId2" so a DM is never duplicated.
+  // GENERAL: the literal "GENERAL" so only one General chat can exist.
   directKey      String?          @unique
 
   createdAt      DateTime         @default(now())
@@ -825,8 +820,9 @@ model ChatGroup {
   managerId       String
   manager         User              @relation("GroupManager", fields: [managerId], references: [id], onDelete: Restrict)
 
-  createdByUserId String
-  createdBy       User              @relation("GroupCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  // Optional so that onDelete: SetNull is valid.
+  createdByUserId String?
+  createdBy       User?             @relation("GroupCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
@@ -848,6 +844,9 @@ model ChatMessage {
   // For TEXT messages. For PHOTO/VOICE, this is an optional caption.
   text           String?
 
+  // Client-generated id so a retried send never creates a duplicate.
+  clientId       String?
+
   // For replies (SRS 19.19)
   replyToId      String?
   replyTo        ChatMessage?      @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
@@ -862,7 +861,11 @@ model ChatMessage {
   pins           MessagePin[]
   reports        MessageReport[]
 
+  @@unique([senderId, clientId])
   @@index([conversationId, createdAt])
+  @@index([conversationId, createdAt, id])
+  @@index([conversationId, editedAt])
+  @@index([conversationId, deletedAt])
   @@index([senderId])
   @@map("chat_messages")
 }
@@ -904,9 +907,9 @@ model MessageReaction {
   createdAt  DateTime     @default(now())
 
   // SRS 19.20 — a member may add multiple distinct emojis to one message.
-  // The same emoji twice by the same user on the same message is blocked.
   @@unique([messageId, userId, emoji])
   @@index([messageId])
+  @@index([createdAt])
   @@map("message_reactions")
 }
 
@@ -949,6 +952,7 @@ model MessageReport {
   // SRS 19.23 — records retained for 30 days after creation.
   retainUntil       DateTime
 
+  @@unique([messageId, reporterId])
   @@index([messageId])
   @@index([reporterId])
   @@index([resolvedAt])
