@@ -69,14 +69,12 @@ export default function LeaderStack() {
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
 
-      {/* Manage member — custom gradient hero */}
       <Stack.Screen
         name="ManageMember"
         component={ManageMemberScreen}
         options={{ headerShown: false }}
       />
 
-      {/* Events — custom gradient heroes */}
       <Stack.Screen
         name="LeaderEvents"
         component={LeaderEventsScreen}
@@ -88,7 +86,6 @@ export default function LeaderStack() {
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
 
-      {/* Attendance — custom gradient heroes */}
       <Stack.Screen
         name="LeaderAttendance"
         component={LeaderAttendanceScreen}
@@ -105,7 +102,6 @@ export default function LeaderStack() {
         options={{ headerShown: false }}
       />
 
-      {/* Announcements — custom gradient heroes */}
       <Stack.Screen
         name="LeaderAnnouncements"
         component={LeaderAnnouncementsScreen}
@@ -117,7 +113,6 @@ export default function LeaderStack() {
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
 
-      {/* Songs — custom gradient heroes */}
       <Stack.Screen
         name="LeaderSongs"
         component={LeaderSongsScreen}
@@ -144,7 +139,6 @@ export default function LeaderStack() {
         options={{ headerShown: false }}
       />
 
-      {/* Memories — custom gradient heroes */}
       <Stack.Screen
         name="LeaderMemories"
         component={LeaderMemoriesScreen}
@@ -161,10 +155,12 @@ export default function LeaderStack() {
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
       <Stack.Screen
-  name="SongVideo"
-  component={SongVideoScreen}
-  options={{ headerShown: false, animation: 'slide_from_right' }}
-/>
+        name="SongVideo"
+        component={SongVideoScreen}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      />
+      
+    
     </Stack.Navigator>
   );
 }

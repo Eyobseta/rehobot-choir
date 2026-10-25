@@ -88,6 +88,17 @@ model User {
   pushTokens        PushToken[]
   notificationPreference NotificationPreference?
 
+  // Funding (annual hosting contribution + special donations)
+  annualContributions      AnnualContributionRecord[]  @relation("AnnualParticipant")
+  donationPayments         SpecialDonationPayment[]    @relation("DonationParticipant")
+  fundingDeclarations      FundingDeclaration[]        @relation("DeclarationParticipant")
+  fundingDecisions         FundingDeclaration[]        @relation("DeclarationDecidedBy")
+  createdDonationCampaigns SpecialDonationCampaign[]   @relation("CampaignCreatedBy")
+  fundingAuditActions      FundingAuditLog[]           @relation("FundingAuditActor")
+  fundingConfigsCreated    AnnualFundingConfiguration[] @relation("FundingConfigCreatedBy")
+  fundingConfigsUpdated    AnnualFundingConfiguration[] @relation("FundingConfigUpdatedBy")
+  paymentInstructionsEdited PaymentInstructions[]      @relation("PaymentInstructionsUpdatedBy")
+
   @@index([status])
   @@index([role])
   @@map("users")
@@ -373,6 +384,10 @@ enum NotificationType {
   MEMORY_PUBLISHED
   LEADERSHIP_CHANGE
   DAILY_QUOTE
+  FUNDING_REMINDER
+  FUNDING_VERIFICATION_NEEDED
+  FUNDING_RESULT
+  FUNDING_CAMPAIGN
 }
 
 model Notification {
@@ -974,4 +989,298 @@ model ChatReadState {
   @@unique([conversationId, userId])
   @@index([conversationId])
   @@map("chat_read_states")
+}
+
+// ============================================================
+// FUNDING (Funding Features SRS v1.0)
+//  - All money is stored as integer santim (1 ETB = 100 santim). Never Float/Decimal-from-JS.
+//  - Date-only values are stored twice: Ethiopian y/m/d (what users entered/see)
+//    and a normalised Gregorian @db.Date (what queries/sorting use).
+//  - Declarations are append-only history. Resubmission after rejection creates a
+//    NEW FundingDeclaration; the rejected one is never overwritten.
+// ============================================================
+
+enum FundingStatus {
+  UNPAID
+  PENDING_VERIFICATION
+  PAID
+  REJECTED
+}
+
+enum DeclarationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  VOID          // e.g. campaign cancelled while pending; kept for history
+}
+
+enum FundingRecordType {
+  ANNUAL
+  DONATION
+  CAMPAIGN
+  CONFIGURATION
+  PAYMENT_INSTRUCTIONS
+}
+
+enum DonationType {
+  VOLUNTARY
+  REQUIRED
+}
+
+enum CampaignStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  BANK
+  TELEBIRR
+}
+
+// One row per contribution year (Ethiopian year).
+model AnnualFundingConfiguration {
+  id                    String   @id @default(cuid())
+
+  contributionYear      Int      @unique        // Ethiopian year, e.g. 2019
+  amountMinor           Int                      // santim; default 10000 = 100 ETB
+
+  includeMembers        Boolean  @default(true)
+  includeLeaders        Boolean  @default(true)
+
+  // Contract expiry (Ethiopian date as entered) + normalised Gregorian equivalent
+  expiryEthYear         Int
+  expiryEthMonth        Int
+  expiryEthDay          Int
+  expiryDate            DateTime @db.Date
+
+  // Backend-calculated: one Ethiopian month before expiry
+  deadlineEthYear       Int
+  deadlineEthMonth      Int
+  deadlineEthDay        Int
+  deadlineDate          DateTime @db.Date
+
+  // Reminders
+  monthlyReminderEnabled Boolean @default(true)
+  monthlyReminderEthDay  Int     @default(1)    // day-of-Ethiopian-month the monthly reminder goes out
+  preDeadlineReminderDays Int    @default(7)    // 0 disables
+
+  receiptUploadsEnabled Boolean  @default(false)
+  referenceEnabled      Boolean  @default(true)
+
+  active                Boolean  @default(true)
+
+  createdByUserId       String?
+  createdBy             User?    @relation("FundingConfigCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUserId       String?
+  updatedBy             User?    @relation("FundingConfigUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  records               AnnualContributionRecord[]
+
+  @@map("annual_funding_configurations")
+}
+
+// One obligation per participant per contribution year.
+model AnnualContributionRecord {
+  id               String        @id @default(cuid())
+
+  configId         String
+  config           AnnualFundingConfiguration @relation(fields: [configId], references: [id], onDelete: Restrict)
+
+  participantId    String
+  participant      User          @relation("AnnualParticipant", fields: [participantId], references: [id], onDelete: Cascade)
+
+  contributionYear Int
+  amountDueMinor   Int           // snapshot at creation; later config changes do not rewrite history
+  status           FundingStatus @default(UNPAID)
+  paidMinor        Int           @default(0) 
+
+  // Denormalised "current decision" for fast lists. Source of truth = declarations.
+  verifiedByUserId String?
+  verifiedAt       DateTime?
+  rejectionReason  String?
+
+  // Optimistic-concurrency guard for atomic transitions.
+  version          Int           @default(0)
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  declarations     FundingDeclaration[]
+
+  // SRS 3.2: at most one active obligation per participant per year.
+  @@unique([participantId, contributionYear])
+  @@index([contributionYear, status])
+  @@index([configId])
+  @@map("annual_contribution_records")
+}
+
+model SpecialDonationCampaign {
+  id                   String         @id @default(cuid())
+
+  title                String
+  description          String
+  donationType         DonationType
+
+  requestedAmountMinor Int?           // fixed per-person amount; null = open amount
+  targetAmountMinor    Int?
+
+  startEthYear         Int?
+  startEthMonth        Int?
+  startEthDay          Int?
+  startDate            DateTime?      @db.Date
+
+  deadlineEthYear      Int
+  deadlineEthMonth     Int
+  deadlineEthDay       Int
+  deadlineDate         DateTime       @db.Date
+
+  imageUrl             String?
+  imagePublicId        String?
+
+  status               CampaignStatus @default(DRAFT)
+
+  createdByUserId      String?
+  createdBy            User?          @relation("CampaignCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  publishedAt          DateTime?
+  closedAt             DateTime?
+  cancelledAt          DateTime?
+
+  payments             SpecialDonationPayment[]
+
+  @@index([status, deadlineDate])
+  @@map("special_donation_campaigns")
+}
+
+// One payment record per participant per campaign; history lives in declarations.
+model SpecialDonationPayment {
+  id               String        @id @default(cuid())
+
+  campaignId       String
+  campaign         SpecialDonationCampaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+
+  participantId    String
+  participant      User          @relation("DonationParticipant", fields: [participantId], references: [id], onDelete: Cascade)
+
+  amountMinor      Int           // latest declared amount (what counts once PAID)
+  status           FundingStatus @default(UNPAID)
+  paidMinor        Int           @default(0) 
+
+  verifiedByUserId String?
+  verifiedAt       DateTime?
+  rejectionReason  String?
+  version          Int           @default(0)
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  declarations     FundingDeclaration[]
+
+  @@unique([campaignId, participantId])
+  @@index([campaignId, status])
+  @@map("special_donation_payments")
+}
+
+// Append-only declaration history for BOTH annual records and donation payments.
+// Exactly one of annualRecordId / donationPaymentId is set (enforced in the service layer + CHECK in migration).
+model FundingDeclaration {
+  id                String            @id @default(cuid())
+
+  annualRecordId    String?
+  annualRecord      AnnualContributionRecord? @relation(fields: [annualRecordId], references: [id], onDelete: Cascade)
+  donationPaymentId String?
+  donationPayment   SpecialDonationPayment?   @relation(fields: [donationPaymentId], references: [id], onDelete: Cascade)
+
+  participantId     String
+  participant       User              @relation("DeclarationParticipant", fields: [participantId], references: [id], onDelete: Cascade)
+
+  amountMinor       Int
+  paymentMethod     PaymentMethod?    // <--- ADD THIS LINE
+  
+  reference         String?
+  receiptUrl        String?           // must be served via an authenticated endpoint, never a public link
+  receiptPublicId   String?
+
+  // Client-generated id so repeated "I've Paid" taps / retries never create duplicates.
+  clientId          String?
+
+  status            DeclarationStatus @default(PENDING)
+  declaredAt        DateTime          @default(now())
+
+  decidedByUserId   String?
+  decidedBy         User?             @relation("DeclarationDecidedBy", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  decidedAt         DateTime?
+  rejectionReason   String?
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([participantId, clientId])
+  @@index([annualRecordId, declaredAt])
+  @@index([donationPaymentId, declaredAt])
+  @@index([status, declaredAt])
+  @@map("funding_declarations")
+}
+
+// Append-only. No update/delete endpoints may exist for this table.
+model FundingAuditLog {
+  id                String            @id @default(cuid())
+
+  actorId           String?
+  actor             User?             @relation("FundingAuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  action            String            // e.g. DECLARED, APPROVED, REJECTED, CORRECTED, CAMPAIGN_PUBLISHED, CONFIG_UPDATED
+  recordType        FundingRecordType
+  recordId          String
+
+  previousStatus    String?
+  newStatus         String?
+  reason            String?
+  details           Json?             // old/new values for config & instruction changes
+
+  createdAt         DateTime          @default(now())
+
+  @@index([recordType, recordId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("funding_audit_logs")
+}
+
+model PaymentInstructions {
+  id                String        @id @default(cuid())
+
+  method            PaymentMethod
+  providerName      String        // e.g. "Commercial Bank of Ethiopia", "Telebirr"
+  accountHolderName String
+  accountIdentifier String        // account number / Telebirr number. NEVER credentials/PINs/OTPs.
+  note              String?
+  active            Boolean       @default(true)
+
+  updatedByUserId   String?
+  updatedBy         User?         @relation("PaymentInstructionsUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([active])
+  @@map("payment_instructions")
+}
+
+// De-duplicates scheduled reminders: the job can run twice and still send once.
+model FundingReminderLog {
+  id         String   @id @default(cuid())
+  recipientId String
+  recordType FundingRecordType
+  recordId   String
+  kind       String   // MONTHLY | PRE_DEADLINE | CAMPAIGN_DEADLINE | REJECTED
+  periodKey  String   // e.g. "2019-02" for the Ethiopian month, or "2019-pre"
+  sentAt     DateTime @default(now())
+
+  @@unique([recipientId, recordType, recordId, kind, periodKey])
+  @@map("funding_reminder_logs")
 }

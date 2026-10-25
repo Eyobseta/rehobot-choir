@@ -5,6 +5,7 @@ import { runBirthdayJob } from './birthdays.job';
 import { runEventRemindersJob } from './eventReminders.job';
 import { runNotificationCleanupJob } from './cleanup.job';
 import { ApiError } from '../utils/ApiError';
+import { runFundingReminderJob } from '../funding/funding.job';
 
 const router = Router();
 
@@ -43,6 +44,11 @@ router.post('/cleanup', async (_req, res, next) => {
   } catch (e) {
     next(e);
   }
+});
+
+
+router.post('/funding-reminders', async (_req, res, next) => {
+  try { res.json(await runFundingReminderJob()); } catch (e) { next(e); }
 });
 
 export default router;

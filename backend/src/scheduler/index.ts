@@ -3,6 +3,7 @@ import { env } from '../config/env';
 import { runBirthdayJob } from './birthdays.job';
 import { runEventRemindersJob } from './eventReminders.job';
 import { runNotificationCleanupJob } from './cleanup.job';
+import { runFundingReminderJob } from '../funding/funding.job';
 
 let started = false;
 
@@ -52,6 +53,20 @@ export function startScheduler(): void {
       console.warn('[scheduler] event reminder job failed', e);
     }
   });
+
+    // 07:00 Addis Ababa time every day — funding reminders (de-duplicated, safe to run twice)
+  cron.schedule(
+    '0 7 * * *',
+    async () => {
+      try {
+        const r = await runFundingReminderJob();
+        console.log(`[scheduler] funding reminders: monthly=${r.monthly} preDeadline=${r.preDeadline}`);
+      } catch (e) {
+        console.warn('[scheduler] funding reminder job failed', e);
+      }
+    },
+    { timezone: 'Africa/Addis_Ababa' },
+  );
 
   // In development only, expose a way to run the jobs on demand
   // (see the /debug endpoints in a later step or via Postman).

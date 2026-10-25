@@ -28,7 +28,9 @@ import debugRoutes from './scheduler/debug.routes';
 import birthdayRoutes from './birthdays/birthdays.routes';
 import chatRoutes from './chat/chat.routes';
 import chatStreamRoutes from './chat/chat.stream.routes';
-// NOTE: chat.actions.routes.ts is deleted — its routes now live in chat.routes.ts.
+import fundingRoutes from './funding/funding.routes';
+import donationRoutes from './funding/donation.routes'; // NEW
+import fundingAdminRoutes from './funding/funding-admin.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -68,10 +70,13 @@ export function createApp(): Application {
   api.use('/notifications', notificationRoutes);
   api.use('/debug', debugRoutes);
   api.use('/birthdays', birthdayRoutes);
-
-  // Chat: stream FIRST (own auth, must not hit the "/:id" route), then REST. Each ONCE.
+  
   api.use('/chats', chatStreamRoutes);
   api.use('/chats', chatRoutes);
+
+  api.use('/funding', fundingRoutes);
+  api.use('/funding', donationRoutes); // NEW
+  api.use('/admin/funding', fundingAdminRoutes);
 
   app.use('/api/v1', api);
 

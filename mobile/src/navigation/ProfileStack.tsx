@@ -1,6 +1,5 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTranslation } from 'react-i18next';
 import { useTheme } from '../theme/ThemeContext';
 import ProfileScreen from '../features/profile/ProfileScreen';
 import ChangePasswordScreen from '../features/profile/ChangePasswordScreen';
@@ -12,6 +11,13 @@ import LanguageScreen from '../features/profile/LanguageScreen';
 import MyAttendanceScreen from '../features/attendance/MyAttendanceScreen';
 import NotificationsScreen from '../features/notifications/NotificationsScreen';
 import NotificationPreferencesScreen from '../features/notifications/NotificationPreferencesScreen';
+import FundingScreen from '../features/funding/FundingScreen';
+import CreateCampaignScreen from '../features/funding/CreateCampaignScreen';
+import CampaignDetailScreen from '../features/funding/CampaignDetailScreen';
+import AnnualDetailScreen from '../features/funding/AnnualDetailScreen';
+import PayFlowScreen, { PayFlowParams } from '../features/funding/Payflowscreen';
+import AdminFundingSetupScreen from '../features/funding/AdminFundingSetupScreen';
+import ManageInstructionsScreen from '../features/funding/ManageInstructionsScreen';
 
 export type ProfileStackParamList = {
   ProfileHome: undefined;
@@ -24,12 +30,20 @@ export type ProfileStackParamList = {
   MyAttendance: undefined;
   Notifications: undefined;
   NotificationPreferences: undefined;
+  Funding: undefined;
+  /** `id` present = edit that campaign (draft, or published with limits). */
+  CreateCampaign: { id?: string } | undefined;
+  CampaignDetail: { id: string };
+  AnnualDetail: undefined;
+  /** Pay Now: How to pay -> Confirm -> Submitted, all in one screen. */
+  PayFlow: PayFlowParams;
+  AdminFundingSetup: undefined;
+  ManageInstructions: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
 export default function ProfileStack() {
-  const { t } = useTranslation();
   const { theme } = useTheme();
 
   return (
@@ -39,36 +53,27 @@ export default function ProfileStack() {
         headerTintColor: theme.colors.text,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: theme.colors.background },
+        headerShown: false,
       }}
     >
-      <Stack.Screen
-        name="ProfileHome"
-        component={ProfileScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-  name="OwnProfile"
-  component={OwnProfileScreen}
-  options={{ headerShown: false }}
-/>
-<Stack.Screen
-  name="EditProfile"
-  component={EditProfileScreen}
-  options={{ headerShown: false }}
-/>
+      <Stack.Screen name="ProfileHome" component={ProfileScreen} />
+      <Stack.Screen name="OwnProfile" component={OwnProfileScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+      <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
+      <Stack.Screen name="Appearance" component={AppearanceScreen} />
+      <Stack.Screen name="Language" component={LanguageScreen} />
+      <Stack.Screen name="MyAttendance" component={MyAttendanceScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
 
-      {/* All gradient-hero screens: native header hidden */}
-      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="DeleteAccount"  component={DeleteAccountScreen}  options={{ headerShown: false }} />
-      <Stack.Screen name="Appearance"     component={AppearanceScreen}     options={{ headerShown: false }} />
-      <Stack.Screen name="Language"       component={LanguageScreen}       options={{ headerShown: false }} />
-      <Stack.Screen name="MyAttendance"   component={MyAttendanceScreen}   options={{ headerShown: false }} />
-      <Stack.Screen name="Notifications"  component={NotificationsScreen}  options={{ headerShown: false }} />
-      <Stack.Screen
-        name="NotificationPreferences"
-        component={NotificationPreferencesScreen}
-        options={{ headerShown: false }}
-      />
+      <Stack.Screen name="Funding" component={FundingScreen} />
+      <Stack.Screen name="CreateCampaign" component={CreateCampaignScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="CampaignDetail" component={CampaignDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AnnualDetail" component={AnnualDetailScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="PayFlow" component={PayFlowScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="AdminFundingSetup" component={AdminFundingSetupScreen} />
+      <Stack.Screen name="ManageInstructions" component={ManageInstructionsScreen} />
     </Stack.Navigator>
   );
 }
