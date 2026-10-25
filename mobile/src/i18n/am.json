@@ -166,6 +166,12 @@
     "subtitle": "ይህ እርምጃ ሊመለስ አይችልም።"
   },
   "leaderTools": {
+    "appointTitle": "እንደ መሪ ይሾሙ?",
+    "appointBody": "{{name}} የመዘምራን መሪ ይሆናሉ እና የመሪነት ፈቃዶችን ያገኛሉ።",
+    "appointYes": "ሹም",
+    "appointSuccessTitle": "መሪ ተሾመ",
+    "appointSuccessBody": "{{name}} አሁን የመዘምራን መሪ ናቸው።",
+    "appoint": "መሪ ሹም",
     "manageMember": "አባል ያስተዳድሩ",
     "lookupTitle": "አባል ይፈልጉ",
     "lookupSubtitle": "የአባሉን ስልክ ቁጥር ያስገቡ",
@@ -340,6 +346,8 @@
     "deleted": "ማስታወቂያው ተሰርዟል።",
     "noEvent": "የለም",
     "songs": "መዝሙሮች",
+    "selectSongs": "መዝሙሮችን ይምረጡ (አማራጭ)",
+    "noSongsSelected": "ምንም መዝሙር አልተመረጠም",
     "notFound": "ማስታወቂያው አልተገኘም።"
   },
   "songs": {
@@ -731,7 +739,7 @@
     "pendingCount_other": "{{count}} ማሳወቂያዎች በግምገማ ላይ",
     "pendingCoversBalance": "በመጠባበቅ ላይ ያሉ ማሳወቂያዎችዎ ሙሉ ቀሪውን ሸፍነዋል። ማረጋገጫ ይጠብቁ።",
     "morePending": "ተጨማሪ በመጠባበቅ ላይ",
-    "openDetails": "ዝርዝሩን ይክፈታል",
+    "openDetails": "ዝርዝሩን ይከፍታል",
     "submittedBodyMulti": "ማሳወቂያዎ በመሪ ለማረጋገጥ እየጠበቀ ነው። ማንኛውንም ጊዜ ተጨማሪ ክፍያ ማሳወቅ ይችላሉ።",
     "reviewed": "ተገምግሟል — ይህ ነው የሚቀመጠው",
     "activeYearOn": "አባላት ይህን ዓመት ያያሉ፤ ክፍያም ማሳወቅ ይችላሉ።",
@@ -743,5 +751,9 @@
     "pendingShort": "በመረጋገጥ ላይ",
     "pendingLower": "በመጠባበቅ ላይ",
     "noMembers": "ምንም አባል አልተገኘም።"
+  },
+  "editProfile": {
+    "phoneTaken": "ይህ የስልክ ቁጥር አስቀድሞ ጥቅም ላይ ውሏል።",
+    "emailTaken": "ይህ ኢሜይል አስቀድሞ ጥቅም ላይ ውሏል።"
   }
 }

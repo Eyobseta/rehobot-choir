@@ -100,15 +100,14 @@ export default function AdminFundingSetupScreen() {
     try {
       await leaderUpsertAnnualConfig({
         contributionYear: y, amountMinor, expiry,
-        confirmedDeadline: preview.deadline.eth,   // the exact deadline the leader reviewed
+        confirmedDeadline: preview.deadline.eth,
         active,
-        reason: reason.trim() || undefined,        // required by the server when changing an existing year
+        reason: reason.trim() || undefined,
       });
-      // FIX: after a successful save, this year now exists — the reason becomes required next time.
-      setHasExisting(true);
+      setHasExisting(true); // Ensure this is set after save
       navigation.goBack();
     } catch (e) {
-      setError(errorText(e)); // e.g. DEADLINE_NOT_CONFIRMED / reason required
+      setError(errorText(e));
     } finally {
       busyRef.current = false; setBusy(false);
     }

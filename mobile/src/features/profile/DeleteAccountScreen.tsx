@@ -8,6 +8,9 @@ import { deleteOwnAccount } from '../../services/auth';
 import { ApiError } from '../../services/api';
 import { setSessionState } from '../../services/session';
 import { setRole } from '../../services/role';
+import { clearChatCache } from '../chat/chatCache';
+import { clearAllOffline } from '../../services/offlineSongs';
+import { cacheClearAll } from '../../services/cache';
 import {
   KeyboardAwareScroll,
   AuthField,
@@ -34,7 +37,15 @@ export default function DeleteAccountScreen({ navigation }: any) {
     if (!password) return setError(t('register.fieldRequired'));
     setBusy(true);
     try {
+      // 1) Delete on backend (soft delete, revokes sessions)
       await deleteOwnAccount(password);
+      
+      // 2) Clear all local caches and files
+      await clearChatCache();
+      await clearAllOffline();
+      await cacheClearAll();
+      
+      // 3) Reset local session state
       setRole(null);
       setSessionState('unauthenticated');
     } catch (e) {

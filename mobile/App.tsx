@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet, AppState, AppStateStatus } from 'react-native';
 import {
   NavigationContainer,
   DefaultTheme,
@@ -18,10 +18,13 @@ import {
 import { setOnUnauthorized } from './src/services/api';
 import { configureForegroundNotifications } from './src/services/pushTokens';
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000; // SRS 6.6 — 7 days inactivity
+
 function AppShell() {
   const { theme, ready: themeReady } = useTheme();
   const [sessionReady, setSessionReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const backgroundTime = useRef<number | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -29,6 +32,16 @@ function AppShell() {
       if (state === 'authenticated') {
         const { refreshRole } = await import('./src/services/role');
         await refreshRole();
+
+        // Restore cache scope from the token's user
+        const { me } = await import('./src/services/auth');
+        const { setCacheScope } = await import('./src/services/cache');
+        try {
+          const res = await me();
+          setCacheScope(res.user.id);
+        } catch {
+          // offline — fall back to token scope via role
+        }
 
         const { registerDeviceWithBackend } = await import(
           './src/services/pushTokens'
@@ -54,6 +67,25 @@ function AppShell() {
       setOnUnauthorized(null);
     };
   }, []);
+
+  // ---- 7-day inactivity logout (SRS 6.6, adjusted from 30 min) ----
+  useEffect(() => {
+    const handleAppState = (next: AppStateStatus) => {
+      if (next === 'background' || next === 'inactive') {
+        backgroundTime.current = Date.now();
+      } else if (next === 'active' && backgroundTime.current) {
+        const elapsed = Date.now() - backgroundTime.current;
+        backgroundTime.current = null;
+        if (elapsed > SEVEN_DAYS_MS && authenticated) {
+          void import('./src/services/auth').then(({ logout }) => logout());
+          void import('./src/services/role').then(({ setRole }) => setRole(null));
+          setAuthenticated(false);
+        }
+      }
+    };
+    const sub = AppState.addEventListener('change', handleAppState);
+    return () => sub.remove();
+  }, [authenticated]);
 
   if (!themeReady || !sessionReady) {
     return (
@@ -88,8 +120,6 @@ export default function App() {
   const [i18nReady, setI18nReady] = useState(false);
 
   useEffect(() => {
-    // Configure the global notification handler once, at app startup,
-    // so that foreground notifications appear as banners.
     configureForegroundNotifications();
   }, []);
 

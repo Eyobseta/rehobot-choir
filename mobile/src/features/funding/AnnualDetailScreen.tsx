@@ -58,8 +58,12 @@ export default function AnnualDetailScreen() {
   const { record, history, config } = annual;
   const prog = record.progress;
   const pendingMinor = record.pendingAmount?.minor ?? 0;
-  // Cap = remaining verified balance minus already-pending declarations.
-  const maxNewMinor = Math.max(0, (prog.remaining?.minor ?? 0) - pendingMinor);
+
+  // Safely calculate maxNewMinor — fall back to amountDue - paid when
+  // `prog.remaining` is null (open-amount edge case).
+  const remaining = prog.remaining?.minor ?? (record.amountDue.minor - prog.paid.minor);
+  const maxNewMinor = Math.max(0, remaining - pendingMinor);
+
   const pending = record.status === 'PENDING_VERIFICATION';
   const pastYears = data?.pastYears ?? [];
   const canDeclare = record.canDeclare && maxNewMinor > 0;

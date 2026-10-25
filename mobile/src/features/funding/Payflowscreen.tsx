@@ -53,7 +53,10 @@ export default function PayFlowScreen() {
 
   const loadInstructions = useCallback(async () => {
     setLoading(true); setLoadErr(null);
-    try { setItems((await getPaymentInstructions()).items); }
+    try {
+      const res = await getPaymentInstructions();
+      setItems(res.items);
+    }
     catch (e) { setLoadErr(errorText(e)); }
     finally { setLoading(false); }
   }, []);

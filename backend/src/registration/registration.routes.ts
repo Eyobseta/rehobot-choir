@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { register, getStatus } from './registration.service';
 import { ApiError } from '../utils/ApiError';
+import { EthDate } from '../utils/ethiopianCalendar';
 
 const router = Router();
 
@@ -40,16 +41,25 @@ router.post(
         joiningDate,
       } = req.body ?? {};
 
+      // Parse the Ethiopian date objects sent by the mobile app
+      let parsedDOB: EthDate;
+      try {
+        parsedDOB = JSON.parse(String(dateOfBirth));
+      } catch {
+        throw ApiError.badRequest('Invalid dateOfBirth format.');
+      }
+      const parsedJoining = joiningDate ? JSON.parse(String(joiningDate)) : undefined;
+
       const result = await register({
         fullName,
         phone,
         email,
         password,
         gender,
-        dateOfBirth,
+        dateOfBirth: parsedDOB,
         emergencyContactName,
         emergencyContactPhone,
-        joiningDate,
+        joiningDate: parsedJoining,
         photo: { buffer: req.file.buffer, mimetype: req.file.mimetype },
       });
       res.status(201).json(result);

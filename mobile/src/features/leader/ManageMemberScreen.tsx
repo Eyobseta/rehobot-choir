@@ -23,6 +23,7 @@ import {
   lookupMember,
   resetMemberPassword,
   deleteMember,
+  appointMember,
   MemberLookup,
 } from '../../services/leaderMembers';
 import { ApiError } from '../../services/api';
@@ -312,6 +313,50 @@ export default function ManageMemberScreen({ navigation }: any) {
                     label={t('leaderTools.delete')}
                   />
                 </View>
+
+                {/* ---------- Appoint as Leader (members only) ---------- */}
+                {member.role === 'MEMBER' && (
+                  <AnimatedButton
+                    onPress={() =>
+                      Alert.alert(
+                        t('leaderTools.appointTitle', { defaultValue: 'Appoint as Leader?' }),
+                        t('leaderTools.appointBody', {
+                          name: member.fullName ?? member.phone,
+                          defaultValue: '{{name}} will become a choir leader and gain leader permissions.',
+                        }),
+                        [
+                          { text: t('common.cancel'), style: 'cancel' },
+                          {
+                            text: t('leaderTools.appointYes', { defaultValue: 'Appoint' }),
+                            onPress: async () => {
+                              setBusy(true);
+                              try {
+                                await appointMember(member.id);
+                                Alert.alert(
+                                  t('leaderTools.appointSuccessTitle', { defaultValue: 'Leader appointed' }),
+                                  t('leaderTools.appointSuccessBody', {
+                                    name: member.fullName ?? member.phone,
+                                    defaultValue: '{{name}} is now a choir leader.',
+                                  }),
+                                );
+                                setMember({ ...member, role: 'LEADER' });
+                              } catch (e) {
+                                const err = e as ApiError;
+                                setError(`${err.message} [${err.code}]`);
+                              } finally {
+                                setBusy(false);
+                              }
+                            },
+                          },
+                        ],
+                      )
+                    }
+                    disabled={busy}
+                    colors={[BRAND.gold, '#FFA94D']}
+                    icon="ribbon"
+                    label={t('leaderTools.appoint', { defaultValue: 'Appoint Leader' })}
+                  />
+                )}
               </View>
             </LinearGradient>
           </View>

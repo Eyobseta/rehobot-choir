@@ -18,6 +18,7 @@ import { listEvents, EventSummary } from '../../services/events';
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { EthDate, utcDateToEth, formatEthDate } from '../../utils/ethiopianCalendar';
 
 export default function EventsScreen({ navigation }: any) {
   const { t } = useTranslation();
@@ -34,7 +35,9 @@ export default function EventsScreen({ navigation }: any) {
   const load = useCallback(async (s: 'upcoming' | 'past') => {
     setError(null);
     try {
-      setItems(await listEvents(s));
+      // Show cache instantly, then network (handled in listEvents)
+      const fresh = await listEvents(s);
+      setItems(fresh);
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
@@ -237,9 +240,9 @@ export default function EventsScreen({ navigation }: any) {
             </View>
           }
           renderItem={({ item }) => {
-            const d = new Date(item.date);
-            const dayNum = d.getDate();
-            const monthShort = d.toLocaleString(undefined, { month: 'short' });
+            const eth = utcDateToEth(new Date(item.date));
+            const dayNum = eth.day;
+            const monthShort = formatEthDate(eth, 'en').split(' ')[0];
             return (
               <Pressable
                 onPress={() => navigation.navigate('EventDetail', { id: item.id })}

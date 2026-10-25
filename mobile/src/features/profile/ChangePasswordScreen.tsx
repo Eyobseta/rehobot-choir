@@ -25,7 +25,7 @@ function strengthOf(p: string): number {
   return Math.min(s, 4);
 }
 
-export default function ChangePasswordScreen({ navigation }: any) {
+export default function ChangePasswordScreen({ navigation, forced }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
@@ -47,7 +47,11 @@ export default function ChangePasswordScreen({ navigation }: any) {
     try {
       await changePassword(current, next);
       setSuccess(t('password.success'));
-      setTimeout(() => navigation.goBack(), 800);
+      // When forced, don't navigate back automatically — the app will
+      // re-render and route the user onward once mustChangePassword clears.
+      if (!forced) {
+        setTimeout(() => navigation.goBack(), 800);
+      }
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
@@ -111,12 +115,21 @@ export default function ChangePasswordScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScreenHero
-        icon="lock-closed"
-        title={t('password.changeTitle')}
-        subtitle={t('password.changeSubtitle', { defaultValue: 'Keep your account safe with a strong password.' })}
-        onBack={() => navigation.goBack()}
-      />
+      {!forced && (
+        <ScreenHero
+          icon="lock-closed"
+          title={t('password.changeTitle')}
+          subtitle={t('password.changeSubtitle', { defaultValue: 'Keep your account safe with a strong password.' })}
+          onBack={() => navigation.goBack()}
+        />
+      )}
+      {forced && (
+        <View style={{ padding: spacing.xl, paddingTop: 60, alignItems: 'center' }}>
+          <Text style={[typography.h2, { color: colors.text, textAlign: 'center' }]}>
+            {t('password.banner', { defaultValue: 'You are using a temporary password. Please change it.' })}
+          </Text>
+        </View>
+      )}
 
       <KeyboardAwareScroll contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.xl * 2 }}>
         <Animated.View

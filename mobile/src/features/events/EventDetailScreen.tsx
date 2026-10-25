@@ -20,9 +20,10 @@ import {
   RsvpResponse,
 } from '../../services/events';
 import { ApiError } from '../../services/api';
-import { me } from '../../services/auth';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { useMe } from '../chat/chatSession';
+import { formatEthDate } from '../../utils/ethiopianCalendar';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -43,6 +44,8 @@ export default function EventDetailScreen({ route, navigation }: any) {
   const [error, setError] = useState<string | null>(null);
   const [myUserId, setMyUserId] = useState<string>('');
 
+  const me_ = useMe();
+
   const load = useCallback(async () => {
     setError(null);
     try {
@@ -57,16 +60,9 @@ export default function EventDetailScreen({ route, navigation }: any) {
 
   useFocusEffect(
     useCallback(() => {
-      (async () => {
-        try {
-          const m = await me();
-          setMyUserId(m.user.id);
-        } catch {
-          // ignore
-        }
-        void load();
-      })();
-    }, [load]),
+      if (me_) setMyUserId(me_.id);
+      void load();
+    }, [load, me_]),
   );
 
   const onRsvp = async (response: RsvpResponse) => {
@@ -123,7 +119,14 @@ export default function EventDetailScreen({ route, navigation }: any) {
   const maybe = event.rsvps.filter((r) => r.response === 'MAYBE').length;
   const notGoing = event.rsvps.filter((r) => r.response === 'NOT_GOING').length;
   const total = event.rsvps.length;
-  const d = new Date(event.date);
+
+  // The date is already an Ethiopian date object from the backend
+  const ethDate = event.date;
+  const timeStr = new Date(event.dateGregorian).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const dateLabel = `${formatEthDate(ethDate, 'en')} · ${timeStr}`;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -169,7 +172,7 @@ export default function EventDetailScreen({ route, navigation }: any) {
             }}
           >
             <Text style={{ fontSize: 26, fontWeight: '800', color: BRAND.deep, lineHeight: 28 }}>
-              {d.getDate()}
+              {ethDate.day}
             </Text>
             <Text
               style={{
@@ -179,7 +182,7 @@ export default function EventDetailScreen({ route, navigation }: any) {
                 textTransform: 'uppercase',
               }}
             >
-              {d.toLocaleString(undefined, { month: 'short' })}
+              {formatEthDate(ethDate, 'en').split(' ')[0].slice(0, 3)}
             </Text>
           </View>
         </View>
@@ -200,7 +203,7 @@ export default function EventDetailScreen({ route, navigation }: any) {
           </Text>
 
           <View style={{ marginTop: spacing.md, gap: spacing.sm + 2 }}>
-            <InfoRow icon="time" tint={BRAND.violet} text={new Date(event.date).toLocaleString()} />
+            <InfoRow icon="time" tint={BRAND.violet} text={dateLabel} />
             {event.location && (
               <InfoRow icon="location" tint={BRAND.magenta} text={event.location} />
             )}

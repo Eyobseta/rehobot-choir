@@ -166,6 +166,12 @@
     "subtitle": "This action cannot be undone."
   },
   "leaderTools": {
+    "appointTitle": "Appoint as Leader?",
+    "appointBody": "{{name}} will become a choir leader and gain leader permissions.",
+    "appointYes": "Appoint",
+    "appointSuccessTitle": "Leader appointed",
+    "appointSuccessBody": "{{name}} is now a choir leader.",
+    "appoint": "Appoint Leader",
     "manageMember": "Manage member",
     "lookupTitle": "Find a member",
     "lookupSubtitle": "Enter the member's phone number",
@@ -340,6 +346,8 @@
     "deleted": "Announcement deleted.",
     "noEvent": "None",
     "songs": "Songs",
+    "selectSongs": "Select Songs (optional)",
+    "noSongsSelected": "No songs selected",
     "notFound": "Announcement not found."
   },
   "songs": {
@@ -741,5 +749,9 @@
     "pendingShort": "Pending",
     "pendingLower": "pending",
     "noMembers": "No members found."
+  },
+  "editProfile": {
+    "phoneTaken": "This phone number is already in use.",
+    "emailTaken": "This email is already in use."
   }
 }

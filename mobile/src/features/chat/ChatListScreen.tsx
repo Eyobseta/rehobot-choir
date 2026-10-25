@@ -1,14 +1,26 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, FlatList, Pressable, TextInput, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  Pressable,
+  TextInput,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
-import type { ChatStackParamList } from '../../../../src/navigation/ChatStack';
+import type { ChatStackParamList } from '../../navigation/ChatStack';
 import { useMe, isLeaderRole } from './chatSession';
 import { useTr } from './chatStrings';
-import { refreshConversations, useChatState } from './chatStore';
+import {
+  refreshConversations,
+  restoreCachedConversations,
+  useChatState,
+} from './chatStore';
 import { firstName, listTime, messagePreview } from './chatUtils';
 import type { ConversationListItem } from './chatTypes';
 import { Avatar, ChatHeader, EmptyState, HeaderButton } from './components/ChatUI';
@@ -28,6 +40,9 @@ export default function ChatListScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // 1) Paint instantly from the on-device cache (no network wait).
+      void restoreCachedConversations();
+      // 2) Then refresh from the network (cachedFetch handles cache-first internally).
       void refreshConversations();
     }, []),
   );
@@ -151,7 +166,11 @@ export default function ChatListScreen() {
         </View>
       </View>
 
-      {loaded && data.length === 0 ? (
+      {!loaded ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={BRAND.violet} size="large" />
+        </View>
+      ) : data.length === 0 ? (
         <EmptyState text={tr('emptyList')} actionLabel={tr('newChat')} onAction={() => navigation.navigate('NewChat')} />
       ) : (
         <FlatList

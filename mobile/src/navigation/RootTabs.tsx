@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
+import { View, ActivityIndicator } from 'react-native';
 
 import { subscribeRole, isLeader } from '../services/role';
+import { me } from '../services/auth';
+import { useTheme } from '../theme/ThemeContext';
 
 import HomeStack from './HomeStack';
 import SongsStack from './SongsStack';
@@ -15,16 +18,18 @@ import { getUnread, subscribeUnread } from '../services/unreadStore';
 import AnimatedTabBar from './AnimatedTabBar';
 import { useChatBootstrap } from '../features/chat/useChatBootstrap';
 import { useChatState } from '../features/chat/chatStore';
+import ChangePasswordScreen from '../features/profile/ChangePasswordScreen';
 
 const Tab = createBottomTabNavigator();
 
 export default function RootTabs() {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const [unread, setUnreadState] = useState(getUnread());
-
   const [leader, setLeader] = useState(isLeader());
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [ready, setReady] = useState(false);
 
-  // Realtime chat connection + conversation list + unread counts (whole app).
   useChatBootstrap();
   const { unreadTotal: chatUnread } = useChatState();
 
@@ -38,9 +43,37 @@ export default function RootTabs() {
     return subscribeUnread(setUnreadState);
   }, []);
 
+  // ---- Force password change (SRS 6.7) ----
+  useEffect(() => {
+    me()
+      .then((res) => setMustChangePassword(res.user.mustChangePassword))
+      .catch(() => {})
+      .finally(() => setReady(true));
+  }, []);
+
+  if (!ready) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (mustChangePassword) {
+    return (
+      <ChangePasswordScreen
+        navigation={{
+          goBack: () => {},
+          navigate: () => {},
+        }}
+        route={{ params: { forced: true } }}
+        forced
+      />
+    );
+  }
+
   return (
     <Tab.Navigator
-      // Mini player stays above the tab bar, exactly as before.
       tabBar={(props) => (
         <>
           <NowPlayingBar />
@@ -49,47 +82,34 @@ export default function RootTabs() {
       )}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen
-        name="Home"
-        component={HomeStack}
-        options={{ tabBarLabel: t('tabs.home') }}
-      />
-      <Tab.Screen
-        name="Songs"
-        component={SongsStack}
-        options={{ tabBarLabel: t('tabs.songs') }}
-      />
-      <Tab.Screen
-        name="Memories"
-        component={MemoriesStack}
-        options={{ tabBarLabel: t('tabs.memories') }}
-      />
+      <Tab.Screen name="Home" component={HomeStack} options={{ tabBarLabel: t('tabs.home') }} />
+      <Tab.Screen name="Songs" component={SongsStack} options={{ tabBarLabel: t('tabs.songs') }} />
+      <Tab.Screen name="Memories" component={MemoriesStack} options={{ tabBarLabel: t('tabs.memories') }} />
       <Tab.Screen
         name="Chat"
         component={ChatStack}
         options={{
           tabBarLabel: t('tabs.chat'),
-          // Unread chat messages across all conversations.
           tabBarBadge: chatUnread > 0 ? chatUnread : undefined,
         }}
       />
-
       {leader && (
-        <Tab.Screen
-          name="Approvals"
-          component={LeaderStack}
-          options={{ tabBarLabel: t('leader.approvalsTab') }}
-        />
+        <Tab.Screen name="Approvals" component={LeaderStack} options={{ tabBarLabel: t('leader.approvalsTab') }} />
       )}
-
       <Tab.Screen
         name="Profile"
         component={ProfileStack}
         options={{
           tabBarLabel: t('tabs.profile'),
-          // Shown as a pop-in badge by AnimatedTabBar.
           tabBarBadge: unread > 0 ? unread : undefined,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Reset the ProfileStack to its first screen (ProfileHome) when the tab is tapped
+            e.preventDefault();
+            navigation.navigate('Profile', { screen: 'ProfileHome' });
+          },
+        })}
       />
     </Tab.Navigator>
   );

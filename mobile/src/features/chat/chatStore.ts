@@ -125,6 +125,14 @@ export function markLocalRead(conversationId: string): void {
   patch({ conversations: next, unreadTotal: sum(next) });
 }
 
+// ADD THIS NEW FUNCTION:
+export function clearUnreadForConversation(conversationId: string): void {
+  const next = state.conversations.map((c) =>
+    c.id === conversationId && c.unreadCount > 0 ? { ...c, unreadCount: 0 } : c,
+  );
+  patch({ conversations: next, unreadTotal: sum(next) });
+}
+
 export function removeConversation(conversationId: string): void {
   const next = state.conversations.filter((c) => c.id !== conversationId);
   patch({ conversations: next, unreadTotal: sum(next) });

@@ -35,6 +35,7 @@ import {
 } from '../../services/notifications';
 import { setUnread } from '../../services/unreadStore';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
+import { utcDateToEth, formatEthDate } from '../../utils/ethiopianCalendar';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -162,7 +163,9 @@ export default function HomeScreen({ navigation }: any) {
   // ---------- Derived UI values (no new data) ----------
   const unreadCount = notifications.filter((n) => !n.readAt).length;
   const goNotifications = () =>
-    navigation.navigate('Profile', { screen: 'Notifications' });
+    navigation.navigate('Profile', {
+      screen: 'Notifications',
+    });
   const openBirthday = (b: BirthdayPerson) =>
     navigation.navigate('BirthdayDetail', { postId: b.postId });
 
@@ -457,16 +460,21 @@ export default function HomeScreen({ navigation }: any) {
                         </View>
 
                         <View style={styles.eventGlass}>
-                          <View style={styles.dateChip}>
-                            <Text style={styles.dateChipDay}>
-                              {new Date(upcoming.date).getDate()}
-                            </Text>
-                            <Text style={styles.dateChipMonth}>
-                              {new Date(upcoming.date).toLocaleString(undefined, {
-                                month: 'short',
-                              })}
-                            </Text>
-                          </View>
+                          {(() => {
+                            const eth = utcDateToEth(new Date(upcoming.date));
+                            const dayNum = eth.day;
+                            const monthShort = formatEthDate(eth, 'en').split(' ')[0];
+                            return (
+                              <View style={styles.dateChip}>
+                                <Text style={styles.dateChipDay}>
+                                  {dayNum}
+                                </Text>
+                                <Text style={styles.dateChipMonth}>
+                                  {monthShort}
+                                </Text>
+                              </View>
+                            );
+                          })()}
                           <View style={{ flex: 1 }}>
                             <Text style={styles.eventTitle} numberOfLines={2}>
                               {upcoming.title}

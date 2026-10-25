@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +26,7 @@ import {
   leaderUpdateAnnouncement,
   leaderDeleteAnnouncement,
 } from '../../services/announcements';
+import { listSongs, SongSummary } from '../../services/songs';
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
@@ -48,6 +51,11 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
   const [publishAtText, setPublishAtText] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
+
+  // ---------- songs ----------
+  const [songs, setSongs] = useState<{ songId: string; songTitle: string }[]>([]);
+  const [songPickerOpen, setSongPickerOpen] = useState(false);
+  const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
 
   useEffect(() => {
     if (!editingId) {
@@ -75,6 +83,7 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
           ).padStart(2, '0')}`,
         );
         setImageUri(item.imageUrl);
+        setSongs(item.songs.map((s) => ({ songId: s.songId, songTitle: s.songTitle })));
       } catch (e) {
         const err = e as ApiError;
         setError(`${err.message} [${err.code}]`);
@@ -83,6 +92,15 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
       }
     })();
   }, [editingId]);
+
+  const openSongPicker = async () => {
+    try {
+      setAllSongs(await listSongs(''));
+      setSongPickerOpen(true);
+    } catch {
+      // ignore
+    }
+  };
 
   const pickImage = () => {
     Alert.alert(t('announcements.imageField'), undefined, [
@@ -153,6 +171,7 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
           publish,
           removeImage,
           imageUri: imageUri && !imageUri.startsWith('http') ? imageUri : null,
+          songs,
         });
       } else {
         await leaderCreateAnnouncement({
@@ -161,6 +180,7 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
           publishAt: isoDate,
           publish,
           imageUri: imageUri ?? null,
+          songs,
         });
       }
       navigation.goBack();
@@ -423,6 +443,41 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
             />
           </View>
 
+          {/* ---------- Songs picker ---------- */}
+          <View style={{ marginTop: spacing.lg }}>
+            <Text style={[typography.bodySmall, { color: colors.textSecondary, fontWeight: '700', marginBottom: spacing.sm }]}>
+              {t('announcements.songs')}
+            </Text>
+            <Pressable
+              onPress={openSongPicker}
+              style={{
+                padding: spacing.md,
+                borderRadius: 14,
+                borderWidth: 1.5,
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <Ionicons name="musical-notes" size={18} color={BRAND.violet} />
+              <Text style={{ color: colors.text, fontWeight: '700', flex: 1 }}>
+                {songs.length === 0 ? `+ ${t('announcements.songs')}` : `${songs.length} selected`}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </Pressable>
+
+            {songs.map((s) => (
+              <View key={s.songId} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, paddingHorizontal: 4 }}>
+                <Text style={{ color: colors.text, flex: 1 }} numberOfLines={1}>🎵 {s.songTitle}</Text>
+                <Pressable onPress={() => setSongs((prev) => prev.filter((x) => x.songId !== s.songId))}>
+                  <Ionicons name="close-circle" size={20} color={colors.error} />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+
           {error && (
             <View
               style={{
@@ -549,6 +604,47 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
           </LinearGradient>
         </Pressable>
       </View>
+
+      {/* ---------- Song picker modal ---------- */}
+      <Modal
+        visible={songPickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSongPickerOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '75%', padding: spacing.lg }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={[typography.h3, { color: colors.text }]}>{t('announcements.songs')}</Text>
+              <Pressable onPress={() => setSongPickerOpen(false)}>
+                <Text style={{ color: BRAND.violet, fontWeight: '800' }}>{t('common.close')}</Text>
+              </Pressable>
+            </View>
+            <FlatList
+              data={allSongs.filter((s) => !songs.some((x) => x.songId === s.id))}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => {
+                    setSongs((prev) => [...prev, { songId: item.id, songTitle: item.title }]);
+                    setSongPickerOpen(false);
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}
+                >
+                  <Ionicons name="musical-notes" size={20} color={BRAND.violet} />
+                  <Text style={{ color: colors.text, flex: 1, fontWeight: '700' }}>{item.title}</Text>
+                  <Ionicons name="add-circle" size={22} color={BRAND.magenta} />
+                </Pressable>
+              )}
+              ListEmptyComponent={
+                <Text style={{ color: colors.textSecondary, textAlign: 'center', padding: 20 }}>
+                  {t('songs.empty', { defaultValue: 'No songs yet.' })}
+                </Text>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

@@ -24,35 +24,35 @@ export async function runEventRemindersJob(): Promise<{
   const events24 = await prisma.event.findMany({
     where: {
       status: EventStatus.PUBLISHED,
-      date: {
+      dateGregorian: {
         gte: new Date(target24.getTime() - window),
         lte: new Date(target24.getTime() + window),
       },
     },
-    select: { id: true, title: true, date: true },
+    select: { id: true, title: true, dateGregorian: true },
   });
 
   const events1 = await prisma.event.findMany({
     where: {
       status: EventStatus.PUBLISHED,
-      date: {
+      dateGregorian: {
         gte: new Date(target1.getTime() - window),
         lte: new Date(target1.getTime() + window),
       },
     },
-    select: { id: true, title: true, date: true },
+    select: { id: true, title: true, dateGregorian: true },
   });
 
   let reminded24h = 0;
   let reminded1h = 0;
 
   for (const ev of events24) {
-    const reminded = await remindForEvent(ev.id, ev.title, ev.date, '24h');
+    const reminded = await remindForEvent(ev.id, ev.title, ev.dateGregorian, '24h');
     reminded24h += reminded;
   }
 
   for (const ev of events1) {
-    const reminded = await remindForEvent(ev.id, ev.title, ev.date, '1h');
+    const reminded = await remindForEvent(ev.id, ev.title, ev.dateGregorian, '1h');
     reminded1h += reminded;
   }
 
@@ -62,7 +62,7 @@ export async function runEventRemindersJob(): Promise<{
 async function remindForEvent(
   eventId: string,
   title: string,
-  date: Date,
+  dateGregorian: Date,
   kind: '24h' | '1h',
 ): Promise<number> {
   // Which members RSVP'd Going or Maybe?

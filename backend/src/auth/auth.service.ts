@@ -497,3 +497,68 @@ export async function refreshSession(
     },
   };
 }
+
+/**
+ * NEW: Appoint an approved member as a choir leader (SRS 8.2).
+ */
+export async function leaderAppointMember(
+  leaderUserId: string,
+  targetUserId: string,
+) {
+  if (leaderUserId === targetUserId) {
+    throw ApiError.badRequest('You are already a leader.');
+  }
+
+  const leader = await prisma.user.findUnique({ where: { id: leaderUserId } });
+  if (!leader || leader.deletedAt || leader.role !== 'LEADER') {
+    throw ApiError.forbidden('Only choir leaders can appoint members.');
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: targetUserId } });
+  if (!target || target.deletedAt) {
+    throw ApiError.notFound('Member not found.');
+  }
+  if (target.status !== 'APPROVED') {
+    throw ApiError.badRequest('Only approved members can be appointed as leaders.');
+  }
+  if (target.role === 'LEADER') {
+    throw ApiError.conflict('This member is already a choir leader.');
+  }
+  if (target.role === 'ADMIN') {
+    throw ApiError.forbidden('Cannot appoint an administrator as a leader.');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: targetUserId },
+      data: { role: 'LEADER' },
+    });
+
+    // Notify the new leader and all current leaders (SRS 8.2)
+    const otherLeaders = await tx.user.findMany({
+      where: {
+        role: 'LEADER',
+        status: 'APPROVED',
+        deletedAt: null,
+        id: { not: targetUserId },
+      },
+      select: { id: true },
+    });
+
+    const recipients = [
+      targetUserId,
+      ...otherLeaders.map((l) => l.id),
+    ];
+    await tx.notification.createMany({
+      data: recipients.map((rid) => ({
+        recipientId: rid,
+        type: 'LEADERSHIP_CHANGE' as const,
+        title: 'New Choir Leader',
+        body: `${target.phone} has been appointed as a choir leader.`,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      })),
+    });
+  });
+
+  return { ok: true as const };
+}

@@ -139,9 +139,15 @@ export default function EditProfileScreen({ navigation }: any) {
       setSaved(true);
       setTimeout(() => navigation.goBack(), 700);
     } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
+  const err = e as ApiError;
+  if (err.code === 'PHONE_TAKEN') {
+    setError(t('editProfile.phoneTaken', { defaultValue: 'This phone number is already in use.' }));
+  } else if (err.code === 'EMAIL_TAKEN') {
+    setError(t('editProfile.emailTaken', { defaultValue: 'This email is already in use.' }));
+  } else {
+    setError(`${err.message} [${err.code}]`);
+  }
+} finally {
       setBusy(false);
     }
   };

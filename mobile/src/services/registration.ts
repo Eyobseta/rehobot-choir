@@ -1,4 +1,5 @@
 import { http, ApiError } from './api';
+import { EthDate } from '../utils/ethiopianCalendar';
 
 export type RegisterInput = {
   fullName: string;
@@ -6,10 +7,10 @@ export type RegisterInput = {
   email: string;
   password: string;
   gender: string;
-  dateOfBirth: string; // YYYY-MM-DD
+  dateOfBirth: EthDate; // Changed: now an Ethiopian date object
   emergencyContactName: string;
   emergencyContactPhone: string;
-  joiningDate?: string; // YYYY-MM-DD
+  joiningDate?: EthDate; // Changed: now an Ethiopian date object
   photoUri: string;
   photoMimeType?: string;
 };
@@ -28,11 +29,7 @@ export type RegistrationStatus = {
 
 /**
  * Uploads the registration form + photo as multipart/form-data.
- *
- * We use axios (already configured in ./api) instead of fetch because
- * React Native's fetch is unreliable with FormData on Android — it
- * frequently throws a bare "Network request failed" for reasons that
- * do not match what the server sees.
+ * Dates are sent as JSON strings containing Ethiopian date objects.
  */
 export async function register(
   input: RegisterInput,
@@ -44,12 +41,14 @@ export async function register(
   form.append('email', input.email);
   form.append('password', input.password);
   form.append('gender', input.gender);
-  form.append('dateOfBirth', input.dateOfBirth);
+  // Dates sent as JSON so backend can parse into EthDate
+  form.append('dateOfBirth', JSON.stringify(input.dateOfBirth));
   form.append('emergencyContactName', input.emergencyContactName);
   form.append('emergencyContactPhone', input.emergencyContactPhone);
-  if (input.joiningDate) form.append('joiningDate', input.joiningDate);
+  if (input.joiningDate) {
+    form.append('joiningDate', JSON.stringify(input.joiningDate));
+  }
 
-  // React Native expects an object with uri/name/type, not a Blob.
   const filename = input.photoUri.split('/').pop() ?? 'photo.jpg';
   const mime = input.photoMimeType ?? 'image/jpeg';
 
@@ -60,25 +59,14 @@ export async function register(
     type: mime,
   });
 
-  // Logging helps during development. Remove later if desired.
-  // eslint-disable-next-line no-console
-  console.log('[register] POST', `${http.defaults.baseURL}/auth/register`);
-
   try {
     const res = await http.post<RegisterResult>('/auth/register', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      // Photo uploads can be slow on weak Wi-Fi — extend the default 15s.
       timeout: 60_000,
-      // Prevent axios from JSON-encoding the FormData body.
       transformRequest: (data) => data,
     });
-    // eslint-disable-next-line no-console
-    console.log('[register] success', res.status);
     return res.data;
   } catch (err) {
-    // The response interceptor in api.ts already normalizes errors to ApiError.
-    // eslint-disable-next-line no-console
-    console.log('[register] axios error:', err);
     if (err instanceof ApiError) throw err;
     throw new ApiError(
       0,

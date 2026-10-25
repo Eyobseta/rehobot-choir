@@ -26,6 +26,7 @@ import {
 } from '../../services/memories';
 import { ApiError } from '../../services/api';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
+import { formatEthDate } from '../../utils/ethiopianCalendar';
 import { DatePill, EmptyState } from './Memorykit';
 import MemoriesHeader from './MemoriesHeader';
 
@@ -78,9 +79,8 @@ export default function MemoriesScreen({ navigation }: any) {
     }, [search]),
   );
 
-  const filtered = year
-    ? items.filter((m) => new Date(m.date).getUTCFullYear() === year)
-    : items;
+  // m.date is now an EthDate object — filter by the Ethiopian year
+  const filtered = year ? items.filter((m) => m.date.year === year) : items;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -375,7 +375,8 @@ function MemoryCard({
   const photoCount = item.media.filter((m) => m.type === 'PHOTO').length;
   const hasAudio = item.media.some((m) => m.type === 'AUDIO');
   const ytCount = item.media.filter((m) => m.type === 'YOUTUBE').length;
-  const iso = new Date(item.date).toISOString().slice(0, 10);
+  // item.date is an EthDate object — format directly
+  const ethLabel = formatEthDate(item.date, 'en');
   const palette = PLACEHOLDERS[index % PLACEHOLDERS.length];
 
   const enter = useRef(new Animated.Value(0)).current;
@@ -440,7 +441,7 @@ function MemoryCard({
           />
 
           <View style={styles.topRow}>
-            <DatePill text={iso} onDark />
+            <DatePill text={ethLabel} onDark />
             <View style={{ flexDirection: 'row', gap: 6 }}>
               {photoCount > 1 && (
                 <View style={styles.badge}>

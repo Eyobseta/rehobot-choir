@@ -61,8 +61,7 @@ export default function LeaderFunding() {
 }
 
 // =====================================================================
-// Top controls (scrolls with the list). No horizontal padding of its own:
-// the FlatList content container owns the side gutter, so everything is full width.
+// Top controls (scrolls with the list).
 // =====================================================================
 function TopControls({ tools, navigation, tab, setTab, header }: any) {
   const { t } = useTranslation();
@@ -132,6 +131,7 @@ function AnnualPanel({ tools, navigation, tab, setTab }: any) {
 
   return (
     <LedgerPanel
+      key="annual" // Force remount when switching tabs
       load={load}
       onApprove={approveRecord}
       onReject={rejectRecord}
@@ -294,7 +294,7 @@ function CampaignsPanel({ tools, navigation, tab, setTab }: any) {
 
   return (
     <LedgerPanel
-      key={campaignId ?? 'none'}
+      key={campaignId ? `campaign_${campaignId}` : 'campaign_none'} // Force remount when switching campaigns
       load={load}
       onApprove={approveDonation}
       onReject={rejectDonation}
@@ -446,7 +446,6 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
         </Card>
       )}
 
-      {/* Status filter: four equal tiles that always span the full width */}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
         {CATEGORIES.map((s) => {
           const m = cat(s); const on = s === status;
@@ -473,7 +472,6 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
         />
       </View>
 
-      {/* Always-reachable entry point to the full members table */}
       <Pressable
         onPress={openTableModal}
         accessibilityRole="button"
@@ -560,7 +558,6 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
                 )}
                 {r.status === 'REJECTED' && !!r.reason && <Text style={{ color: colors.error, marginTop: 8 }}>{r.reason}</Text>}
 
-                {/* Approve | Reject | Members, in one row */}
                 {pending && (
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
                     <Pressable
@@ -615,7 +612,6 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
         }}
       />
 
-      {/* Full members table, scoped to the current annual year or campaign */}
       <Modal visible={tableVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setTableVisible(false)}>
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: Math.max(insets.top, 16), paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface }}>

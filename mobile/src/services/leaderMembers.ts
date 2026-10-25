@@ -37,3 +37,15 @@ export async function deleteMember(
   );
   return res.data;
 }
+
+/**
+ * NEW: Appoint an approved member as a choir leader (SRS 8.2).
+ */
+export async function appointMember(
+  memberId: string,
+): Promise<{ ok: true }> {
+  return apiPost<{ ok: true }>(
+    `/leaders/members/${memberId}/appoint`,
+    {},
+  );
+}

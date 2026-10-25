@@ -15,8 +15,9 @@
 
 type AppEnv = 'development' | 'production';
 
-// Change this to 'production' at deploy time.
-const APP_ENV: AppEnv = 'development';
+// ⚠️ PRODUCTION MODE ENGAGED
+// Using 'as AppEnv' prevents TypeScript from throwing "unintentional comparison" errors below
+const APP_ENV = 'production' as AppEnv;
 
 // ---- Configure your LAN IP here ----
 // Run `ipconfig` on Windows to find the IPv4 Address of your Wi-Fi adapter.
@@ -25,6 +26,8 @@ const DEV_LAN_IP = '192.168.19.145';
 const DEV_PORT = 3000;
 
 const DEV_BASE_URL = `http://${DEV_LAN_IP}:${DEV_PORT}`;
+
+// ⚠️ REPLACE THIS WITH YOUR ACTUAL DEPLOYED BACKEND URL BEFORE BUILDING
 const PROD_BASE_URL = 'https://api.rehobot-choir.example.com';
 
 export const API_BASE_URL = APP_ENV === 'development' ? DEV_BASE_URL : PROD_BASE_URL;

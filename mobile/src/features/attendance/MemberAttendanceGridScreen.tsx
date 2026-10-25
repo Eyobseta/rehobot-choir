@@ -17,6 +17,7 @@ import { ApiError } from '../../services/api';
 import AttendanceGrid, { GridCell } from './AttendanceGrid';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { EthDate, ethTodayFromInstant, addEthDays } from '../../utils/ethiopianCalendar';
 
 export default function MemberAttendanceGridScreen({ route, navigation }: any) {
   const { t } = useTranslation();
@@ -24,6 +25,8 @@ export default function MemberAttendanceGridScreen({ route, navigation }: any) {
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
   const { memberId, memberName } = route.params;
+
+  const today = ethTodayFromInstant(new Date());
 
   const [summary, setSummary] = useState<MyGridSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,11 +36,8 @@ export default function MemberAttendanceGridScreen({ route, navigation }: any) {
     setError(null);
     setLoading(true);
     try {
-      const to = new Date().toISOString().slice(0, 10);
-      const from = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .slice(0, 10);
-      setSummary(await leaderGetMemberGrid(memberId, from, to));
+      const from = addEthDays(today, -120);
+      setSummary(await leaderGetMemberGrid(memberId, from, today));
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
@@ -51,7 +51,7 @@ export default function MemberAttendanceGridScreen({ route, navigation }: any) {
   }, [load]);
 
   const cells: GridCell[] = (summary?.days ?? []).map((d) => ({
-    date: d.date,
+    date: d.isoDate,
     state: d.status === 'PRESENT' ? 'PRESENT' : 'ABSENT',
   }));
 
@@ -103,10 +103,10 @@ export default function MemberAttendanceGridScreen({ route, navigation }: any) {
           </View>
 
           {/* Back — right side, gap from title */}
-         <GlassBackButton
-  onPress={() => navigation.goBack()}
-  accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
-/>
+          <GlassBackButton
+            onPress={() => navigation.goBack()}
+            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+          />
         </View>
 
         {!loading && total > 0 && (

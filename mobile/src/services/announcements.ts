@@ -1,4 +1,6 @@
 import { apiGet, apiDelete, http } from './api';
+import { cachedFetch, cacheInvalidatePrefix } from './cache';
+import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
 
 export type AnnouncementStatus =
   | 'DRAFT'
@@ -32,23 +34,45 @@ export type LeaderAnnouncementRow = {
 export async function listAnnouncements(
   search?: string,
 ): Promise<AnnouncementSummary[]> {
-  const q = search?.trim()
-    ? `?search=${encodeURIComponent(search.trim())}`
-    : '';
-  const res = await apiGet<{ items: AnnouncementSummary[] }>(
-    `/announcements${q}`,
+  const key = CACHE_KEYS.announcementsList(search ?? '');
+  const cached = await cachedFetch<AnnouncementSummary[]>(
+    key,
+    async () => {
+      const q = search?.trim()
+        ? `?search=${encodeURIComponent(search.trim())}`
+        : '';
+      const res = await apiGet<{ items: AnnouncementSummary[] }>(
+        `/announcements${q}`,
+      );
+      return res.items;
+    },
+    () => {},
   );
-  return res.items;
+  return cached ?? [];
 }
 
-export async function getAnnouncement(id: string): Promise<AnnouncementDetail> {
-  const res = await apiGet<{ item: AnnouncementDetail }>(
-    `/announcements/${id}`,
+export async function getAnnouncement(
+  id: string,
+): Promise<AnnouncementDetail> {
+  const key = CACHE_KEYS.announcementDetail(id);
+  const cached = await cachedFetch<AnnouncementDetail>(
+    key,
+    async () => {
+      const res = await apiGet<{ item: AnnouncementDetail }>(
+        `/announcements/${id}`,
+      );
+      return res.item;
+    },
+    () => {},
   );
+  if (cached) return cached;
+  const res = await apiGet<{ item: AnnouncementDetail }>(`/announcements/${id}`);
   return res.item;
 }
 
-export async function leaderListAnnouncements(): Promise<LeaderAnnouncementRow[]> {
+export async function leaderListAnnouncements(): Promise<
+  LeaderAnnouncementRow[]
+> {
   const res = await apiGet<{ items: LeaderAnnouncementRow[] }>(
     '/leaders/announcements',
   );
@@ -58,10 +82,11 @@ export async function leaderListAnnouncements(): Promise<LeaderAnnouncementRow[]
 export type CreateAnnouncementInput = {
   title: string;
   message: string;
-  publishAt: string; // ISO
+  publishAt: string;
   publish: boolean;
   eventId?: string | null;
   imageUri?: string | null;
+  songs?: { songId: string; songTitle: string }[]; // NEW
 };
 
 export async function leaderCreateAnnouncement(
@@ -73,8 +98,11 @@ export async function leaderCreateAnnouncement(
   form.append('publishAt', input.publishAt);
   form.append('publish', input.publish ? 'true' : 'false');
   if (input.eventId) form.append('eventId', input.eventId);
+  if (input.songs && input.songs.length > 0) {
+    form.append('songs', JSON.stringify(input.songs));
+  }
   if (input.imageUri) {
-    // @ts-expect-error — RN FormData type differs from DOM
+    // @ts-expect-error — RN FormData
     form.append('image', {
       uri: input.imageUri,
       name: 'announcement.jpg',
@@ -91,6 +119,7 @@ export async function leaderCreateAnnouncement(
       transformRequest: (d) => d,
     },
   );
+  await cacheInvalidatePrefix(CACHE_PREFIXES.announcements);
   return { id: res.data.announcement.id };
 }
 
@@ -101,6 +130,7 @@ export type UpdateAnnouncementInput = {
   publish?: boolean;
   removeImage?: boolean;
   imageUri?: string | null;
+  songs?: { songId: string; songTitle: string }[];
 };
 
 export async function leaderUpdateAnnouncement(
@@ -115,6 +145,9 @@ export async function leaderUpdateAnnouncement(
     form.append('publish', input.publish ? 'true' : 'false');
   if (input.removeImage !== undefined)
     form.append('removeImage', input.removeImage ? 'true' : 'false');
+  if (input.songs !== undefined) {
+    form.append('songs', JSON.stringify(input.songs));
+  }
   if (input.imageUri) {
     // @ts-expect-error — RN FormData
     form.append('image', {
@@ -128,8 +161,10 @@ export async function leaderUpdateAnnouncement(
     timeout: 60_000,
     transformRequest: (d) => d,
   });
+  await cacheInvalidatePrefix(CACHE_PREFIXES.announcements);
 }
 
 export async function leaderDeleteAnnouncement(id: string): Promise<void> {
   await apiDelete(`/leaders/announcements/${id}`);
+  await cacheInvalidatePrefix(CACHE_PREFIXES.announcements);
 }

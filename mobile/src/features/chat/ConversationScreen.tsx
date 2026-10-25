@@ -15,7 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
-import type { ChatStackParamList } from '../../../../src/navigation/ChatStack';
+import type { ChatStackParamList } from '../../navigation/ChatStack';
 import { useMe, isLeaderRole } from './chatSession';
 import { useTr } from './chatStrings';
 import {
@@ -32,7 +32,12 @@ import {
   typingApi,
 } from './chatApi';
 import { onChatEvent, setOpenConversations } from './chatRealtime';
-import { markLocalRead, setActiveConversation, useChatState } from './chatStore';
+import {
+  markLocalRead,
+  clearUnreadForConversation,
+  setActiveConversation,
+  useChatState,
+} from './chatStore';
 import {
   dayLabel,
   lastSeenLabel,
@@ -232,6 +237,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       setActiveConversation(conversationId);
       setOpenConversations([conversationId]);
       markReadSoon();
+      clearUnreadForConversation(conversationId);
       return () => {
         focusedRef.current = false;
         setActiveConversation(null);

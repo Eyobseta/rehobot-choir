@@ -40,6 +40,7 @@ import {
   getSnapshot,
   SimpleStatus,
 } from '../../services/audioPlayer';
+import { formatEthDate } from '../../utils/ethiopianCalendar';
 import {
   PhotoCarousel,
   PhotoViewer,
@@ -281,9 +282,7 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
             </Text>
 
             <View style={styles.metaRow}>
-              <DatePill
-                text={new Date(item.date).toISOString().slice(0, 10)}
-              />
+              <DatePill text={formatEthDate(item.date, 'en')} />
               {submitter ? (
                 <View
                   style={[

@@ -27,6 +27,13 @@ import { ApiError } from '../../services/api';
 import AttendanceGrid, { GridCell } from './AttendanceGrid';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import {
+  EthDate,
+  ethTodayFromInstant,
+  addEthDays,
+  formatEthDate,
+} from '../../utils/ethiopianCalendar';
+import { useDateLabel } from '../funding/fundingKit';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -38,6 +45,9 @@ export default function MyAttendanceScreen({ navigation }: any) {
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
 
+  const today = ethTodayFromInstant(new Date());
+  const dateLabel = useDateLabel();
+
   const [items, setItems] = useState<AttendanceHistoryItem[]>([]);
   const [grid, setGrid] = useState<MyGridSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,13 +57,10 @@ export default function MyAttendanceScreen({ navigation }: any) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const to = new Date().toISOString().slice(0, 10);
-      const from = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .slice(0, 10);
+      const from = addEthDays(today, -120);
       const [hist, g] = await Promise.all([
         getMyAttendance(),
-        getMyGrid(from, to),
+        getMyGrid(from, today),
       ]);
       setItems(hist);
       setGrid(g);
@@ -64,7 +71,7 @@ export default function MyAttendanceScreen({ navigation }: any) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [today.year, today.month, today.day]);
 
   useFocusEffect(
     useCallback(() => {
@@ -74,7 +81,7 @@ export default function MyAttendanceScreen({ navigation }: any) {
   );
 
   const cells: GridCell[] = (grid?.days ?? []).map((d) => ({
-    date: d.date,
+    date: d.isoDate,
     state: d.status === 'PRESENT' ? 'PRESENT' : 'ABSENT',
   }));
 
@@ -173,9 +180,9 @@ export default function MyAttendanceScreen({ navigation }: any) {
           </View>
 
           <GlassBackButton
-  onPress={() => navigation.goBack()}
-  accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
-/>
+            onPress={() => navigation.goBack()}
+            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+          />
         </View>
       </LinearGradient>
 
@@ -345,8 +352,12 @@ export default function MyAttendanceScreen({ navigation }: any) {
             </View>
           }
           renderItem={({ item, index }) => {
-            const iso = new Date(item.date).toISOString().slice(0, 10);
-            const prevIso = index > 0 ? new Date(items[index - 1].date).toISOString().slice(0, 10) : null;
+            const iso = item.dateGregorian.slice(0, 10);
+            const ethLabel = formatEthDate(
+              { year: item.dateEthYear, month: item.dateEthMonth, day: item.dateEthDay },
+              'en',
+            );
+            const prevIso = index > 0 ? items[index - 1].dateGregorian.slice(0, 10) : null;
             const month = iso.slice(0, 7);
             const showMonth = prevIso === null || prevIso.slice(0, 7) !== month;
             return (
@@ -354,6 +365,7 @@ export default function MyAttendanceScreen({ navigation }: any) {
                 item={item}
                 index={index}
                 iso={iso}
+                ethLabel={ethLabel}
                 monthLabel={showMonth ? month : null}
                 label={t(gatheringLabelKey(item.gathering))}
                 presentLabel={t('attendance.present')}
@@ -502,6 +514,7 @@ function HistoryCard({
   item,
   index,
   iso,
+  ethLabel,
   monthLabel,
   label,
   presentLabel,
@@ -510,6 +523,7 @@ function HistoryCard({
   item: AttendanceHistoryItem;
   index: number;
   iso: string;
+  ethLabel: string;
   monthLabel: string | null;
   label: string;
   presentLabel: string;
@@ -553,15 +567,22 @@ function HistoryCard({
         <View style={[styles.itemBar, { backgroundColor: tone }]} />
 
         <View style={[styles.dateTile, { backgroundColor: withAlpha(tone, 0.16) }]}>
-          <Text style={[styles.dateDay, { color: tone }]}>{iso.slice(8, 10)}</Text>
-          <Text style={[styles.dateMonth, { color: tone }]}>{iso.slice(0, 7)}</Text>
+          <Text style={[styles.dateDay, { color: tone }]}>{item.dateEthDay}</Text>
+          <Text style={[styles.dateMonth, { color: tone }]}>
+            {formatEthDate(
+              { year: item.dateEthYear, month: item.dateEthMonth, day: item.dateEthDay },
+              'en',
+            ).split(' ')[0].slice(0, 3)}
+          </Text>
         </View>
 
         <View style={{ flex: 1, marginLeft: 14 }}>
           <Text style={[typography.body, { color: colors.text, fontWeight: '700' }]} numberOfLines={1}>
             {label}
           </Text>
-          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>{iso}</Text>
+          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={1}>
+            {ethLabel} · {iso}
+          </Text>
         </View>
 
         <View style={[styles.pill, { backgroundColor: withAlpha(tone, 0.16) }]}>

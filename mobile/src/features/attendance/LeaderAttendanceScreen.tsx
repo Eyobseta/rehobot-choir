@@ -30,6 +30,14 @@ import { ApiError } from '../../services/api';
 import AttendanceGrid, { GridCell } from './AttendanceGrid';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import {
+  EthDate,
+  ethTodayFromInstant,
+  addEthDays,
+  formatEthDate,
+  utcDateToEth,
+} from '../../utils/ethiopianCalendar';
+import EthDatePicker from '../funding/EthDatePicker';
 
 const GATHERINGS: GatheringType[] = [
   'TUESDAY_ZEMA',
@@ -43,29 +51,17 @@ const GATHERING_TINTS: Record<GatheringType, readonly [string, string]> = {
   SATURDAY_CHOIR: ['#EE9BBD', '#D14879'],
 };
 
-function todayISO(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function monthsAgoISO(days: number): string {
-  return new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-}
-
 export default function LeaderAttendanceScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
 
-  // ------------------ state (UNCHANGED) ------------------
+  // ------------------ state ------------------
+  const today = ethTodayFromInstant(new Date());
   const [gathering, setGathering] = useState<GatheringType>('SATURDAY_CHOIR');
-  const [dateText, setDateText] = useState<string>(todayISO());
+  const [date, setDate] = useState<EthDate>(today);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [view, setView] = useState<'record' | 'grid'>('record');
 
   const [rows, setRows] = useState<AttendanceRow[]>([]);
@@ -81,13 +77,13 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
   const [dayOpen, setDayOpen] = useState<string | null>(null);
   const [dayRows, setDayRows] = useState<AttendanceRow[]>([]);
 
-  // ------------------ data (UNCHANGED) ------------------
+  // ------------------ data ------------------
   const loadRoster = useCallback(async () => {
     setError(null);
     setSaved(false);
     setLoading(true);
     try {
-      const data = await leaderGetAttendance(gathering, dateText);
+      const data = await leaderGetAttendance(gathering, date);
       setRows(data.roster);
       setLocked(data.locked);
     } catch (e) {
@@ -98,12 +94,13 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
     } finally {
       setLoading(false);
     }
-  }, [gathering, dateText]);
+  }, [gathering, date]);
 
   const loadGrid = useCallback(async () => {
     setGridLoading(true);
     try {
-      const data = await leaderGetGrid(gathering, monthsAgoISO(90), todayISO());
+      const from = addEthDays(today, -90);
+      const data = await leaderGetGrid(gathering, from, today);
       setGrid(data);
     } catch (e) {
       const err = e as ApiError;
@@ -118,11 +115,12 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
     if (view === 'grid') void loadGrid();
   }, [view, loadRoster, loadGrid]);
 
-  const openDay = async (date: string) => {
-    setDayOpen(date);
+  const openDay = async (isoDate: string) => {
+    setDayOpen(isoDate);
     setDayRows([]);
     try {
-      const data = await leaderGetAttendance(gathering, date);
+      const eth = utcDateToEth(new Date(isoDate + 'T00:00:00.000Z'));
+      const data = await leaderGetAttendance(gathering, eth);
       setDayRows(data.roster);
     } catch {
       // ignore
@@ -151,7 +149,7 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
     }
     setBusy(true);
     try {
-      await leaderRecordAttendance(gathering, dateText, records);
+      await leaderRecordAttendance(gathering, date, records);
       setSaved(true);
     } catch (e) {
       const err = e as ApiError;
@@ -216,9 +214,9 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
 
             {/* Back button — right side, with gap */}
             <GlassBackButton
-  onPress={() => navigation.goBack()}
-  accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
-/>
+              onPress={() => navigation.goBack()}
+              accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+            />
           </View>
 
           {presentCount > 0 && (
@@ -355,21 +353,25 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
                 tint={BRAND.gold}
                 text={t('attendance.date')}
               />
-              <TextInput
-                value={dateText}
-                onChangeText={setDateText}
-                autoCapitalize="none"
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.textSecondary}
+              <Pressable
+                onPress={() => setPickerOpen(true)}
                 style={[
                   styles.input,
                   {
                     backgroundColor: colors.surface,
                     borderColor: colors.border,
-                    color: colors.text,
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    minHeight: 50,
                   },
                 ]}
-              />
+              >
+                <Text style={{ color: colors.text, fontSize: 15 }}>
+                  {formatEthDate(date, 'en')}
+                </Text>
+                <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+              </Pressable>
 
               <View style={styles.quickRow}>
                 <QuickAction
@@ -499,7 +501,14 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
                 ]}
                 numberOfLines={1}
               >
-                {t('attendance.dayDetail', { date: dayOpen ?? '' })}
+                {t('attendance.dayDetail', {
+                  date: dayOpen
+                    ? formatEthDate(
+                        utcDateToEth(new Date(dayOpen + 'T00:00:00.000Z')),
+                        'en',
+                      )
+                    : '',
+                })}
               </Text>
             </View>
 
@@ -558,6 +567,20 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
+
+      {/* ---------- EthDate picker ---------- */}
+      <EthDatePicker
+        visible={pickerOpen}
+        title={t('attendance.date')}
+        value={date}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={(d) => {
+          setDate(d);
+          setPickerOpen(false);
+        }}
+        minYear={today.year - 1}
+        maxYear={today.year + 1}
+      />
     </View>
   );
 }

@@ -59,10 +59,14 @@ export default function CampaignDetailScreen() {
   const my = c.my;
   const mine = my.progress;
   const pendingMinor = my.pendingAmount?.minor ?? 0;
+
   const maxNewMinor = c.donationType === 'REQUIRED'
     ? Math.max(0, (mine.remaining?.minor ?? 0) - pendingMinor)
     : undefined;
+
+  // total campaign progress might be null (voluntary with no target)
   const total = c.campaignProgress.target ? c.campaignProgress : null;
+
   const draft = c.status === 'DRAFT';
   const published = c.status === 'PUBLISHED';
   const pending = my.status === 'PENDING_VERIFICATION';

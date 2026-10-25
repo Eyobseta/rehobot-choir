@@ -9,6 +9,8 @@ import { useTheme } from '../../theme/ThemeContext';
 import { register, RegisterInput } from '../../services/registration';
 import { ApiError } from '../../services/api';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { EthDate, formatEthDate, ethTodayFromInstant } from '../../utils/ethiopianCalendar';
+import EthDatePicker from '../funding/EthDatePicker';
 import {
   AuthScreen,
   AuthField,
@@ -27,10 +29,10 @@ type FormState = {
   email: string;
   password: string;
   gender: 'male' | 'female' | '';
-  dateOfBirth: string;
+  dateOfBirth: EthDate | null;
   emergencyContactName: string;
   emergencyContactPhone: string;
-  joiningDate: string;
+  joiningDate: EthDate | null;
   photoUri: string | null;
 };
 
@@ -40,10 +42,10 @@ const INITIAL: FormState = {
   email: '',
   password: '',
   gender: '',
-  dateOfBirth: '',
+  dateOfBirth: null,
   emergencyContactName: '',
   emergencyContactPhone: '',
-  joiningDate: '',
+  joiningDate: null,
   photoUri: null,
 };
 
@@ -56,13 +58,12 @@ export default function RegisterScreen({ navigation }: Props) {
   const [form, setForm] = useState<FormState>(INITIAL);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [picker, setPicker] = useState<'dob' | 'joining' | null>(null);
 
-  // Use our own branded header instead of the native one.
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  // Slide/fade each time the step changes
   const enter = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     enter.setValue(0);
@@ -158,6 +159,8 @@ export default function RegisterScreen({ navigation }: Props) {
   const submit = async () => {
     setError(null);
     if (!form.photoUri) return setError(t('register.photoRequired'));
+    if (!form.dateOfBirth) return setError(t('register.fieldRequired'));
+
     setBusy(true);
     try {
       const input: RegisterInput = {
@@ -169,7 +172,7 @@ export default function RegisterScreen({ navigation }: Props) {
         dateOfBirth: form.dateOfBirth,
         emergencyContactName: form.emergencyContactName.trim(),
         emergencyContactPhone: form.emergencyContactPhone.trim(),
-        joiningDate: form.joiningDate || undefined,
+        joiningDate: form.joiningDate ?? undefined,
         photoUri: form.photoUri,
         photoMimeType: 'image/jpeg',
       };
@@ -182,6 +185,11 @@ export default function RegisterScreen({ navigation }: Props) {
       setBusy(false);
     }
   };
+
+  // ---- picker default values ----
+  const today = ethTodayFromInstant(new Date());
+  const dobDefault: EthDate = { year: 2000, month: 1, day: 1 };
+  const joiningDefault: EthDate = { year: today.year - 1, month: 1, day: 1 };
 
   return (
     <AuthScreen compact>
@@ -298,14 +306,37 @@ export default function RegisterScreen({ navigation }: Props) {
                 );
               })}
             </View>
-            <AuthField
-              label={t('register.dateOfBirth')}
-              icon="🎂"
-              value={form.dateOfBirth}
-              onChangeText={(v) => set('dateOfBirth', v)}
-              autoCapitalize="none"
-              placeholder="YYYY-MM-DD"
-            />
+
+            {/* Date of Birth — E.C. picker */}
+            <Text
+              style={[
+                typography.bodySmall,
+                { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '600' },
+              ]}
+            >
+              {t('register.dateOfBirth')} ({t('funding.ethCalendar', { defaultValue: 'Ethiopian calendar' })})
+            </Text>
+            <Pressable
+              onPress={() => setPicker('dob')}
+              style={{
+                padding: spacing.md,
+                borderRadius: radius.md,
+                borderWidth: 1.5,
+                borderColor: form.dateOfBirth ? colors.primary : colors.border,
+                backgroundColor: colors.surface,
+                marginBottom: spacing.md,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                minHeight: 50,
+              }}
+            >
+              <Text style={{ color: form.dateOfBirth ? colors.text : colors.textSecondary }}>
+                {form.dateOfBirth ? formatEthDate(form.dateOfBirth) : t('funding.selectDateHint', { defaultValue: 'Tap to select date' })}
+              </Text>
+              <Text style={{ fontSize: 16 }}>🎂</Text>
+            </Pressable>
+
             <AuthField
               label={t('register.emergencyContactName')}
               icon="🚑"
@@ -320,14 +351,35 @@ export default function RegisterScreen({ navigation }: Props) {
               onChangeText={(v) => set('emergencyContactPhone', v)}
               keyboardType="phone-pad"
             />
-            <AuthField
-              label={t('register.joiningDate')}
-              icon="📅"
-              value={form.joiningDate}
-              onChangeText={(v) => set('joiningDate', v)}
-              autoCapitalize="none"
-              placeholder="YYYY-MM-DD"
-            />
+
+            {/* Joining Date — E.C. picker (optional) */}
+            <Text
+              style={[
+                typography.bodySmall,
+                { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '600' },
+              ]}
+            >
+              {t('register.joiningDate')} ({t('funding.ethCalendar', { defaultValue: 'Ethiopian calendar' })})
+            </Text>
+            <Pressable
+              onPress={() => setPicker('joining')}
+              style={{
+                padding: spacing.md,
+                borderRadius: radius.md,
+                borderWidth: 1.5,
+                borderColor: form.joiningDate ? colors.primary : colors.border,
+                backgroundColor: colors.surface,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                minHeight: 50,
+              }}
+            >
+              <Text style={{ color: form.joiningDate ? colors.text : colors.textSecondary }}>
+                {form.joiningDate ? formatEthDate(form.joiningDate) : t('funding.selectDateHint', { defaultValue: 'Tap to select date' })}
+              </Text>
+              <Text style={{ fontSize: 16 }}>📅</Text>
+            </Pressable>
           </>
         )}
 
@@ -368,53 +420,53 @@ export default function RegisterScreen({ navigation }: Props) {
                     justifyContent: 'center',
                   }}
                 >
-                {form.photoUri ? (
-                  <Image
-                    source={{ uri: form.photoUri }}
-                    style={{ width: 140, height: 140, borderRadius: 70 }}
-                  />
-                ) : (
-                  <View
-                    style={{
-                      width: 140,
-                      height: 140,
-                      borderRadius: 70,
-                      backgroundColor: colors.surface,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: spacing.md,
-                    }}
-                  >
-                    <Text style={{ fontSize: 34 }}>📷</Text>
-                    <Text
-                      style={[
-                        typography.bodySmall,
-                        { color: colors.primary, marginTop: spacing.xs, textAlign: 'center' },
-                      ]}
+                  {form.photoUri ? (
+                    <Image
+                      source={{ uri: form.photoUri }}
+                      style={{ width: 140, height: 140, borderRadius: 70 }}
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        width: 140,
+                        height: 140,
+                        borderRadius: 70,
+                        backgroundColor: colors.surface,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: spacing.md,
+                      }}
                     >
-                      {t('register.pickPhoto')}
-                    </Text>
-                  </View>
-                )}
-                {form.photoUri ? (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      right: 4,
-                      bottom: 4,
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: BRAND.magenta,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderWidth: 3,
-                      borderColor: colors.background,
-                    }}
-                  >
-                    <Text style={{ fontSize: 16 }}>✏️</Text>
-                  </View>
-                ) : null}
+                      <Text style={{ fontSize: 34 }}>📷</Text>
+                      <Text
+                        style={[
+                          typography.bodySmall,
+                          { color: colors.primary, marginTop: spacing.xs, textAlign: 'center' },
+                        ]}
+                      >
+                        {t('register.pickPhoto')}
+                      </Text>
+                    </View>
+                  )}
+                  {form.photoUri ? (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        right: 4,
+                        bottom: 4,
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: BRAND.magenta,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderWidth: 3,
+                        borderColor: colors.background,
+                      }}
+                    >
+                      <Text style={{ fontSize: 16 }}>✏️</Text>
+                    </View>
+                  ) : null}
                 </View>
               </LinearGradient>
             </Pressable>
@@ -435,7 +487,10 @@ export default function RegisterScreen({ navigation }: Props) {
                 label={t('register.gender')}
                 value={form.gender ? t(`register.${form.gender}`) : ''}
               />
-              <Review label={t('register.dateOfBirth')} value={form.dateOfBirth} />
+              <Review
+                label={t('register.dateOfBirth')}
+                value={form.dateOfBirth ? formatEthDate(form.dateOfBirth) : ''}
+              />
               <Review
                 label={t('register.emergencyContactName')}
                 value={form.emergencyContactName}
@@ -445,7 +500,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 value={form.emergencyContactPhone}
               />
               {form.joiningDate ? (
-                <Review label={t('register.joiningDate')} value={form.joiningDate} />
+                <Review label={t('register.joiningDate')} value={formatEthDate(form.joiningDate)} />
               ) : null}
             </View>
           </>
@@ -478,11 +533,25 @@ export default function RegisterScreen({ navigation }: Props) {
           />
         )}
       </View>
+
+      <EthDatePicker
+        visible={picker !== null}
+        title={picker === 'dob' ? t('register.dateOfBirth') : t('register.joiningDate')}
+        value={picker === 'dob' ? (form.dateOfBirth ?? dobDefault) : (form.joiningDate ?? joiningDefault)}
+        onClose={() => setPicker(null)}
+        onConfirm={(d) => {
+          if (picker === 'dob') set('dateOfBirth', d);
+          else if (picker === 'joining') set('joiningDate', d);
+          setPicker(null);
+        }}
+        minYear={1950}
+        maxYear={today.year}
+      />
     </AuthScreen>
   );
 }
 
-// ---------- Helper components (module scope) ----------
+// ---------- Helper components ----------
 
 function Heading({ text }: { text: string }) {
   const { theme } = useTheme();

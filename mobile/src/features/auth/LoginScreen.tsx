@@ -36,7 +36,14 @@ export default function LoginScreen({ navigation }: Props) {
     setError(null);
     setBusy(true);
     try {
-      await login({ phone: phone.trim(), password, deviceLabel: 'expo-phone' });
+      const Device = await import('expo-device');
+      const { Platform } = await import('react-native');
+      const deviceLabel = Device.isDevice
+        ? `${Device.deviceName ?? 'Device'} (${Platform.OS})`
+        : `Emulator (${Platform.OS})`;
+
+      await login({ phone: phone.trim(), password, deviceLabel });
+      
       const { refreshRole } = await import('../../services/role');
       await refreshRole();
       setSessionState('authenticated');
@@ -46,7 +53,15 @@ export default function LoginScreen({ navigation }: Props) {
       void registerDeviceWithBackend();
     } catch (e) {
       const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
+      if (err.code === 'ACCOUNT_LOCKED') {
+        setError(
+          t('auth.accountLocked', {
+            defaultValue: 'Your account is locked. Please contact a choir leader to unlock it.',
+          })
+        );
+      } else {
+        setError(`${err.message} [${err.code}]`);
+      }
     } finally {
       setBusy(false);
     }

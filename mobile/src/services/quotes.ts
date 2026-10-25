@@ -1,4 +1,7 @@
 import { apiGet, http } from './api';
+import { cachedFetch, cacheInvalidatePrefix } from './cache';
+import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
+import { EthDate } from '../utils/ethiopianCalendar';
 
 export type DailyQuote = {
   id: string;
@@ -10,29 +13,9 @@ export type DailyQuote = {
   createdAt: string;
   submittedBy?: {
     id: string;
-    memberProfile: {
-      fullName: string;
-      profilePhotoUrl: string | null;
-    } | null;
+    memberProfile: { fullName: string; profilePhotoUrl: string | null } | null;
   } | null;
 };
-
-export async function getTodayQuote(): Promise<DailyQuote | null> {
-  const res = await apiGet<{ item: DailyQuote | null }>('/quotes/today');
-  return res.item;
-}
-
-export async function listRecentQuotes(days = 7): Promise<DailyQuote[]> {
-  const res = await apiGet<{ items: DailyQuote[] }>(
-    `/quotes/recent?days=${days}`,
-  );
-  return res.items;
-}
-
-export async function getMyQuoteCount(): Promise<number> {
-  const res = await apiGet<{ count: number }>('/quotes/mine/count');
-  return res.count;
-}
 
 export type PublishQuoteInput = {
   quoteText: string;
@@ -42,6 +25,35 @@ export type PublishQuoteInput = {
   audioName?: string | null;
   audioMime?: string | null;
 };
+
+export async function getTodayQuote(): Promise<DailyQuote | null> {
+  const cached = await cachedFetch<DailyQuote | null>(
+    CACHE_KEYS.quoteToday,
+    async () => {
+      const res = await apiGet<{ item: DailyQuote | null }>('/quotes/today');
+      return res.item;
+    },
+    () => {},
+  );
+  return cached ?? null;
+}
+
+export async function listRecentQuotes(days = 7): Promise<DailyQuote[]> {
+  const cached = await cachedFetch<DailyQuote[]>(
+    CACHE_KEYS.quotesRecent(days),
+    async () => {
+      const res = await apiGet<{ items: DailyQuote[] }>(`/quotes/recent?days=${days}`);
+      return res.items;
+    },
+    () => {},
+  );
+  return cached ?? [];
+}
+
+export async function getMyQuoteCount(): Promise<number> {
+  const res = await apiGet<{ count: number }>('/quotes/mine/count');
+  return res.count;
+}
 
 export async function publishTodayQuote(
   input: PublishQuoteInput,
@@ -65,5 +77,7 @@ export async function publishTodayQuote(
     timeout: 90_000,
     transformRequest: (d) => d,
   });
+
+  await cacheInvalidatePrefix(CACHE_PREFIXES.quote);
   return res.data.quote;
 }

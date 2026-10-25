@@ -90,8 +90,8 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
         </Text>
 
         <View style={{ position: 'absolute', top: insets.top + 12, right: 16 }}>
-  <GlassBackButton onPress={() => navigation.goBack()} size={44} />
-</View>
+          <GlassBackButton onPress={() => navigation.goBack()} size={44} />
+        </View>
       </View>
     );
   }
@@ -200,12 +200,15 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
 
           {item.event && evDate && (
             <Pressable
-              onPress={() =>
-                navigation.navigate('Home', {
-                  screen: 'EventDetail',
-                  params: { id: item.event!.id },
-                })
-              }
+              onPress={() => {
+                const parent = navigation.getParent();
+                const target = parent ?? navigation;
+                if (target.getState().routeNames.includes('Home')) {
+                  target.navigate('Home', { screen: 'EventDetail', params: { id: item.event!.id } });
+                } else {
+                  target.navigate('EventDetail', { id: item.event!.id });
+                }
+              }}
               style={({ pressed }) => ({
                 marginTop: spacing.lg,
                 borderRadius: 26,

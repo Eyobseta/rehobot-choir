@@ -30,6 +30,7 @@ import {
   SimpleStatus,
 } from '../../services/audioPlayer';
 import { ErrorBanner, BRAND } from '../auth/Auth_UI';
+import { formatEthDate } from '../../utils/ethiopianCalendar';
 import {
   PhotoCarousel,
   PhotoViewer,
@@ -179,7 +180,7 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
             </Text>
 
             <View style={styles.metaRow}>
-              <DatePill text={new Date(item.date).toISOString().slice(0, 10)} />
+              <DatePill text={formatEthDate(item.date, 'en')} />
               {photos.length > 0 && (
                 <StatusPill
                   label={String(photos.length)}

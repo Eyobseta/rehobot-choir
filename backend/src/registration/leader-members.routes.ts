@@ -4,6 +4,7 @@ import {
   findMemberByPhone,
   leaderResetMemberPassword,
   leaderDeleteMember,
+  leaderAppointMember, // NEW
 } from '../auth/auth.service';
 import { ApiError } from '../utils/ApiError';
 
@@ -19,9 +20,6 @@ function paramId(req: Request): string {
   return id;
 }
 
-/**
- * GET /api/v1/leaders/members/lookup?phone=...
- */
 router.get(
   '/lookup',
   async (req: Request, res: Response, next: NextFunction) => {
@@ -35,10 +33,6 @@ router.get(
   },
 );
 
-/**
- * POST /api/v1/leaders/members/:id/reset-password
- * Returns { temporaryPassword }.
- */
 router.post(
   '/:id/reset-password',
   async (req: Request, res: Response, next: NextFunction) => {
@@ -55,10 +49,23 @@ router.post(
   },
 );
 
-/**
- * DELETE /api/v1/leaders/members/:id
- * Body: { leaderPassword }
- */
+// NEW — Appoint a member as choir leader (SRS 8.2)
+router.post(
+  '/:id/appoint',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.auth) throw ApiError.unauthorized();
+      const result = await leaderAppointMember(
+        req.auth.userId,
+        paramId(req),
+      );
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 router.delete(
   '/:id',
   async (req: Request, res: Response, next: NextFunction) => {

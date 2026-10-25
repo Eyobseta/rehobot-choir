@@ -37,6 +37,9 @@ export function VoicePlayer({
 
   useEffect(() => {
     if (status.didJustFinish) {
+      // 1. Pause the player to stop any loop
+      player.pause();
+      // 2. Reset the position to the start (0)
       player.seekTo(0);
     }
   }, [status.didJustFinish, player]);

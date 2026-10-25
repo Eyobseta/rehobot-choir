@@ -10,9 +10,12 @@ function decodePayload(token: string): Me | null {
   try {
     const part = token.split('.')[1];
     if (!part) return null;
+    // Replace URL-safe chars and ensure padding
     const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = b64 + '==='.slice((b64.length + 3) % 4);
-    const json = atob(padded);
+    const padded = b64.padEnd(b64.length + (4 - (b64.length % 4)) % 4, '=');
+
+    // Use globalThis instead of global to satisfy TypeScript
+    const json = globalThis.atob(padded);
     const p = JSON.parse(json) as { sub?: string; role?: UserRoleName };
     if (!p.sub || !p.role) return null;
     return { id: p.sub, role: p.role };

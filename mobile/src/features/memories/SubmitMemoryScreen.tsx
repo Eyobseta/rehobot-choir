@@ -19,6 +19,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { submitMemory } from '../../services/memories';
 import { ApiError } from '../../services/api';
+import { EthDate, ethTodayFromInstant, formatEthDate } from '../../utils/ethiopianCalendar';
+import EthDatePicker from '../funding/EthDatePicker';
 import {
   KeyboardAwareScroll,
   AuthField,
@@ -41,7 +43,8 @@ export default function SubmitMemoryScreen({ navigation }: any) {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [dateText, setDateText] = useState('');
+  const [date, setDate] = useState<EthDate>(ethTodayFromInstant(new Date()));
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [audioUri, setAudioUri] = useState<string | null>(null);
   const [audioName, setAudioName] = useState<string | null>(null);
@@ -117,26 +120,16 @@ export default function SubmitMemoryScreen({ navigation }: any) {
     setYoutubeUrls((prev) => prev.filter((u) => u !== url));
   };
 
-  const parseDate = (): string | null => {
-    const m = dateText.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return null;
-    const [, y, mo, d] = m;
-    const dt = new Date(`${y}-${mo}-${d}T00:00:00.000Z`);
-    return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
-  };
-
   const onSubmit = async () => {
     setError(null);
     if (!title.trim()) return setError(t('register.fieldRequired'));
-    const iso = parseDate();
-    if (!iso) return setError(t('memories.dateFormat'));
 
     setBusy(true);
     try {
       await submitMemory({
         title: title.trim(),
         description: description.trim() || undefined,
-        date: iso,
+        date, // Now an EthDate object
         photoUris,
         audioUri,
         audioName,
@@ -243,14 +236,43 @@ export default function SubmitMemoryScreen({ navigation }: any) {
             value={title}
             onChangeText={setTitle}
           />
-          <AuthField
-            label={t('memories.dateField')}
-            iconNode={fieldIcon('calendar', '#E6C779')}
-            value={dateText}
-            onChangeText={setDateText}
-            placeholder="2026-09-28"
-            autoCapitalize="none"
-          />
+
+          {/* Date picker (Ethiopian calendar) */}
+          <Text
+            style={[
+              typography.bodySmall,
+              {
+                color: colors.textSecondary,
+                marginBottom: spacing.xs,
+                fontWeight: '700',
+                marginTop: spacing.sm,
+              },
+            ]}
+          >
+            {t('memories.dateField')}
+          </Text>
+          <Pressable
+            onPress={() => setPickerOpen(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+              backgroundColor: colors.background,
+              borderColor: colors.border,
+              borderWidth: 1.5,
+              borderRadius: 14,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.md,
+              marginBottom: spacing.md,
+            }}
+          >
+            {fieldIcon('calendar', '#E6C779')}
+            <Text style={{ color: colors.text, flex: 1, fontSize: 16 }}>
+              {formatEthDate(date, 'en')}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+          </Pressable>
+
           <AuthField
             label={t('memories.descriptionField')}
             iconNode={fieldIcon('chatbubble-ellipses', '#EE9BBD')}
@@ -402,6 +424,20 @@ export default function SubmitMemoryScreen({ navigation }: any) {
           />
         </Animated.View>
       </KeyboardAwareScroll>
+
+      {/* ---------- Ethiopian date picker ---------- */}
+      <EthDatePicker
+        visible={pickerOpen}
+        title={t('memories.dateField')}
+        value={date}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={(d) => {
+          setDate(d);
+          setPickerOpen(false);
+        }}
+        minYear={2000}
+        maxYear={ethTodayFromInstant(new Date()).year}
+      />
     </View>
   );
 }

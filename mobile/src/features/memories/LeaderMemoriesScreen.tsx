@@ -23,6 +23,7 @@ import {
 } from '../../services/memories';
 import { ApiError } from '../../services/api';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
+import { formatEthDate } from '../../utils/ethiopianCalendar';
 import { DatePill, EmptyState } from './Memorykit';
 import GlassBackButton from '../../components/GlassBackButton';
 
@@ -254,7 +255,7 @@ function ReviewCard({
             {item.title}
           </Text>
           <View style={{ marginTop: 6, alignSelf: 'flex-start' }}>
-            <DatePill text={new Date(item.date).toISOString().slice(0, 10)} />
+            <DatePill text={formatEthDate(item.date, 'en')} />
           </View>
           {submitter ? (
             <View style={styles.byRow}>

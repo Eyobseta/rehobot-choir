@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { getMe, clearMeCache } from './chatSession';
 import { closeChatCache, initChatCache } from './chatCache';
 import { onChatEvent, startRealtime, stopRealtime } from './chatRealtime';
@@ -20,6 +21,8 @@ import type { ChatMessage } from './chatTypes';
 export function useChatBootstrap(): void {
   useEffect(() => {
     let meId: string | null = null;
+    let backgroundTime: number | null = null;
+
     // Open this user's on-device cache, show the saved list at once, then refresh.
     getMe().then(async (m) => {
       meId = m?.id ?? null;
@@ -48,8 +51,25 @@ export function useChatBootstrap(): void {
       onChatEvent('connected', () => refreshConversationsSoon()),
     ];
 
+    // --- NEW: AppState listener for foreground refresh ---
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        backgroundTime = Date.now();
+      } else if (nextAppState === 'active') {
+        // If the app was in the background for more than 30 seconds, refresh.
+        // (Reconnecting the socket also usually triggers a 'connected' event, 
+        // but this catches any missed updates in case the socket stayed alive.)
+        if (backgroundTime && Date.now() - backgroundTime > 30_000) {
+          void refreshConversations();
+        }
+        backgroundTime = null;
+      }
+    };
+    const appStateSub = AppState.addEventListener('change', handleAppStateChange);
+
     return () => {
       offs.forEach((off) => off());
+      appStateSub.remove();
       stopRealtime();
       void closeChatCache();
       resetChatStore();

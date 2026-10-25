@@ -219,6 +219,17 @@ export function Composer({
 
     setProcessing(true);
     try {
+      // Check size before preparing
+      const bigFiles = assets.filter((a) => (a.fileSize ?? 0) > BIG_FILE_BYTES);
+      if (quality === 'original' && bigFiles.length > 0) {
+        Alert.alert(
+          tr('fileTooLarge'),
+          'Some photos are too large to send in original quality. Please use the Compressed option.'
+        );
+        setProcessing(false);
+        return;
+      }
+
       const photos = await Promise.all(assets.map((a, i) => prepare(a, i, quality)));
       onSend({ text: t, replyToId: replyTo?.id ?? null, photos, voice: null });
       setText('');

@@ -1,4 +1,6 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from '../../services/api';
+import { cachedFetch, cacheInvalidatePrefix } from '../../services/cache';
+import { CACHE_PREFIXES } from '../../services/cacheKeys';
 import type {
   ChangesPage,
   ChatMessage,
@@ -20,8 +22,16 @@ function appendFile(form: FormData, field: string, file: LocalPhoto): void {
 // ---------------- Conversations ----------------
 
 export async function fetchConversations(): Promise<ConversationListItem[]> {
-  const res = await apiGet<{ items: ConversationListItem[] }>('/chats');
-  return res.items;
+  const key = 'chats:list';
+  const cached = await cachedFetch<ConversationListItem[]>(
+    key,
+    async () => {
+      const res = await apiGet<{ items: ConversationListItem[] }>('/chats');
+      return res.items;
+    },
+    () => {},
+  );
+  return cached ?? [];
 }
 
 export async function fetchUnread(): Promise<{
@@ -32,6 +42,16 @@ export async function fetchUnread(): Promise<{
 }
 
 export async function fetchDetail(id: string): Promise<ConversationDetail> {
+  const key = `chats:detail:${id}`;
+  const cached = await cachedFetch<ConversationDetail>(
+    key,
+    async () => {
+      const res = await apiGet<{ conversation: ConversationDetail }>(`/chats/${id}`);
+      return res.conversation;
+    },
+    () => {},
+  );
+  if (cached) return cached;
   const res = await apiGet<{ conversation: ConversationDetail }>(`/chats/${id}`);
   return res.conversation;
 }
@@ -79,6 +99,7 @@ export async function sendMessageApi(
       `/chats/${conversationId}/messages`,
       { text: draft.text, replyToId: draft.replyToId, clientId },
     );
+    await cacheInvalidatePrefix(CACHE_PREFIXES.chats || 'chats:');
     return res.message;
   }
 
@@ -96,6 +117,7 @@ export async function sendMessageApi(
     form,
     { headers: { 'Content-Type': 'multipart/form-data' }, timeout: UPLOAD_TIMEOUT_MS },
   );
+  await cacheInvalidatePrefix(CACHE_PREFIXES.chats || 'chats:');
   return res.message;
 }
 

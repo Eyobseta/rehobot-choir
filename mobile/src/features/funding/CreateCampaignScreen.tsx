@@ -23,13 +23,6 @@ function Lockable({ locked, children, style }: { locked: boolean; children: Reac
   );
 }
 
-/**
- * Create a campaign, or edit one (route param `id`).
- *  - new / DRAFT : everything editable, "Save draft" + "Publish now"
- *  - PUBLISHED   : wording, target and deadline only, a reason is required (server rule)
- *  - CLOSED / CANCELLED : read-only
- * A draft that was created but failed to publish is simply updated on the next tap: no duplicates.
- */
 export default function CreateCampaignScreen({ navigation, route }: any) {
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
@@ -133,6 +126,8 @@ export default function CreateCampaignScreen({ navigation, route }: any) {
     return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>;
   }
 
+  // published: locks type and amount
+  // readOnly (CLOSED/CANCELLED): locks everything
   const typeLocked = published || readOnly;
   const textLocked = readOnly;
 

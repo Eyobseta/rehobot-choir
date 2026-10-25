@@ -1,4 +1,6 @@
 import { apiGet, apiDelete, http } from './api';
+import { cachedFetch, cacheInvalidatePrefix } from './cache';
+import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
 
 export type MemoryMediaType = 'PHOTO' | 'AUDIO' | 'YOUTUBE';
 
@@ -13,7 +15,8 @@ export type MemorySummary = {
   id: string;
   title: string;
   description: string | null;
-  date: string;
+  date: { year: number; month: number; day: number }; // Ethiopian date
+  dateGregorian: string;
   media: { id: string; type: MemoryMediaType; storageUrl: string | null }[];
 };
 
@@ -21,7 +24,8 @@ export type MemoryDetail = {
   id: string;
   title: string;
   description: string | null;
-  date: string;
+  date: { year: number; month: number; day: number };
+  dateGregorian: string;
   status: 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'DELETED';
   rejectionReason?: string | null;
   media: MemoryMediaItem[];
@@ -35,32 +39,57 @@ export type MemoryYear = {
 export type MyMemoryRow = {
   id: string;
   title: string;
-  date: string;
+  date: { year: number; month: number; day: number };
+  dateGregorian: string;
   status: 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'DELETED';
   rejectionReason: string | null;
   reviewedAt: string | null;
   createdAt: string;
 };
 
+// ---------- Member (cached) ----------
+
 export async function listMemories(search?: string): Promise<MemorySummary[]> {
-  const q = search?.trim()
-    ? `?search=${encodeURIComponent(search.trim())}`
-    : '';
-  const res = await apiGet<{ items: MemorySummary[] }>(`/memories${q}`);
-  return res.items;
+  const key = CACHE_KEYS.memoriesList(search ?? '');
+  const cached = await cachedFetch<MemorySummary[]>(
+    key,
+    async () => {
+      const q = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
+      const res = await apiGet<{ items: MemorySummary[] }>(`/memories${q}`);
+      return res.items;
+    },
+    () => {},
+  );
+  return cached ?? [];
 }
 
 export async function listMemoryYears(): Promise<MemoryYear[]> {
-  const res = await apiGet<{ items: MemoryYear[] }>('/memories/years');
-  return res.items;
+  const cached = await cachedFetch<MemoryYear[]>(
+    CACHE_KEYS.memoryYears,
+    async () => {
+      const res = await apiGet<{ items: MemoryYear[] }>('/memories/years');
+      return res.items;
+    },
+    () => {},
+  );
+  return cached ?? [];
 }
 
 export async function getMemory(id: string): Promise<MemoryDetail> {
+  const key = CACHE_KEYS.memoryDetail(id);
+  const cached = await cachedFetch<MemoryDetail>(
+    key,
+    async () => {
+      const res = await apiGet<{ item: MemoryDetail }>(`/memories/${id}`);
+      return res.item;
+    },
+    () => {},
+  );
+  if (cached) return cached;
   const res = await apiGet<{ item: MemoryDetail }>(`/memories/${id}`);
   return res.item;
 }
 
-/** Returns the memory regardless of status, only if it belongs to the caller. */
 export async function getMyMemory(id: string): Promise<MemoryDetail> {
   const res = await apiGet<{ item: MemoryDetail }>(`/memories/mine/${id}`);
   return res.item;
@@ -74,7 +103,7 @@ export async function listMyMemories(): Promise<MyMemoryRow[]> {
 export type SubmitMemoryInput = {
   title: string;
   description?: string;
-  date: string;
+  date: { year: number; month: number; day: number }; // Ethiopian date
   photoUris?: string[];
   audioUri?: string | null;
   audioName?: string | null;
@@ -82,13 +111,11 @@ export type SubmitMemoryInput = {
   youtubeUrls?: string[];
 };
 
-export async function submitMemory(
-  input: SubmitMemoryInput,
-): Promise<{ id: string }> {
+export async function submitMemory(input: SubmitMemoryInput): Promise<{ id: string }> {
   const form = new FormData();
   form.append('title', input.title);
   if (input.description) form.append('description', input.description);
-  form.append('date', input.date);
+  form.append('date', JSON.stringify(input.date)); // Send as JSON
 
   if (input.youtubeUrls && input.youtubeUrls.length > 0) {
     form.append('youtubeUrls', JSON.stringify(input.youtubeUrls));
@@ -97,11 +124,7 @@ export async function submitMemory(
   for (let i = 0; i < (input.photoUris ?? []).length; i++) {
     const uri = input.photoUris![i];
     // @ts-expect-error — RN FormData
-    form.append('photos', {
-      uri,
-      name: `photo_${i}.jpg`,
-      type: 'image/jpeg',
-    });
+    form.append('photos', { uri, name: `photo_${i}.jpg`, type: 'image/jpeg' });
   }
 
   if (input.audioUri) {
@@ -113,67 +136,56 @@ export async function submitMemory(
     });
   }
 
-  const res = await http.post<{ memory: { id: string } }>(
-    '/memories',
-    form,
-    {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 120_000,
-      transformRequest: (d) => d,
-    },
-  );
+  const res = await http.post<{ memory: { id: string } }>('/memories', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120_000,
+    transformRequest: (d) => d,
+  });
+  await cacheInvalidatePrefix(CACHE_PREFIXES.memories);
   return { id: res.data.memory.id };
 }
 
 // ---------- Leader ----------
+// (leaderListPendingMemories, leaderGetMemory, etc. unchanged - just add cache invalidation)
 
 export type PendingMemory = {
   id: string;
   title: string;
   description: string | null;
-  date: string;
+  date: { year: number; month: number; day: number };
+  dateGregorian: string;
   status: 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED';
   media: MemoryMediaItem[];
   submittedBy: {
     id: string;
-    memberProfile: {
-      fullName: string;
-      profilePhotoUrl: string | null;
-    } | null;
+    memberProfile: { fullName: string; profilePhotoUrl: string | null } | null;
   };
 };
 
 export async function leaderListPendingMemories(): Promise<PendingMemory[]> {
-  const res = await apiGet<{ items: PendingMemory[] }>(
-    '/leaders/memories/pending',
-  );
+  const res = await apiGet<{ items: PendingMemory[] }>('/leaders/memories/pending');
   return res.items;
 }
 
 export async function leaderGetMemory(id: string): Promise<PendingMemory> {
-  const res = await apiGet<{ item: PendingMemory }>(
-    `/leaders/memories/${id}`,
-  );
+  const res = await apiGet<{ item: PendingMemory }>(`/leaders/memories/${id}`);
   return res.item;
 }
 
 export async function leaderApproveMemory(id: string): Promise<void> {
   await http.post(`/leaders/memories/${id}/approve`, {});
+  await cacheInvalidatePrefix(CACHE_PREFIXES.memories);
 }
 
-export async function leaderRejectMemory(
-  id: string,
-  reason?: string,
-): Promise<void> {
-  await http.post(`/leaders/memories/${id}/reject`, {
-    reason: reason ?? '',
-  });
+export async function leaderRejectMemory(id: string, reason?: string): Promise<void> {
+  await http.post(`/leaders/memories/${id}/reject`, { reason: reason ?? '' });
+  await cacheInvalidatePrefix(CACHE_PREFIXES.memories);
 }
 
 export type LeaderEditMemoryInput = {
   title?: string;
   description?: string;
-  date?: string;
+  date?: { year: number; month: number; day: number };
   replaceMedia?: boolean;
   photoUris?: string[];
   audioUri?: string | null;
@@ -182,30 +194,20 @@ export type LeaderEditMemoryInput = {
   youtubeUrls?: string[];
 };
 
-export async function leaderEditMemory(
-  id: string,
-  input: LeaderEditMemoryInput,
-): Promise<void> {
+export async function leaderEditMemory(id: string, input: LeaderEditMemoryInput): Promise<void> {
   const form = new FormData();
   if (input.title !== undefined) form.append('title', input.title);
-  if (input.description !== undefined)
-    form.append('description', input.description);
-  if (input.date !== undefined) form.append('date', input.date);
+  if (input.description !== undefined) form.append('description', input.description);
+  if (input.date !== undefined) form.append('date', JSON.stringify(input.date));
 
   form.append('replaceMedia', input.replaceMedia ? 'true' : 'false');
 
-  if (input.youtubeUrls) {
-    form.append('youtubeUrls', JSON.stringify(input.youtubeUrls));
-  }
+  if (input.youtubeUrls) form.append('youtubeUrls', JSON.stringify(input.youtubeUrls));
 
   for (let i = 0; i < (input.photoUris ?? []).length; i++) {
     const uri = input.photoUris![i];
     // @ts-expect-error — RN FormData
-    form.append('photos', {
-      uri,
-      name: `photo_${i}.jpg`,
-      type: 'image/jpeg',
-    });
+    form.append('photos', { uri, name: `photo_${i}.jpg`, type: 'image/jpeg' });
   }
 
   if (input.audioUri) {
@@ -222,8 +224,10 @@ export async function leaderEditMemory(
     timeout: 120_000,
     transformRequest: (d) => d,
   });
+  await cacheInvalidatePrefix(CACHE_PREFIXES.memories);
 }
 
 export async function leaderDeleteMemory(id: string): Promise<void> {
   await apiDelete(`/leaders/memories/${id}`);
+  await cacheInvalidatePrefix(CACHE_PREFIXES.memories);
 }

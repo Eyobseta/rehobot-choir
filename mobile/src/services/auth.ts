@@ -1,5 +1,6 @@
 import { apiPost, apiGet, http } from './api';
 import { saveTokens, clearTokens, getAccessToken } from './secureStorage';
+import { setCacheScope, cacheClearAll } from './cache';
 
 export type LoginInput = {
   phone: string;
@@ -35,12 +36,12 @@ export type MeResponse = {
 export async function login(input: LoginInput): Promise<LoginResponse> {
   const res = await apiPost<LoginResponse>('/auth/login', input);
   await saveTokens(res.accessToken, res.refreshToken);
+  // Set cache scope so the app never leaks data across accounts
+  setCacheScope(res.user.id);
   return res;
 }
 
 export async function logout(): Promise<void> {
-  // Unregister the current device from push notifications first.
-  // Best-effort — never block logout on this.
   try {
     const { unregisterDeviceFromBackend } = await import('./pushTokens');
     await unregisterDeviceFromBackend();
@@ -54,6 +55,8 @@ export async function logout(): Promise<void> {
     // ignore
   } finally {
     await clearTokens();
+    setCacheScope(null);
+    await cacheClearAll();
   }
 }
 
@@ -82,5 +85,9 @@ export async function deleteOwnAccount(
   const res = await http.delete<{ ok: true }>('/auth/me', {
     data: { password },
   });
+  // Session just ended; clear everything.
+  await clearTokens();
+  setCacheScope(null);
+  await cacheClearAll();
   return res.data;
 }
