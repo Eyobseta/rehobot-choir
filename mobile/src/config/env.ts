@@ -28,7 +28,7 @@ const DEV_PORT = 3000;
 const DEV_BASE_URL = `http://${DEV_LAN_IP}:${DEV_PORT}`;
 
 // ⚠️ REPLACE THIS WITH YOUR ACTUAL DEPLOYED BACKEND URL BEFORE BUILDING
-const PROD_BASE_URL = 'https://api.rehobot-choir.example.com';
+const PROD_BASE_URL = 'https://rehobot-choir.onrender.com';
 
 export const API_BASE_URL = APP_ENV === 'development' ? DEV_BASE_URL : PROD_BASE_URL;
 
