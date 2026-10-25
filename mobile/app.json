@@ -1,26 +1,30 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "Rehobot Choir",
+    "slug": "rehobot-choir",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#121212"
+    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#121212",
+        "foregroundImage": "./assets/adaptive-icon.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.WAKE_LOCK",
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "package": "com.eyobseta.rehobotchoir"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -50,7 +54,9 @@
         }
       ],
       "expo-sqlite",
-      "expo-image"
+      "expo-image",
+      "expo-font",
+      "expo-asset"
     ],
     "extra": {
       "eas": {
