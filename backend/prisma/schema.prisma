@@ -1,11 +1,11 @@
 // Rehobot Choir — Prisma schema
-// Phase 1 (SRS v1.0)
+// Phase 1 (SRS v1.0) — V1.0 schema freeze
 //
-// Chat changes vs previous version:
-//  - datasource: directUrl (Neon pooled URL cannot run migrations)
-//  - ChatGroup.createdByUserId is optional (SetNull on a required field was invalid)
-//  - ChatMessage.clientId + @@unique([senderId, clientId])  (idempotent sends)
-//  - MessageReport @@unique([messageId, reporterId])        (one report per user)
+// Date policy:
+//  - ALL user-facing dates are Ethiopian (E.C.) stored as y/m/d Int columns.
+//  - For sort/filter/index only, a derived Gregorian @db.Date mirror is stored
+//    in columns named *Gregorian. The E.C. columns are the source of truth.
+//  - Date-only values are computed at UTC midnight (no TZ shifts).
 
 generator client {
   provider = "prisma-client-js"
@@ -88,7 +88,7 @@ model User {
   pushTokens        PushToken[]
   notificationPreference NotificationPreference?
 
-  // Funding (annual hosting contribution + special donations)
+  // Funding
   annualContributions      AnnualContributionRecord[]  @relation("AnnualParticipant")
   donationPayments         SpecialDonationPayment[]    @relation("DonationParticipant")
   fundingDeclarations      FundingDeclaration[]        @relation("DeclarationParticipant")
@@ -161,10 +161,21 @@ model RegistrationApplication {
   profilePhotoUrl String
   profilePhotoPublicId String
   gender        String
-  dateOfBirth   DateTime
+
+  // E.C. date of birth (source of truth) + Gregorian mirror for queries
+  dateOfBirthEthYear   Int
+  dateOfBirthEthMonth  Int
+  dateOfBirthEthDay    Int
+  dateOfBirthGregorian DateTime @db.Date
+
   emergencyContactName  String
   emergencyContactPhone String
-  joiningDate   DateTime?
+
+  // Optional joining date (E.C.)
+  joiningDateEthYear   Int?
+  joiningDateEthMonth  Int?
+  joiningDateEthDay    Int?
+  joiningDateGregorian DateTime? @db.Date
 
   status        ApplicationStatus @default(PENDING)
   rejectionReason String?
@@ -190,10 +201,21 @@ model MemberProfile {
 
   fullName           String
   gender             String
-  dateOfBirth        DateTime
+
+  // E.C. DOB + Gregorian mirror
+  dateOfBirthEthYear   Int
+  dateOfBirthEthMonth  Int
+  dateOfBirthEthDay    Int
+  dateOfBirthGregorian DateTime @db.Date
+
   emergencyContactName  String
   emergencyContactPhone String
-  joiningDate        DateTime?
+
+  joiningDateEthYear   Int?
+  joiningDateEthMonth  Int?
+  joiningDateEthDay    Int?
+  joiningDateGregorian DateTime? @db.Date
+
   profilePhotoUrl    String
   profilePhotoPublicId String
 
@@ -218,7 +240,12 @@ model Event {
   title       String
   description String?
   location    String?
-  date        DateTime
+
+  // E.C. event date + Gregorian mirror
+  dateEthYear   Int
+  dateEthMonth  Int
+  dateEthDay    Int
+  dateGregorian DateTime @db.Date
 
   coverImageUrl      String?
   coverImagePublicId String?
@@ -237,8 +264,8 @@ model Event {
   announcements Announcement[]
   rsvps         EventRSVP[]
 
-  @@index([status, date])
-  @@index([date])
+  @@index([status, dateGregorian])
+  @@index([dateGregorian])
   @@map("events")
 }
 
@@ -302,7 +329,13 @@ model AttendanceRecord {
   member      User              @relation("AttendanceRecords", fields: [memberId], references: [id], onDelete: Cascade)
 
   gathering   GatheringType
-  date        DateTime
+
+  // E.C. date + Gregorian mirror
+  dateEthYear   Int
+  dateEthMonth  Int
+  dateEthDay    Int
+  dateGregorian DateTime @db.Date
+
   status      AttendanceStatus
   lockedAt    DateTime?
 
@@ -312,8 +345,8 @@ model AttendanceRecord {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  @@unique([memberId, gathering, date])
-  @@index([gathering, date])
+  @@unique([memberId, gathering, dateGregorian])
+  @@index([gathering, dateGregorian])
   @@index([memberId])
   @@map("attendance_records")
 }
@@ -525,7 +558,7 @@ model SongSubmission {
 }
 
 // ------------------------------------------------------------
-// MEMORIES (SRS 14)
+// MEMORIES
 // ------------------------------------------------------------
 
 enum MemoryStatus {
@@ -546,7 +579,12 @@ model Memory {
 
   title       String
   description String?
-  date        DateTime
+
+  // E.C. memory date + Gregorian mirror
+  dateEthYear   Int
+  dateEthMonth  Int
+  dateEthDay    Int
+  dateGregorian DateTime @db.Date
 
   status      MemoryStatus  @default(PENDING_REVIEW)
   rejectionReason String?
@@ -565,8 +603,8 @@ model Memory {
 
   media       MemoryMedia[]
 
-  @@index([status, date])
-  @@index([date])
+  @@index([status, dateGregorian])
+  @@index([dateGregorian])
   @@index([status, publishedAt])
   @@map("memories")
 }
@@ -579,11 +617,8 @@ model MemoryMedia {
 
   type      MemoryMediaType
 
-  // For PHOTO / AUDIO
   storageUrl      String?
   storagePublicId String?
-
-  // For YOUTUBE
   youtubeUrl      String?
 
   createdAt DateTime        @default(now())
@@ -593,8 +628,7 @@ model MemoryMedia {
 }
 
 // ------------------------------------------------------------
-// DAILY BIBLE QUOTE (feature added beyond base SRS)
-// One quote per calendar day, enforced by a unique index.
+// DAILY BIBLE QUOTE
 // ------------------------------------------------------------
 
 enum DailyQuoteStatus {
@@ -605,11 +639,14 @@ enum DailyQuoteStatus {
 model DailyQuote {
   id                String            @id @default(cuid())
 
-  // Calendar day the quote belongs to. Stored as a real date (no time).
-  dateOnly          DateTime          @db.Date
+  // E.C. day + Gregorian mirror for unique lookup
+  dateEthYear       Int
+  dateEthMonth      Int
+  dateEthDay        Int
+  dateGregorian     DateTime          @db.Date
 
   quoteText         String
-  source            String            // e.g. "Psalm 4:4", "John 3:16"
+  source            String
 
   youtubeUrl        String?
   audioUrl          String?
@@ -623,14 +660,13 @@ model DailyQuote {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  @@unique([dateOnly])
-  @@index([dateOnly])
+  @@unique([dateGregorian])
+  @@index([dateGregorian])
   @@map("daily_quotes")
 }
 
 // ------------------------------------------------------------
-// PUSH TOKENS (SRS 32)
-// One row per device that has opted in to notifications.
+// PUSH TOKENS
 // ------------------------------------------------------------
 
 model PushToken {
@@ -638,8 +674,8 @@ model PushToken {
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  token      String   @unique     // Expo push token
-  platform   String                // "android" | "ios" | "web"
+  token      String   @unique
+  platform   String
   deviceLabel String?
 
   createdAt  DateTime @default(now())
@@ -650,7 +686,7 @@ model PushToken {
 }
 
 // ------------------------------------------------------------
-// NOTIFICATION PREFERENCES (SRS 16.4)
+// NOTIFICATION PREFERENCES
 // ------------------------------------------------------------
 
 model NotificationPreference {
@@ -660,11 +696,13 @@ model NotificationPreference {
 
   announcementsEnabled     Boolean  @default(true)
   eventRemindersEnabled    Boolean  @default(true)
-  chatMessagesEnabled      Boolean  @default(true)   // forced on per SRS 16.4
+  chatMessagesEnabled      Boolean  @default(true)
   birthdaysEnabled         Boolean  @default(true)
   newSongEnabled           Boolean  @default(true)
   newMemoryEnabled         Boolean  @default(true)
   dailyQuoteEnabled        Boolean  @default(true)
+  fundingReminderEnabled   Boolean  @default(true)   // NEW
+  fundingCampaignEnabled   Boolean  @default(true)   // NEW
 
   updatedAt                DateTime @updatedAt
 
@@ -672,7 +710,7 @@ model NotificationPreference {
 }
 
 // ------------------------------------------------------------
-// BIRTHDAY POSTS, COMMENTS, LIKES, REACTIONS
+// BIRTHDAY POSTS
 // ------------------------------------------------------------
 
 model BirthdayPost {
@@ -682,7 +720,12 @@ model BirthdayPost {
   user        User     @relation("BirthdayPosts", fields: [userId], references: [id], onDelete: Cascade)
 
   year        Int
-  birthdayDate DateTime  // Full date this post celebrates (UTC midnight)
+
+  // E.C. birthday date + mirror
+  birthdayEthYear   Int
+  birthdayEthMonth  Int
+  birthdayEthDay    Int
+  birthdayGregorian DateTime @db.Date
 
   createdAt   DateTime @default(now())
 
@@ -690,7 +733,7 @@ model BirthdayPost {
   reactions   BirthdayReaction[]
 
   @@unique([userId, year])
-  @@index([year])
+  @@index([birthdayGregorian])
   @@map("birthday_posts")
 }
 
@@ -703,7 +746,6 @@ model BirthdayComment {
   authorId        String
   author          User     @relation("BirthdayComments", fields: [authorId], references: [id], onDelete: Cascade)
 
-  // null = top-level comment, otherwise a reply.
   parentCommentId String?
   parentComment   BirthdayComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
   replies         BirthdayComment[] @relation("CommentReplies")
@@ -744,7 +786,6 @@ model BirthdayReaction {
   userId     String
   user       User     @relation("BirthdayReactions", fields: [userId], references: [id], onDelete: Cascade)
 
-  // One emoji per user per post. Can be changed.
   emoji      String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -755,7 +796,7 @@ model BirthdayReaction {
 }
 
 // ------------------------------------------------------------
-// CHAT (SRS 19)
+// CHAT
 // ------------------------------------------------------------
 
 enum ConversationType {
@@ -785,8 +826,6 @@ model ChatConversation {
   id             String           @id @default(cuid())
   type           ConversationType
 
-  // DIRECT: sorted "userId1|userId2" so a DM is never duplicated.
-  // GENERAL: the literal "GENERAL" so only one General chat can exist.
   directKey      String?          @unique
 
   createdAt      DateTime         @default(now())
@@ -826,7 +865,6 @@ model ChatGroup {
   conversationId  String            @unique
   conversation    ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  // SRS 19.5 — active group names must be unique.
   name            String            @unique
 
   photoUrl        String?
@@ -835,7 +873,6 @@ model ChatGroup {
   managerId       String
   manager         User              @relation("GroupManager", fields: [managerId], references: [id], onDelete: Restrict)
 
-  // Optional so that onDelete: SetNull is valid.
   createdByUserId String?
   createdBy       User?             @relation("GroupCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
@@ -856,13 +893,9 @@ model ChatMessage {
 
   type           ChatMessageType   @default(TEXT)
 
-  // For TEXT messages. For PHOTO/VOICE, this is an optional caption.
   text           String?
-
-  // Client-generated id so a retried send never creates a duplicate.
   clientId       String?
 
-  // For replies (SRS 19.19)
   replyToId      String?
   replyTo        ChatMessage?      @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies        ChatMessage[]     @relation("MessageReplies")
@@ -896,10 +929,7 @@ model ChatMedia {
   storageUrl      String
   storagePublicId String
 
-  // SRS 19.11 — voice messages record the original duration (max 60).
   durationSeconds Int?
-
-  // SRS 19.15 — 1 year retention for chat media.
   retentionUntil  DateTime
 
   createdAt       DateTime        @default(now())
@@ -921,7 +951,6 @@ model MessageReaction {
   emoji      String
   createdAt  DateTime     @default(now())
 
-  // SRS 19.20 — a member may add multiple distinct emojis to one message.
   @@unique([messageId, userId, emoji])
   @@index([messageId])
   @@index([createdAt])
@@ -942,7 +971,6 @@ model MessagePin {
 
   pinnedAt        DateTime          @default(now())
 
-  // SRS 19.24 — one pin per message.
   @@unique([conversationId, messageId])
   @@index([conversationId])
   @@map("message_pins")
@@ -964,7 +992,6 @@ model MessageReport {
   resolvedByUserId  String?
   resolvedBy        User?                     @relation("ReportsResolved", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
 
-  // SRS 19.23 — records retained for 30 days after creation.
   retainUntil       DateTime
 
   @@unique([messageId, reporterId])
@@ -992,12 +1019,13 @@ model ChatReadState {
 }
 
 // ============================================================
-// FUNDING (Funding Features SRS v1.0)
-//  - All money is stored as integer santim (1 ETB = 100 santim). Never Float/Decimal-from-JS.
-//  - Date-only values are stored twice: Ethiopian y/m/d (what users entered/see)
-//    and a normalised Gregorian @db.Date (what queries/sorting use).
-//  - Declarations are append-only history. Resubmission after rejection creates a
-//    NEW FundingDeclaration; the rejected one is never overwritten.
+// FUNDING — SRS v2.0 (V1.0 schema freeze)
+//
+// Storage policy:
+//  - Money: Int santim (1 ETB = 100 santim). NEVER Float/Decimal.
+//  - Dates: E.C. y/m/d Ints = source of truth for display.
+//           *Gregorian @db.Date = derived index for sort/filter only.
+//  - Declarations are append-only. Resubmission after rejection = new row.
 // ============================================================
 
 enum FundingStatus {
@@ -1011,7 +1039,7 @@ enum DeclarationStatus {
   PENDING
   APPROVED
   REJECTED
-  VOID          // e.g. campaign cancelled while pending; kept for history
+  VOID
 }
 
 enum FundingRecordType {
@@ -1039,32 +1067,30 @@ enum PaymentMethod {
   TELEBIRR
 }
 
-// One row per contribution year (Ethiopian year).
 model AnnualFundingConfiguration {
   id                    String   @id @default(cuid())
 
-  contributionYear      Int      @unique        // Ethiopian year, e.g. 2019
-  amountMinor           Int                      // santim; default 10000 = 100 ETB
+  contributionYear      Int      @unique        // E.C. year
+  amountMinor           Int                      // santim
 
   includeMembers        Boolean  @default(true)
   includeLeaders        Boolean  @default(true)
 
-  // Contract expiry (Ethiopian date as entered) + normalised Gregorian equivalent
+  // E.C. expiry (source of truth) + mirror
   expiryEthYear         Int
   expiryEthMonth        Int
   expiryEthDay          Int
-  expiryDate            DateTime @db.Date
+  expiryGregorian       DateTime @db.Date
 
-  // Backend-calculated: one Ethiopian month before expiry
+  // E.C. deadline (source of truth) + mirror
   deadlineEthYear       Int
   deadlineEthMonth      Int
   deadlineEthDay        Int
-  deadlineDate          DateTime @db.Date
+  deadlineGregorian     DateTime @db.Date
 
-  // Reminders
   monthlyReminderEnabled Boolean @default(true)
-  monthlyReminderEthDay  Int     @default(1)    // day-of-Ethiopian-month the monthly reminder goes out
-  preDeadlineReminderDays Int    @default(7)    // 0 disables
+  monthlyReminderEthDay  Int     @default(1)
+  preDeadlineReminderDays Int    @default(7)
 
   receiptUploadsEnabled Boolean  @default(false)
   referenceEnabled      Boolean  @default(true)
@@ -1083,7 +1109,6 @@ model AnnualFundingConfiguration {
   @@map("annual_funding_configurations")
 }
 
-// One obligation per participant per contribution year.
 model AnnualContributionRecord {
   id               String        @id @default(cuid())
 
@@ -1094,16 +1119,14 @@ model AnnualContributionRecord {
   participant      User          @relation("AnnualParticipant", fields: [participantId], references: [id], onDelete: Cascade)
 
   contributionYear Int
-  amountDueMinor   Int           // snapshot at creation; later config changes do not rewrite history
+  amountDueMinor   Int           // snapshot at creation
   status           FundingStatus @default(UNPAID)
-  paidMinor        Int           @default(0) 
+  paidMinor        Int           @default(0)
 
-  // Denormalised "current decision" for fast lists. Source of truth = declarations.
   verifiedByUserId String?
   verifiedAt       DateTime?
   rejectionReason  String?
 
-  // Optimistic-concurrency guard for atomic transitions.
   version          Int           @default(0)
 
   createdAt        DateTime      @default(now())
@@ -1111,7 +1134,6 @@ model AnnualContributionRecord {
 
   declarations     FundingDeclaration[]
 
-  // SRS 3.2: at most one active obligation per participant per year.
   @@unique([participantId, contributionYear])
   @@index([contributionYear, status])
   @@index([configId])
@@ -1125,23 +1147,29 @@ model SpecialDonationCampaign {
   description          String
   donationType         DonationType
 
-  requestedAmountMinor Int?           // fixed per-person amount; null = open amount
+  requestedAmountMinor Int?
   targetAmountMinor    Int?
 
+  // Optional start (E.C. + mirror)
   startEthYear         Int?
   startEthMonth        Int?
   startEthDay          Int?
-  startDate            DateTime?      @db.Date
+  startGregorian       DateTime?      @db.Date
 
+  // Required deadline (E.C. + mirror)
   deadlineEthYear      Int
   deadlineEthMonth     Int
   deadlineEthDay       Int
-  deadlineDate         DateTime       @db.Date
+  deadlineGregorian    DateTime       @db.Date
 
   imageUrl             String?
   imagePublicId        String?
 
   status               CampaignStatus @default(DRAFT)
+
+  // NEW: per-campaign receipt toggle (falls back to global config when null)
+  receiptUploadsEnabled Boolean?
+  referenceEnabled      Boolean?
 
   createdByUserId      String?
   createdBy            User?          @relation("CampaignCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
@@ -1154,11 +1182,10 @@ model SpecialDonationCampaign {
 
   payments             SpecialDonationPayment[]
 
-  @@index([status, deadlineDate])
+  @@index([status, deadlineGregorian])
   @@map("special_donation_campaigns")
 }
 
-// One payment record per participant per campaign; history lives in declarations.
 model SpecialDonationPayment {
   id               String        @id @default(cuid())
 
@@ -1168,9 +1195,9 @@ model SpecialDonationPayment {
   participantId    String
   participant      User          @relation("DonationParticipant", fields: [participantId], references: [id], onDelete: Cascade)
 
-  amountMinor      Int           // latest declared amount (what counts once PAID)
+  amountMinor      Int
   status           FundingStatus @default(UNPAID)
-  paidMinor        Int           @default(0) 
+  paidMinor        Int           @default(0)
 
   verifiedByUserId String?
   verifiedAt       DateTime?
@@ -1187,8 +1214,6 @@ model SpecialDonationPayment {
   @@map("special_donation_payments")
 }
 
-// Append-only declaration history for BOTH annual records and donation payments.
-// Exactly one of annualRecordId / donationPaymentId is set (enforced in the service layer + CHECK in migration).
 model FundingDeclaration {
   id                String            @id @default(cuid())
 
@@ -1201,13 +1226,14 @@ model FundingDeclaration {
   participant       User              @relation("DeclarationParticipant", fields: [participantId], references: [id], onDelete: Cascade)
 
   amountMinor       Int
-  paymentMethod     PaymentMethod?    // <--- ADD THIS LINE
-  
+
+  // v2.0 SRS: Payment method is REQUIRED on every declaration.
+  paymentMethod     PaymentMethod
+
   reference         String?
-  receiptUrl        String?           // must be served via an authenticated endpoint, never a public link
+  receiptUrl        String?
   receiptPublicId   String?
 
-  // Client-generated id so repeated "I've Paid" taps / retries never create duplicates.
   clientId          String?
 
   status            DeclarationStatus @default(PENDING)
@@ -1228,21 +1254,20 @@ model FundingDeclaration {
   @@map("funding_declarations")
 }
 
-// Append-only. No update/delete endpoints may exist for this table.
 model FundingAuditLog {
   id                String            @id @default(cuid())
 
   actorId           String?
   actor             User?             @relation("FundingAuditActor", fields: [actorId], references: [id], onDelete: SetNull)
 
-  action            String            // e.g. DECLARED, APPROVED, REJECTED, CORRECTED, CAMPAIGN_PUBLISHED, CONFIG_UPDATED
+  action            String
   recordType        FundingRecordType
   recordId          String
 
   previousStatus    String?
   newStatus         String?
   reason            String?
-  details           Json?             // old/new values for config & instruction changes
+  details           Json?
 
   createdAt         DateTime          @default(now())
 
@@ -1256,9 +1281,9 @@ model PaymentInstructions {
   id                String        @id @default(cuid())
 
   method            PaymentMethod
-  providerName      String        // e.g. "Commercial Bank of Ethiopia", "Telebirr"
+  providerName      String
   accountHolderName String
-  accountIdentifier String        // account number / Telebirr number. NEVER credentials/PINs/OTPs.
+  accountIdentifier String
   note              String?
   active            Boolean       @default(true)
 
@@ -1267,18 +1292,19 @@ model PaymentInstructions {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
+  // One row per (method, provider, identifier). Add/modify = new row or update in place.
+  @@unique([method, providerName, accountIdentifier])
   @@index([active])
   @@map("payment_instructions")
 }
 
-// De-duplicates scheduled reminders: the job can run twice and still send once.
 model FundingReminderLog {
   id         String   @id @default(cuid())
   recipientId String
   recordType FundingRecordType
   recordId   String
-  kind       String   // MONTHLY | PRE_DEADLINE | CAMPAIGN_DEADLINE | REJECTED
-  periodKey  String   // e.g. "2019-02" for the Ethiopian month, or "2019-pre"
+  kind       String
+  periodKey  String
   sentAt     DateTime @default(now())
 
   @@unique([recipientId, recordType, recordId, kind, periodKey])

@@ -2,30 +2,26 @@ import { prisma } from '../db/prisma';
 import { ApiError } from '../utils/ApiError';
 import { EventStatus, RsvpResponse } from '@prisma/client';
 import { uploadBuffer, deleteByPublicId } from '../storage/cloudinary';
+import { EthDate } from '../utils/ethiopianCalendar';
+import { ethFields } from '../utils/eth-fields';
 
-// SRS 11.5 — RSVP closes 24h before event.
 const RSVP_CLOSE_MS = 24 * 60 * 60 * 1000;
 
-function rsvpClosed(eventDate: Date): boolean {
-  return eventDate.getTime() - Date.now() < RSVP_CLOSE_MS;
+function rsvpClosed(eventDateGregorian: Date): boolean {
+  return eventDateGregorian.getTime() - Date.now() < RSVP_CLOSE_MS;
 }
 
-/**
- * List events visible to members.
- * Upcoming: date >= now, status PUBLISHED
- * Past: date < now, status PUBLISHED
- */
 export async function listPublishedEvents(scope: 'upcoming' | 'past') {
   const now = new Date();
   const where =
     scope === 'upcoming'
-      ? { status: EventStatus.PUBLISHED, date: { gte: now } }
-      : { status: EventStatus.PUBLISHED, date: { lt: now } };
+      ? { status: EventStatus.PUBLISHED, dateGregorian: { gte: now } }
+      : { status: EventStatus.PUBLISHED, dateGregorian: { lt: now } };
 
   const orderBy =
     scope === 'upcoming'
-      ? ({ date: 'asc' } as const)
-      : ({ date: 'desc' } as const);
+      ? ({ dateGregorian: 'asc' } as const)
+      : ({ dateGregorian: 'desc' } as const);
 
   return prisma.event.findMany({
     where,
@@ -35,7 +31,10 @@ export async function listPublishedEvents(scope: 'upcoming' | 'past') {
       title: true,
       description: true,
       location: true,
-      date: true,
+      dateEthYear: true,
+      dateEthMonth: true,
+      dateEthDay: true,
+      dateGregorian: true,
       coverImageUrl: true,
     },
   });
@@ -47,12 +46,7 @@ export async function getEventDetail(eventId: string) {
     include: {
       attachments: { select: { id: true, imageUrl: true } },
       rsvps: {
-        select: {
-          id: true,
-          userId: true,
-          response: true,
-          updatedAt: true,
-        },
+        select: { id: true, userId: true, response: true, updatedAt: true },
       },
     },
   });
@@ -66,25 +60,26 @@ export async function getEventDetail(eventId: string) {
     title: event.title,
     description: event.description,
     location: event.location,
-    date: event.date,
+    date: {
+      year: event.dateEthYear,
+      month: event.dateEthMonth,
+      day: event.dateEthDay,
+    },
+    dateGregorian: event.dateGregorian,
     coverImageUrl: event.coverImageUrl,
     attachments: event.attachments,
-    rsvpClosed: rsvpClosed(event.date),
+    rsvpClosed: rsvpClosed(event.dateGregorian),
     rsvps: event.rsvps,
   };
 }
 
-/**
- * Leader create event.
- * status = DRAFT by default; pass publish=true to publish immediately.
- */
 export async function createEvent(
   leaderUserId: string,
   input: {
     title: string;
     description?: string;
     location?: string;
-    date: string; // ISO
+    date: EthDate;
     publish?: boolean;
     coverImage?: { buffer: Buffer; mimetype: string } | null;
     attachments?: { buffer: Buffer; mimetype: string }[];
@@ -93,7 +88,7 @@ export async function createEvent(
   if (!input.title || !input.title.trim()) {
     throw ApiError.badRequest('Title is required.');
   }
-  if (!input.date || Number.isNaN(new Date(input.date).getTime())) {
+  if (!input.date) {
     throw ApiError.badRequest('A valid date is required.');
   }
 
@@ -132,30 +127,25 @@ export async function createEvent(
       title: input.title.trim(),
       description: input.description?.trim() || null,
       location: input.location?.trim() || null,
-      date: new Date(input.date),
       coverImageUrl,
       coverImagePublicId,
       status: publish ? EventStatus.PUBLISHED : EventStatus.DRAFT,
       publishedAt: publish ? new Date() : null,
       createdByUserId: leaderUserId,
+      ...(ethFields(input.date, 'date') as any), // Cast to prevent union spread error
       attachments:
-        attachmentData.length > 0
-          ? { create: attachmentData }
-          : undefined,
+        attachmentData.length > 0 ? { create: attachmentData } : undefined,
     },
   });
 }
 
-/**
- * Leader edit event.
- */
 export async function updateEvent(
   eventId: string,
   input: {
     title?: string;
     description?: string | null;
     location?: string | null;
-    date?: string;
+    date?: EthDate;
     publish?: boolean;
     coverImage?: { buffer: Buffer; mimetype: string } | null;
     removeCover?: boolean;
@@ -203,18 +193,15 @@ export async function updateEvent(
         input.location !== undefined
           ? input.location?.trim() || null
           : undefined,
-      date: input.date ? new Date(input.date) : undefined,
       coverImageUrl,
       coverImagePublicId,
       status: becomesPublished ? EventStatus.PUBLISHED : undefined,
       publishedAt: becomesPublished ? new Date() : undefined,
+      ...(input.date ? (ethFields(input.date, 'date') as any) : {}),
     },
   });
 }
 
-/**
- * Soft delete (SRS 11.7 — data retained for system records).
- */
 export async function deleteEvent(eventId: string) {
   const event = await prisma.event.findUnique({ where: { id: eventId } });
   if (!event || event.status === EventStatus.DELETED) {
@@ -227,17 +214,17 @@ export async function deleteEvent(eventId: string) {
   return { ok: true };
 }
 
-/**
- * Leader list — includes DRAFT events.
- */
 export async function leaderListEvents() {
   return prisma.event.findMany({
     where: { status: { not: EventStatus.DELETED } },
-    orderBy: { date: 'desc' },
+    orderBy: { dateGregorian: 'desc' },
     select: {
       id: true,
       title: true,
-      date: true,
+      dateEthYear: true,
+      dateEthMonth: true,
+      dateEthDay: true,
+      dateGregorian: true,
       location: true,
       status: true,
       coverImageUrl: true,
@@ -246,13 +233,6 @@ export async function leaderListEvents() {
   });
 }
 
-/**
- * Set or change own RSVP (SRS 11.5).
- * Rules:
- * - Only for PUBLISHED events.
- * - Closed within 24h of event start.
- * - One RSVP per user.
- */
 export async function setRsvp(
   eventId: string,
   userId: string,
@@ -262,7 +242,7 @@ export async function setRsvp(
   if (!event || event.status !== EventStatus.PUBLISHED) {
     throw ApiError.notFound('Event not found.');
   }
-  if (rsvpClosed(event.date)) {
+  if (rsvpClosed(event.dateGregorian)) {
     throw new ApiError(
       400,
       'RSVP_CLOSED',
@@ -277,15 +257,12 @@ export async function setRsvp(
   });
 }
 
-/**
- * Remove own RSVP.
- */
 export async function clearRsvp(eventId: string, userId: string) {
   const event = await prisma.event.findUnique({ where: { id: eventId } });
   if (!event || event.status !== EventStatus.PUBLISHED) {
     throw ApiError.notFound('Event not found.');
   }
-  if (rsvpClosed(event.date)) {
+  if (rsvpClosed(event.dateGregorian)) {
     throw new ApiError(400, 'RSVP_CLOSED', 'RSVP is closed.');
   }
   await prisma.eventRSVP.deleteMany({ where: { eventId, userId } });

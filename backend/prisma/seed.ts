@@ -1,4 +1,5 @@
 // prisma/seed.ts
+import 'dotenv/config'; // Fixes 'process' error
 import {
   PrismaClient,
   UserRole,
@@ -17,16 +18,16 @@ import {
   DailyQuoteStatus,
   ConversationType,
   ChatMessageType,
-  ChatMediaType,
-  MessageReportResolution,
 } from '@prisma/client';
 import argon2 from 'argon2';
 import {
   fromEthiopian,
-  toEthiopian,
   todayEthiopian,
-  addDaysEth,
-} from './ethiopian-date';
+  addEthDays,
+  EthDate,
+  formatEthDate,
+} from '../src/utils/ethiopianCalendar'; // Import from src to keep consistent
+import { ethFields } from '../src/utils/eth-fields';
 
 const prisma = new PrismaClient();
 
@@ -36,16 +37,6 @@ const ARGON2_OPTIONS: Parameters<typeof argon2.hash>[1] = {
   timeCost: 2,
   parallelism: 1,
 };
-
-const ETH_MONTHS = [
-  'Meskerem', 'Tikimt', 'Hidar', 'Tahsas', 'Tir', 'Yekatit',
-  'Megabit', 'Miazia', 'Ginbot', 'Sene', 'Hamle', 'Nehase', 'Pagume',
-];
-
-function ethLabel(d: Date): string {
-  const e = toEthiopian(d);
-  return `${e.year}-${String(e.month).padStart(2, '0')}-${String(e.day).padStart(2, '0')} (${ETH_MONTHS[e.month - 1]} ${e.day}, ${e.year} E.C.)`;
-}
 
 // ------------------------------------------------------------
 // USERS
@@ -145,11 +136,11 @@ async function main() {
     });
   }
 
-  // ---- Member profiles (with Ethiopian birthdates) ----
-  const ethBirth = fromEthiopian({ year: 1995, month: 5, day: 12 }); // Tir 12, 1995 E.C. ≈ Jan 20, 2003
-  const ethBirth2 = fromEthiopian({ year: 1998, month: 9, day: 3 }); // Ginbot 3, 1998 E.C.
-  const ethBirth3 = fromEthiopian({ year: 1992, month: 1, day: 20 }); // Meskerem 20, 1992 E.C.
-  const ethJoining = fromEthiopian({ year: 2015, month: 2, day: 5 }); // Tikimt 5, 2015 E.C.
+  // ---- Member profiles (with Ethiopian dates) ----
+  const ethBirth: EthDate = { year: 1995, month: 5, day: 12 };
+  const ethBirth2: EthDate = { year: 1998, month: 9, day: 3 };
+  const ethBirth3: EthDate = { year: 1992, month: 1, day: 20 };
+  const ethJoining: EthDate = { year: 2015, month: 2, day: 5 };
 
   const profileData = [
     { user: member, fullName: 'Yohannes Bekele', gender: 'male', dob: ethBirth },
@@ -164,18 +155,18 @@ async function main() {
         userId: p.user.id,
         fullName: p.fullName,
         gender: p.gender,
-        dateOfBirth: p.dob,
         emergencyContactName: 'Family Contact',
         emergencyContactPhone: '0911000000',
-        joiningDate: ethJoining,
         profilePhotoUrl: `https://res.cloudinary.com/demo/image/upload/sample_${p.user.id}.jpg`,
         profilePhotoPublicId: `rehobot/profiles/${p.user.id}`,
+        ...(ethFields(p.dob, 'dateOfBirth') as any),
+        ...(ethFields(ethJoining, 'joiningDate') as any),
       },
       update: {},
     });
   }
 
-  // ---- Registration application (Ethiopian birthdate) ----
+  // ---- Registration application ----
   await prisma.registrationApplication.deleteMany({
     where: { phone: '0000000006' },
   });
@@ -188,11 +179,11 @@ async function main() {
       profilePhotoUrl: 'https://res.cloudinary.com/demo/image/upload/selam.jpg',
       profilePhotoPublicId: 'rehobot/applications/selam',
       gender: 'female',
-      dateOfBirth: fromEthiopian({ year: 2000, month: 7, day: 15 }),
       emergencyContactName: 'Girma Tesfaye',
       emergencyContactPhone: '0911223344',
-      joiningDate: fromEthiopian({ year: 2017, month: 1, day: 1 }),
       status: ApplicationStatus.PENDING,
+      ...(ethFields({ year: 2000, month: 7, day: 15 }, 'dateOfBirth') as any),
+      ...(ethFields({ year: 2017, month: 1, day: 1 }, 'joiningDate') as any),
     },
   });
 
@@ -244,17 +235,14 @@ async function main() {
     },
   });
 
-  // Favorite
   await prisma.songFavorite.create({
     data: { songId: song1.id, userId: member.id },
   });
 
-  // Zema membership
   await prisma.zemaMembership.create({
     data: { userId: member2.id, assignedByUserId: leader.id },
   });
 
-  // Song submission
   await prisma.songSubmission.create({
     data: {
       songId: song3.id,
@@ -265,11 +253,11 @@ async function main() {
 
   // ---- Events (Ethiopian dates) ----
   const todayEth = todayEthiopian();
-  const eventDates = [
-    addDaysEth(todayEth, 7),
-    addDaysEth(todayEth, 14),
-    addDaysEth(todayEth, 30),
-    addDaysEth(todayEth, -3), // past event
+  const eventDates: EthDate[] = [
+    addEthDays(todayEth, 7),
+    addEthDays(todayEth, 14),
+    addEthDays(todayEth, 30),
+    addEthDays(todayEth, -3),
   ];
 
   const event1 = await prisma.event.create({
@@ -277,10 +265,10 @@ async function main() {
       title: 'Sunday Choir Practice',
       description: 'Weekly choir rehearsal.',
       location: 'Rehobot Main Hall',
-      date: fromEthiopian(eventDates[0]),
       status: EventStatus.PUBLISHED,
       publishedAt: new Date(),
       createdByUserId: leader.id,
+      ...(ethFields(eventDates[0], 'date') as any),
       attachments: {
         create: [
           {
@@ -296,10 +284,10 @@ async function main() {
       title: 'Monthly Zema Night',
       description: 'Traditional Zema gathering.',
       location: 'Rehobot Hall B',
-      date: fromEthiopian(eventDates[1]),
       status: EventStatus.PUBLISHED,
       publishedAt: new Date(),
       createdByUserId: admin.id,
+      ...(ethFields(eventDates[1], 'date') as any),
     },
   });
   const event3 = await prisma.event.create({
@@ -307,9 +295,9 @@ async function main() {
       title: 'Rehobot Anniversary',
       description: 'Church anniversary celebration.',
       location: 'Main Sanctuary',
-      date: fromEthiopian(eventDates[2]),
       status: EventStatus.DRAFT,
       createdByUserId: admin.id,
+      ...(ethFields(eventDates[2], 'date') as any),
     },
   });
   const eventPast = await prisma.event.create({
@@ -317,10 +305,10 @@ async function main() {
       title: 'Past Thanksgiving',
       description: 'Thanksgiving service.',
       location: 'Main Sanctuary',
-      date: fromEthiopian(eventDates[3]),
       status: EventStatus.PUBLISHED,
       publishedAt: new Date(),
       createdByUserId: leader.id,
+      ...(ethFields(eventDates[3], 'date') as any),
     },
   });
 
@@ -335,7 +323,7 @@ async function main() {
     skipDuplicates: true,
   });
 
-  // ---- Attendance (Ethiopian dates, last 4 weeks) ----
+  // ---- Attendance ----
   const gatheringTypes = [
     GatheringType.TUESDAY_ZEMA,
     GatheringType.THURSDAY_CHOIR,
@@ -344,21 +332,21 @@ async function main() {
   const members = [member, member2, member3];
 
   for (let week = 1; week <= 4; week++) {
-    const day = addDaysEth(todayEth, -week * 7);
+    const day = addEthDays(todayEth, -week * 7);
     for (const g of gatheringTypes) {
       for (const m of members) {
         await prisma.attendanceRecord.create({
           data: {
             memberId: m.id,
             gathering: g,
-            date: fromEthiopian(day),
             status:
               Math.random() > 0.25
                 ? AttendanceStatus.PRESENT
                 : AttendanceStatus.ABSENT,
             recordedByUserId: leader.id,
             lockedAt:
-              week >= 2 ? fromEthiopian(addDaysEth(day, 2)) : null,
+              week >= 2 ? fromEthiopian(addEthDays(day, 2)) : null,
+            ...(ethFields(day, 'date') as any),
           },
         });
       }
@@ -387,7 +375,7 @@ async function main() {
       title: 'Upcoming Zema Night',
       message: 'Please prepare the listed songs.',
       status: AnnouncementStatus.SCHEDULED,
-      publishAt: fromEthiopian(addDaysEth(todayEth, 5)),
+      publishAt: fromEthiopian(addEthDays(todayEth, 5)),
       createdByUserId: admin.id,
       eventId: event2.id,
     },
@@ -420,17 +408,20 @@ async function main() {
     ],
   });
 
-  // ---- Memories (Ethiopian dates) ----
+  // ---- Memories ----
+  const mem1Date: EthDate = { year: 2017, month: 8, day: 20 };
+  const mem2Date: EthDate = { year: 2018, month: 4, day: 29 };
+
   const mem1 = await prisma.memory.create({
     data: {
       title: 'Easter Celebration 2017 E.C.',
       description: 'Photos from our Fasika celebration.',
-      date: fromEthiopian({ year: 2017, month: 8, day: 20 }),
       status: MemoryStatus.PUBLISHED,
       publishedAt: new Date(),
       submittedByUserId: member.id,
       reviewedByUserId: leader.id,
       reviewedAt: new Date(),
+      ...(ethFields(mem1Date, 'date') as any),
       media: {
         create: [
           {
@@ -450,9 +441,9 @@ async function main() {
     data: {
       title: 'Christmas Choir 2018 E.C.',
       description: 'Genna performance.',
-      date: fromEthiopian({ year: 2018, month: 4, day: 29 }),
       status: MemoryStatus.PENDING_REVIEW,
       submittedByUserId: member2.id,
+      ...(ethFields(mem2Date, 'date') as any),
       media: {
         create: [
           {
@@ -465,7 +456,7 @@ async function main() {
     },
   });
 
-  // ---- Daily quotes (next 7 days in Ethiopian calendar) ----
+  // ---- Daily quotes ----
   const quotes = [
     { text: 'The Lord is my shepherd; I shall not want.', source: 'Psalm 23:1' },
     { text: 'I can do all things through Christ who strengthens me.', source: 'Philippians 4:13' },
@@ -477,15 +468,16 @@ async function main() {
   ];
 
   for (let i = 0; i < quotes.length; i++) {
-    const d = fromEthiopian(addDaysEth(todayEth, i));
+    const d = addEthDays(todayEth, i);
+    const g = fromEthiopian(d);
     await prisma.dailyQuote.upsert({
-      where: { dateOnly: d },
+      where: { dateGregorian: g },
       create: {
-        dateOnly: d,
         quoteText: quotes[i].text,
         source: quotes[i].source,
         status: DailyQuoteStatus.PUBLISHED,
         submittedByUserId: admin.id,
+        ...(ethFields(d, 'date') as any),
       },
       update: {
         quoteText: quotes[i].text,
@@ -494,14 +486,13 @@ async function main() {
     });
   }
 
-  // ---- Birthday posts (Ethiopian birthdates) ----
+  // ---- Birthday posts ----
   const bdayUser = member2;
-  const bdayEth = toEthiopian(ethBirth2); // uses profile DOB
   await prisma.birthdayPost.create({
     data: {
       userId: bdayUser.id,
-      year: bdayEth.year,
-      birthdayDate: ethBirth2,
+      year: ethBirth2.year,
+      ...(ethFields(ethBirth2, 'birthday') as any),
       reactions: {
         create: [
           { userId: member.id, emoji: '🎉' },
@@ -522,7 +513,7 @@ async function main() {
     },
   });
 
-  // ---- Chat: General + Direct + Group ----
+  // ---- Chat ----
   const general = await prisma.chatConversation.create({
     data: {
       type: ConversationType.GENERAL,
@@ -561,7 +552,6 @@ async function main() {
     },
   });
 
-  // Direct conversation
   const directKey = [member.id, member2.id].sort().join('|');
   const direct = await prisma.chatConversation.create({
     data: {
@@ -593,7 +583,6 @@ async function main() {
     },
   });
 
-  // Group chat
   const groupConv = await prisma.chatConversation.create({
     data: {
       type: ConversationType.GROUP,
@@ -639,7 +628,6 @@ async function main() {
     },
   });
 
-  // ---- Push token ----
   await prisma.pushToken.create({
     data: {
       userId: member.id,
@@ -650,7 +638,7 @@ async function main() {
   });
 
   console.log('[seed] Done.');
-  console.log('[seed] Ethiopian "today":', ethLabel(new Date()));
+  console.log('[seed] Ethiopian "today":', formatEthDate(todayEth, 'en'));
 }
 
 main()

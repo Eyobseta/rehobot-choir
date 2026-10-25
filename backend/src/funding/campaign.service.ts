@@ -46,7 +46,7 @@ function memberCampaignDto(
   const due = dueOf(c);
   const paid = my?.paidMinor ?? 0;
   const status = my?.status ?? FundingStatus.UNPAID;
-  const past = isPastDeadline(c.deadlineDate);
+  const past = isPastDeadline(c.deadlineGregorian);
   const fullyPaid = due !== null && paid >= due;
   return {
     id: c.id,
@@ -56,7 +56,7 @@ function memberCampaignDto(
     status: c.status,
     requestedAmount: c.requestedAmountMinor ? moneyDto(c.requestedAmountMinor) : null,
     targetAmount: c.targetAmountMinor ? moneyDto(c.targetAmountMinor) : null,
-    deadline: dateDto(c.deadlineDate),
+    deadline: dateDto(c.deadlineGregorian),
     deadlinePassed: past,
     imageUrl: c.imageUrl,
     campaignProgress: progressDto(received, c.targetAmountMinor),
@@ -66,7 +66,6 @@ function memberCampaignDto(
       pendingAmount: pending.count > 0 ? moneyDto(pending.totalMinor) : null,
       pendingCount: pending.count,
       rejectionReason: status === FundingStatus.REJECTED ? my?.rejectionReason ?? null : null,
-      // v2.1: pending declarations don't block new ones; only a fully paid balance does.
       canDeclare:
         c.status === CampaignStatus.PUBLISHED && !past && hasInstructions && !fullyPaid,
     },
@@ -74,7 +73,7 @@ function memberCampaignDto(
 }
 
 // ============================================================
-// Leader: campaign management (unchanged from v2 — copy from existing)
+// Leader: campaign management
 // ============================================================
 
 function parseCampaignFields(src: any) {
@@ -103,7 +102,7 @@ function campaignData(f: CampaignFields) {
     title: f.title, description: f.description, donationType: f.donationType,
     requestedAmountMinor: f.requestedAmountMinor, targetAmountMinor: f.targetAmountMinor,
     deadlineEthYear: f.deadlineEth.year, deadlineEthMonth: f.deadlineEth.month, deadlineEthDay: f.deadlineEth.day,
-    deadlineDate: ethToUtcDate(f.deadlineEth),
+    deadlineGregorian: ethToUtcDate(f.deadlineEth),
   };
 }
 
@@ -119,7 +118,7 @@ function campaignSnapshot(c: SpecialDonationCampaign) {
 export async function leaderCreateCampaign(leaderId: string, body: any) {
   const f = parseCampaignFields(body);
   const data = campaignData(f);
-  if (isPastDeadline(data.deadlineDate)) throw ApiError.badRequest('The deadline cannot be in the past.', 'DEADLINE_IN_PAST');
+  if (isPastDeadline(data.deadlineGregorian)) throw ApiError.badRequest('The deadline cannot be in the past.', 'DEADLINE_IN_PAST');
 
   const campaign = await prisma.$transaction(async (tx) => {
     const c = await tx.specialDonationCampaign.create({
@@ -160,7 +159,7 @@ export async function leaderUpdateCampaign(campaignId: string, leaderId: string,
     }
     reason = reqString(body?.reason, 'Reason for change', 3, 300);
   }
-  if (data.deadlineDate.getTime() !== c.deadlineDate.getTime() && isPastDeadline(data.deadlineDate)) {
+  if (data.deadlineGregorian.getTime() !== c.deadlineGregorian.getTime() && isPastDeadline(data.deadlineGregorian)) {
     throw ApiError.badRequest('The deadline cannot be in the past.', 'DEADLINE_IN_PAST');
   }
 
@@ -206,7 +205,7 @@ export async function leaderListCampaigns(_leaderId: string) {
     title: c.title,
     status: c.status,
     donationType: c.donationType,
-    deadline: dateDto(c.deadlineDate),
+    deadline: dateDto(c.deadlineGregorian),
     requestedAmount: c.requestedAmountMinor ? moneyDto(c.requestedAmountMinor) : null,
     targetAmount: c.targetAmountMinor ? moneyDto(c.targetAmountMinor) : null,
     progress: progressDto(received.get(c.id) ?? 0, c.targetAmountMinor),
@@ -218,7 +217,7 @@ export async function leaderPublishCampaign(campaignId: string, leaderId: string
   const c = await prisma.specialDonationCampaign.findUnique({ where: { id: campaignId } });
   if (!c) throw ApiError.notFound('Campaign not found.');
   if (c.status !== CampaignStatus.DRAFT) throw ApiError.badRequest('Only draft campaigns can be published.');
-  if (isPastDeadline(c.deadlineDate)) throw ApiError.badRequest('Cannot publish a campaign whose deadline has passed.');
+  if (isPastDeadline(c.deadlineGregorian)) throw ApiError.badRequest('Cannot publish a campaign whose deadline has passed.');
   if (!(await hasActiveInstructions())) {
     throw ApiError.badRequest(
       'Add the official Bank/Telebirr payment details before publishing a campaign.', 'NO_PAYMENT_INSTRUCTIONS',
@@ -327,7 +326,7 @@ export async function memberCampaignItems(userId: string, hasInstructions: boole
         { status: { in: [CampaignStatus.CLOSED, CampaignStatus.CANCELLED] }, payments: { some: { participantId: userId } } },
       ],
     },
-    orderBy: { deadlineDate: 'asc' },
+    orderBy: { deadlineGregorian: 'asc' },
     take: 50,
     include: {
       payments: { where: { participantId: userId }, include: { declarations: { where: { status: DeclarationStatus.PENDING } } } },
@@ -335,7 +334,7 @@ export async function memberCampaignItems(userId: string, hasInstructions: boole
   });
 
   const visible = campaigns.filter(
-    (c) => !(c.status === CampaignStatus.PUBLISHED && isPastDeadline(c.deadlineDate) && c.payments.length === 0),
+    (c) => !(c.status === CampaignStatus.PUBLISHED && isPastDeadline(c.deadlineGregorian) && c.payments.length === 0),
   );
   const received = await receivedByCampaign(visible.map((c) => c.id));
   return visible.map((c) => {
@@ -435,12 +434,6 @@ export async function getCampaignDetail(campaignId: string, userId: string) {
   };
 }
 
-/**
- * "I've Transferred" for a campaign (v2.1).
- * - Multiple pending declarations allowed.
- * - REQUIRED campaigns: amount cap = remaining MINUS pending total.
- * - VOLUNTARY campaigns: any positive amount; each declaration verified separately.
- */
 export async function declareCampaignPayment(userId: string, campaignId: string, body: any) {
   const clientId = optString(body?.clientId, 'clientId', 64);
   const reference = optString(body?.reference, 'Reference', 100);
@@ -458,7 +451,7 @@ export async function declareCampaignPayment(userId: string, campaignId: string,
   if (!campaign || campaign.status !== CampaignStatus.PUBLISHED) {
     throw ApiError.conflict('This campaign is not accepting donations.', 'CAMPAIGN_NOT_OPEN');
   }
-  if (isPastDeadline(campaign.deadlineDate)) {
+  if (isPastDeadline(campaign.deadlineGregorian)) {
     throw ApiError.conflict('The campaign deadline has passed.', 'CAMPAIGN_DEADLINE_PASSED');
   }
   if (!(await hasActiveInstructions())) {
@@ -525,10 +518,6 @@ export async function declareCampaignPayment(userId: string, campaignId: string,
     throw e;
   }
 }
-
-// ============================================================
-// Leader: verification queue + approve / reject
-// ============================================================
 
 export async function leaderListDonations(q: Record<string, unknown>) {
   const { page, pageSize, skip } = pageParams(q);
@@ -693,10 +682,6 @@ export async function rejectDonation(paymentId: string, leaderId: string, body: 
   });
   return { ok: true, status: declared.stillPending > 0 ? FundingStatus.PENDING_VERIFICATION : FundingStatus.REJECTED, stillPending: declared.stillPending };
 }
-
-// ============================================================
-// Admin: exceptional correction
-// ============================================================
 
 export async function adminCorrectDonation(paymentId: string, adminId: string, body: any) {
   const reason = reqString(body?.reason, 'Reason for correction', 5, 500);

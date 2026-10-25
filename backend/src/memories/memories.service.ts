@@ -1,15 +1,10 @@
 import { prisma } from '../db/prisma';
 import { ApiError } from '../utils/ApiError';
-import {
-  MemoryMediaType,
-  MemoryStatus,
-  NotificationType,
-  UserRole,
-} from '@prisma/client';
-import { uploadBuffer, deleteByPublicId } from '../storage/cloudinary';
+import { MemoryMediaType, MemoryStatus, NotificationType, UserRole } from '@prisma/client';
+import { uploadBuffer } from '../storage/cloudinary';
 import { fanOut } from '../notifications/notifications.service';
-
-// ---------- Member ----------
+import { EthDate } from '../utils/ethiopianCalendar';
+import { ethFields } from '../utils/eth-fields';
 
 export async function listPublishedMemories(search?: string) {
   const q = (search ?? '').trim();
@@ -20,27 +15,29 @@ export async function listPublishedMemories(search?: string) {
   };
 
   if (q) {
-    const parsed = Date.parse(q);
-    const looksLikeDate = /^\d{4}(-\d{2})?(-\d{2})?$/.test(q);
-
     where.OR = [
       { title: { contains: q, mode: 'insensitive' } },
       { description: { contains: q, mode: 'insensitive' } },
-      ...(looksLikeDate && !Number.isNaN(parsed)
-        ? [{ date: { gte: new Date(`${q.slice(0, 7)}-01T00:00:00.000Z`) } }]
-        : []),
     ];
+
+    if (/^\d{4}$/.test(q)) {
+      const year = parseInt(q, 10);
+      where.OR.push({ dateEthYear: year });
+    }
   }
 
   return prisma.memory.findMany({
     where,
-    orderBy: { date: 'desc' },
+    orderBy: { dateGregorian: 'desc' },
     take: 200,
     select: {
       id: true,
       title: true,
       description: true,
-      date: true,
+      dateEthYear: true,
+      dateEthMonth: true,
+      dateEthDay: true,
+      dateGregorian: true,
       media: {
         select: { id: true, type: true, storageUrl: true },
         take: 1,
@@ -52,13 +49,12 @@ export async function listPublishedMemories(search?: string) {
 export async function listMemoryYears() {
   const rows = await prisma.memory.findMany({
     where: { status: MemoryStatus.PUBLISHED, deletedAt: null },
-    select: { date: true },
+    select: { dateEthYear: true },
   });
 
   const byYear = new Map<number, number>();
   for (const r of rows) {
-    const y = r.date.getUTCFullYear();
-    byYear.set(y, (byYear.get(y) ?? 0) + 1);
+    byYear.set(r.dateEthYear, (byYear.get(r.dateEthYear) ?? 0) + 1);
   }
 
   return Array.from(byYear.entries())
@@ -71,12 +67,7 @@ export async function getPublishedMemory(id: string) {
     where: { id },
     include: {
       media: {
-        select: {
-          id: true,
-          type: true,
-          storageUrl: true,
-          youtubeUrl: true,
-        },
+        select: { id: true, type: true, storageUrl: true, youtubeUrl: true },
       },
     },
   });
@@ -86,22 +77,12 @@ export async function getPublishedMemory(id: string) {
   return m;
 }
 
-/**
- * Returns a memory regardless of status, but ONLY if it belongs to the
- * requesting user. Used by the "My submissions" detail view so members can
- * see their own pending / rejected items.
- */
 export async function getMyMemory(userId: string, id: string) {
   const m = await prisma.memory.findUnique({
     where: { id },
     include: {
       media: {
-        select: {
-          id: true,
-          type: true,
-          storageUrl: true,
-          youtubeUrl: true,
-        },
+        select: { id: true, type: true, storageUrl: true, youtubeUrl: true },
       },
     },
   });
@@ -115,12 +96,10 @@ export async function getMyMemory(userId: string, id: string) {
   return m;
 }
 
-// ---------- Member submission ----------
-
 export type MemorySubmissionInput = {
   title: string;
   description?: string;
-  date: string;
+  date: EthDate;
   photos?: { buffer: Buffer; mimetype: string }[];
   audio?: { buffer: Buffer; mimetype: string } | null;
   youtubeUrls?: string[];
@@ -131,9 +110,6 @@ export async function submitMemory(
   input: MemorySubmissionInput,
 ) {
   if (!input.title?.trim()) throw ApiError.badRequest('Title is required.');
-  if (!input.date || Number.isNaN(new Date(input.date).getTime())) {
-    throw ApiError.badRequest('A valid date is required.');
-  }
 
   const media: {
     type: MemoryMediaType;
@@ -187,15 +163,10 @@ export async function submitMemory(
     data: {
       title: input.title.trim(),
       description: input.description?.trim() || null,
-      date: new Date(input.date),
       status: MemoryStatus.PENDING_REVIEW,
       submittedByUserId: userId,
-      media:
-        media.length > 0
-          ? {
-              create: media,
-            }
-          : undefined,
+      ...(ethFields(input.date, 'date') as any),
+      media: media.length > 0 ? { create: media } : undefined,
     },
   });
 }
@@ -207,7 +178,9 @@ export async function listMyMemories(userId: string) {
     select: {
       id: true,
       title: true,
-      date: true,
+      dateEthYear: true,
+      dateEthMonth: true,
+      dateEthDay: true,
       status: true,
       rejectionReason: true,
       reviewedAt: true,
@@ -216,27 +189,18 @@ export async function listMyMemories(userId: string) {
   });
 }
 
-// ---------- Leader ----------
-
 export async function leaderListPendingMemories() {
   return prisma.memory.findMany({
     where: { status: MemoryStatus.PENDING_REVIEW, deletedAt: null },
     orderBy: { createdAt: 'asc' },
     include: {
       media: {
-        select: {
-          id: true,
-          type: true,
-          storageUrl: true,
-          youtubeUrl: true,
-        },
+        select: { id: true, type: true, storageUrl: true, youtubeUrl: true },
       },
       submittedBy: {
         select: {
           id: true,
-          memberProfile: {
-            select: { fullName: true, profilePhotoUrl: true },
-          },
+          memberProfile: { select: { fullName: true, profilePhotoUrl: true } },
         },
       },
     },
@@ -248,19 +212,12 @@ export async function leaderGetMemory(id: string) {
     where: { id },
     include: {
       media: {
-        select: {
-          id: true,
-          type: true,
-          storageUrl: true,
-          youtubeUrl: true,
-        },
+        select: { id: true, type: true, storageUrl: true, youtubeUrl: true },
       },
       submittedBy: {
         select: {
           id: true,
-          memberProfile: {
-            select: { fullName: true, profilePhotoUrl: true },
-          },
+          memberProfile: { select: { fullName: true, profilePhotoUrl: true } },
         },
       },
     },
@@ -287,21 +244,11 @@ export async function approveMemory(id: string, leaderUserId: string) {
     },
   });
 
-  await fanOutNotification(
-    updated.id,
-    updated.title,
-    NotificationType.MEMORY_PUBLISHED,
-    'New memory',
-  );
-
+  await fanOutNotification(updated.id, updated.title, NotificationType.MEMORY_PUBLISHED, 'New memory');
   return updated;
 }
 
-export async function rejectMemory(
-  id: string,
-  leaderUserId: string,
-  reason?: string,
-) {
+export async function rejectMemory(id: string, leaderUserId: string, reason?: string) {
   const m = await prisma.memory.findUnique({ where: { id } });
   if (!m || m.deletedAt) throw ApiError.notFound('Memory not found.');
 
@@ -319,7 +266,7 @@ export async function rejectMemory(
 export type MemoryEditInput = {
   title?: string;
   description?: string | null;
-  date?: string;
+  date?: EthDate;
   replaceMedia?: {
     photos?: { buffer: Buffer; mimetype: string }[];
     audio?: { buffer: Buffer; mimetype: string } | null;
@@ -327,11 +274,7 @@ export type MemoryEditInput = {
   };
 };
 
-export async function editMemory(
-  id: string,
-  leaderUserId: string,
-  input: MemoryEditInput,
-) {
+export async function editMemory(id: string, leaderUserId: string, input: MemoryEditInput) {
   const m = await prisma.memory.findUnique({
     where: { id },
     include: { media: true },
@@ -403,24 +346,16 @@ export async function editMemory(
       where: { id },
       data: {
         title: input.title?.trim() || undefined,
-        description:
-          input.description !== undefined
-            ? input.description?.trim() || null
-            : undefined,
-        date: input.date ? new Date(input.date) : undefined,
+        description: input.description !== undefined ? input.description?.trim() || null : undefined,
         reviewedByUserId: leaderUserId,
         reviewedAt: new Date(),
+        ...(input.date ? (ethFields(input.date, 'date') as any) : {}),
       },
     });
   });
 
   if (wasPublished) {
-    await fanOutNotification(
-      id,
-      input.title?.trim() || m.title,
-      NotificationType.MEMORY_PUBLISHED,
-      'Memory updated',
-    );
+    await fanOutNotification(id, input.title?.trim() || m.title, NotificationType.MEMORY_PUBLISHED, 'Memory updated');
   }
 
   return { ok: true };
@@ -436,14 +371,7 @@ export async function deleteMemory(id: string) {
   return { ok: true };
 }
 
-// ---------- Notification fan-out ----------
-
-async function fanOutNotification(
-  memoryId: string,
-  title: string,
-  _type: NotificationType,
-  prefix: string,
-) {
+async function fanOutNotification(memoryId: string, title: string, _type: NotificationType, prefix: string) {
   const recipients = await prisma.user.findMany({
     where: {
       status: 'APPROVED',

@@ -1,7 +1,6 @@
 import { prisma } from '../db/prisma';
 import { ApiError } from '../utils/ApiError';
 
-// Allowed reactions (a curated set so we do not store arbitrary strings).
 const ALLOWED_EMOJIS = new Set([
   '❤️',
   '🎉',
@@ -33,8 +32,12 @@ export async function getBirthdayPostDetail(postId: string, viewerId: string) {
               fullName: true,
               profilePhotoUrl: true,
               gender: true,
-              dateOfBirth: true,
-              joiningDate: true,
+              dateOfBirthEthYear: true,
+              dateOfBirthEthMonth: true,
+              dateOfBirthEthDay: true,
+              joiningDateEthYear: true,
+              joiningDateEthMonth: true,
+              joiningDateEthDay: true,
             },
           },
         },
@@ -88,7 +91,6 @@ export async function getBirthdayPostDetail(postId: string, viewerId: string) {
   const myReaction =
     post.reactions.find((r) => r.userId === viewerId)?.emoji ?? null;
 
-  // Reaction summary: count per emoji.
   const reactionCounts = new Map<string, number>();
   for (const r of post.reactions) {
     reactionCounts.set(r.emoji, (reactionCounts.get(r.emoji) ?? 0) + 1);
@@ -97,7 +99,6 @@ export async function getBirthdayPostDetail(postId: string, viewerId: string) {
     .map(([emoji, count]) => ({ emoji, count }))
     .sort((a, b) => b.count - a.count);
 
-  // Shape comments.
   const comments = post.comments.map((c) => ({
     id: c.id,
     text: c.text,
@@ -128,15 +129,27 @@ export async function getBirthdayPostDetail(postId: string, viewerId: string) {
   return {
     id: post.id,
     year: post.year,
-    birthdayDate: post.birthdayDate,
+    birthdayDate: {
+      year: post.birthdayEthYear,
+      month: post.birthdayEthMonth,
+      day: post.birthdayEthDay,
+    },
     person: {
       id: post.user.id,
       fullName: birthday?.fullName ?? 'Member',
       profilePhotoUrl: birthday?.profilePhotoUrl ?? null,
       phone: post.user.phone,
       gender: birthday?.gender ?? null,
-      dateOfBirth: birthday?.dateOfBirth ?? null,
-      joiningDate: birthday?.joiningDate ?? null,
+      dateOfBirth: birthday?.dateOfBirthEthYear ? {
+        year: birthday.dateOfBirthEthYear,
+        month: birthday.dateOfBirthEthMonth,
+        day: birthday.dateOfBirthEthDay,
+      } : null,
+      joiningDate: birthday?.joiningDateEthYear ? {
+        year: birthday.joiningDateEthYear,
+        month: birthday.joiningDateEthMonth,
+        day: birthday.joiningDateEthDay,
+      } : null,
     },
     reactions,
     myReaction,
@@ -195,7 +208,6 @@ export async function addComment(
     if (!parent || parent.postId !== postId || parent.deletedAt) {
       throw ApiError.badRequest('Parent comment not found.');
     }
-    // Only one level of nesting is allowed.
     if (parent.parentCommentId) {
       throw ApiError.badRequest('Cannot reply to a reply.');
     }

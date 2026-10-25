@@ -1,58 +1,31 @@
 import { prisma } from '../db/prisma';
 import { fanOut } from '../notifications/notifications.service';
 import { NotificationType, UserRole } from '@prisma/client';
+import { todayEthiopian, addEthDays } from '../utils/ethiopianCalendar';
 
-/**
- * SRS 16.5 — Day-before and day-of birthday notifications.
- * The birthday person receives no birthday notification.
- */
-export async function runBirthdayJob(): Promise<{
-  today: number;
-  tomorrow: number;
-}> {
-  const now = new Date();
-  const utcToday = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
-  const utcTomorrow = new Date(utcToday);
-  utcTomorrow.setUTCDate(utcToday.getUTCDate() + 1);
-
-  const todayMonth = utcToday.getUTCMonth();
-  const todayDay = utcToday.getUTCDate();
-  const tmrMonth = utcTomorrow.getUTCMonth();
-  const tmrDay = utcTomorrow.getUTCDate();
+export async function runBirthdayJob(): Promise<{ today: number; tomorrow: number }> {
+  const today = todayEthiopian();
+  const tomorrow = addEthDays(today, 1);
 
   const profiles = await prisma.memberProfile.findMany({
-    where: {
-      user: {
-        status: 'APPROVED',
-        deletedAt: null,
-      },
-    },
+    where: { user: { status: 'APPROVED', deletedAt: null } },
     select: {
       userId: true,
       fullName: true,
-      dateOfBirth: true,
+      dateOfBirthEthMonth: true,
+      dateOfBirthEthDay: true,
     },
   });
 
   const bdayToday = profiles.filter(
-    (p) =>
-      p.dateOfBirth.getUTCMonth() === todayMonth &&
-      p.dateOfBirth.getUTCDate() === todayDay,
+    (p) => p.dateOfBirthEthMonth === today.month && p.dateOfBirthEthDay === today.day,
   );
   const bdayTomorrow = profiles.filter(
-    (p) =>
-      p.dateOfBirth.getUTCMonth() === tmrMonth &&
-      p.dateOfBirth.getUTCDate() === tmrDay,
+    (p) => p.dateOfBirthEthMonth === tomorrow.month && p.dateOfBirthEthDay === tomorrow.day,
   );
 
   const allRecipients = await prisma.user.findMany({
-    where: {
-      status: 'APPROVED',
-      deletedAt: null,
-      role: { in: [UserRole.MEMBER, UserRole.LEADER] },
-    },
+    where: { status: 'APPROVED', deletedAt: null, role: { in: [UserRole.MEMBER, UserRole.LEADER] } },
     select: { id: true },
   });
   const allRecipientIds = allRecipients.map((r) => r.id);
@@ -81,8 +54,5 @@ export async function runBirthdayJob(): Promise<{
     });
   }
 
-  return {
-    today: bdayToday.length,
-    tomorrow: bdayTomorrow.length,
-  };
+  return { today: bdayToday.length, tomorrow: bdayTomorrow.length };
 }

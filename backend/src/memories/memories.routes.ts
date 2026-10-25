@@ -10,17 +10,16 @@ import {
   listMyMemories,
 } from './memories.service';
 import { ApiError } from '../utils/ApiError';
+import { reqEthDate } from '../funding/funding.validation';
 
 const router = Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
+  limits: { fileSize: 25 * 1024 * 1024 },
 });
 
 router.use(authenticate, touchLastActive);
-
-// ----- Public listings -----
 
 router.get('/', async (req, res, next) => {
   try {
@@ -41,7 +40,6 @@ router.get('/years', async (_req, res, next) => {
   }
 });
 
-// ---- Mine: list ----------------------------------------------------------
 router.get('/mine', async (req, res, next) => {
   try {
     if (!req.auth) throw ApiError.unauthorized();
@@ -52,8 +50,6 @@ router.get('/mine', async (req, res, next) => {
   }
 });
 
-// ---- Mine: single (regardless of status, own items only) -----------------
-// MUST come BEFORE the generic '/:id' route.
 router.get('/mine/:id', async (req, res, next) => {
   try {
     if (!req.auth) throw ApiError.unauthorized();
@@ -66,7 +62,6 @@ router.get('/mine/:id', async (req, res, next) => {
   }
 });
 
-// ---- Public single -------------------------------------------------------
 router.get('/:id', async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -78,22 +73,18 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// ----- Submission -----
-
 router.post(
   '/',
-  upload.fields([
-    { name: 'photos', maxCount: 20 },
-    { name: 'audio', maxCount: 1 },
-  ]),
+  upload.fields([{ name: 'photos', maxCount: 20 }, { name: 'audio', maxCount: 1 }]),
   async (req, res, next) => {
     try {
       if (!req.auth) throw ApiError.unauthorized();
-      const { title, description, date, youtubeUrls } = req.body ?? {};
+      const { title, description, youtubeUrls } = req.body ?? {};
+      
+      // Parse E.C. Date
+      const date = reqEthDate(req.body?.date, 'Date');
 
-      const files = req.files as
-        | Record<string, Express.Multer.File[]>
-        | undefined;
+      const files = req.files as Record<string, Express.Multer.File[]> | undefined;
       const photos = files?.photos ?? [];
       const audio = files?.audio?.[0];
 
@@ -109,14 +100,9 @@ router.post(
       const created = await submitMemory(req.auth.userId, {
         title: String(title ?? ''),
         description: description ? String(description) : undefined,
-        date: String(date ?? ''),
-        photos: photos.map((f) => ({
-          buffer: f.buffer,
-          mimetype: f.mimetype,
-        })),
-        audio: audio
-          ? { buffer: audio.buffer, mimetype: audio.mimetype }
-          : null,
+        date,
+        photos: photos.map((f) => ({ buffer: f.buffer, mimetype: f.mimetype })),
+        audio: audio ? { buffer: audio.buffer, mimetype: audio.mimetype } : null,
         youtubeUrls: youtubeList,
       });
       res.status(201).json({ memory: created });

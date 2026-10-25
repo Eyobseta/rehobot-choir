@@ -1,6 +1,7 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit'; // <-- NEW
 
 import { env } from './config/env';
 import { requestLogger } from './middleware/requestLogger';
@@ -29,7 +30,7 @@ import birthdayRoutes from './birthdays/birthdays.routes';
 import chatRoutes from './chat/chat.routes';
 import chatStreamRoutes from './chat/chat.stream.routes';
 import fundingRoutes from './funding/funding.routes';
-import donationRoutes from './funding/donation.routes'; // NEW
+import donationRoutes from './funding/donation.routes';
 import fundingAdminRoutes from './funding/funding-admin.routes';
 
 export function createApp(): Application {
@@ -48,10 +49,22 @@ export function createApp(): Application {
 
   app.use(requestLogger);
 
+  // Rate limiter for Authentication Endpoints (Login, Register, Refresh)
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 30, // Limit each IP to 30 requests per window
+    message: { status: 429, code: 'TOO_MANY_REQUESTS', message: 'Too many attempts, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
   const api = express.Router();
   api.use('/health', healthRoutes);
-  api.use('/auth', authRoutes);
-  api.use('/auth', registrationRoutes);
+  
+  // Apply limiter to auth
+  api.use('/auth', authLimiter, authRoutes);
+  api.use('/auth', authLimiter, registrationRoutes);
+  
   api.use('/leaders/registrations', leaderRoutes);
   api.use('/leaders/members', leaderMemberRoutes);
   api.use('/members', memberRoutes);
@@ -75,7 +88,7 @@ export function createApp(): Application {
   api.use('/chats', chatRoutes);
 
   api.use('/funding', fundingRoutes);
-  api.use('/funding', donationRoutes); // NEW
+  api.use('/funding', donationRoutes);
   api.use('/admin/funding', fundingAdminRoutes);
 
   app.use('/api/v1', api);

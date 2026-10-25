@@ -74,3 +74,8 @@ export function reqAmountMinor(v: unknown, field = 'Amount'): number {
   }
   return v;
 }
+/** Optional version of reqEthDate (returns undefined if not provided). */
+export function optEthDate(v: unknown, field: string): EthDate | undefined {
+  if (v === undefined || v === null || v === '') return undefined;
+  return reqEthDate(v, field);
+}

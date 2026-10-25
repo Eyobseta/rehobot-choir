@@ -1,71 +1,47 @@
 import { prisma } from '../db/prisma';
 import { ApiError } from '../utils/ApiError';
-import {
-  DailyQuoteStatus,
-  NotificationType,
-  UserRole,
-} from '@prisma/client';
+import { DailyQuoteStatus, NotificationType, UserRole } from '@prisma/client';
 import { uploadBuffer } from '../storage/cloudinary';
 import { fanOut } from '../notifications/notifications.service';
-/**
- * Normalize a Date to just the day (YYYY-MM-DD at UTC midnight).
- */
-function startOfDayUTC(d: Date): Date {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
-
-function dateFromISO(iso: string): Date {
-  const m = iso.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) throw ApiError.badRequest('Invalid date. Use YYYY-MM-DD.');
-  const [, y, mo, d] = m;
-  const dt = new Date(`${y}-${mo}-${d}T00:00:00.000Z`);
-  if (Number.isNaN(dt.getTime())) {
-    throw ApiError.badRequest('Invalid date.');
-  }
-  return dt;
-}
+import { todayEthiopian } from '../utils/ethiopianCalendar';
+import { ethFields } from '../utils/eth-fields';
 
 // ---------- Reads ----------
 
 export async function getTodayQuote() {
-  const today = startOfDayUTC(new Date());
-  const row = await prisma.dailyQuote.findUnique({
-    where: { dateOnly: today },
+  const today = todayEthiopian();
+  
+  const row = await prisma.dailyQuote.findFirst({
+    where: {
+      dateEthYear: today.year,
+      dateEthMonth: today.month,
+      dateEthDay: today.day,
+      status: DailyQuoteStatus.PUBLISHED,
+    },
     include: {
       submittedBy: {
         select: {
           id: true,
-          memberProfile: {
-            select: { fullName: true, profilePhotoUrl: true },
-          },
+          memberProfile: { select: { fullName: true, profilePhotoUrl: true } },
         },
       },
     },
   });
-  if (!row || row.status === DailyQuoteStatus.DELETED) return null;
   return row;
 }
 
 export async function listRecentQuotes(days = 7) {
   const n = Math.min(Math.max(days, 1), 60);
-  const today = startOfDayUTC(new Date());
-  const from = new Date(today);
-  from.setUTCDate(from.getUTCDate() - (n - 1));
-
+  
   return prisma.dailyQuote.findMany({
-    where: {
-      status: DailyQuoteStatus.PUBLISHED,
-      dateOnly: { gte: from, lte: today },
-    },
-    orderBy: { dateOnly: 'desc' },
+    where: { status: DailyQuoteStatus.PUBLISHED },
+    orderBy: { dateGregorian: 'desc' },
     take: n,
     include: {
       submittedBy: {
         select: {
           id: true,
-          memberProfile: {
-            select: { fullName: true, profilePhotoUrl: true },
-          },
+          memberProfile: { select: { fullName: true, profilePhotoUrl: true } },
         },
       },
     },
@@ -101,18 +77,17 @@ export async function publishTodayQuote(
   if (!quoteText) throw ApiError.badRequest('Quote is required.');
   if (!source) throw ApiError.badRequest('Source is required.');
 
-  const today = startOfDayUTC(new Date());
+  const today = todayEthiopian();
 
-  // Guard: only one per day.
-  const existing = await prisma.dailyQuote.findUnique({
-    where: { dateOnly: today },
+  const existing = await prisma.dailyQuote.findFirst({
+    where: {
+      dateEthYear: today.year,
+      dateEthMonth: today.month,
+      dateEthDay: today.day,
+    },
   });
   if (existing && existing.status === DailyQuoteStatus.PUBLISHED) {
-    throw new ApiError(
-      409,
-      'QUOTE_ALREADY_PUBLISHED',
-      'A quote for today has already been published.',
-    );
+    throw new ApiError(409, 'QUOTE_ALREADY_PUBLISHED', 'A quote for today has already been published.');
   }
 
   let audioUrl: string | null = null;
@@ -128,13 +103,9 @@ export async function publishTodayQuote(
     audioPublicId = uploaded.publicId;
   }
 
-  // Race condition: two clients may both pass the guard above. The unique
-  // constraint on dateOnly is the real protection — if two writes arrive at
-  // the same instant, the second will throw P2002. Handle it below.
   try {
     const created = await prisma.dailyQuote.create({
       data: {
-        dateOnly: today,
         quoteText,
         source,
         youtubeUrl: input.youtubeUrl?.trim() || null,
@@ -142,6 +113,7 @@ export async function publishTodayQuote(
         audioPublicId,
         submittedByUserId: userId,
         status: DailyQuoteStatus.PUBLISHED,
+        ...(ethFields(today, 'date') as any),
       },
     });
 
@@ -149,11 +121,7 @@ export async function publishTodayQuote(
     return created;
   } catch (e: any) {
     if (e?.code === 'P2002') {
-      throw new ApiError(
-        409,
-        'QUOTE_ALREADY_PUBLISHED',
-        'A quote for today has already been published.',
-      );
+      throw new ApiError(409, 'QUOTE_ALREADY_PUBLISHED', 'A quote for today has already been published.');
     }
     throw e;
   }
@@ -161,11 +129,7 @@ export async function publishTodayQuote(
 
 // ---------- Notification ----------
 
-async function fanOutQuoteNotification(
-  quoteId: string,
-  source: string,
-  quoteText: string,
-) {
+async function fanOutQuoteNotification(quoteId: string, source: string, quoteText: string) {
   const recipients = await prisma.user.findMany({
     where: {
       status: 'APPROVED',

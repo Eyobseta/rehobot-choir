@@ -19,7 +19,6 @@ function recordLabel(year: number) {
   return `the ${year} E.C. annual hosting contribution`;
 }
 
-/** Pending = declarations whose status is PENDING. Used to inform the UI. */
 function pendingOf(decls: { status: DeclarationStatus; amountMinor: number }[]) {
   const pending = decls.filter((d) => d.status === DeclarationStatus.PENDING);
   if (pending.length === 0) return null;
@@ -28,10 +27,6 @@ function pendingOf(decls: { status: DeclarationStatus; amountMinor: number }[]) 
     totalMinor: pending.reduce((s, d) => s + d.amountMinor, 0),
   };
 }
-
-// ============================================================
-// Member
-// ============================================================
 
 export async function getMyFunding(userId: string) {
   const config = await getCurrentConfig();
@@ -75,10 +70,8 @@ export async function getMyFunding(userId: string) {
               pendingCount: p ? p.count : 0,
               rejectionReason: current.status === FundingStatus.REJECTED ? current.rejectionReason : null,
               verifiedAt: current.verifiedAt,
-              deadline: dateDto(config.deadlineDate),
-              deadlinePassed: isPastDeadline(config.deadlineDate),
-              // v2.1: pending no longer blocks a new declaration. Members can pay in instalments
-              // while a previous declaration is still being verified.
+              deadline: dateDto(config.deadlineGregorian),
+              deadlinePassed: isPastDeadline(config.deadlineGregorian),
               canDeclare:
                 config.active && hasInstr &&
                 current.status !== FundingStatus.PAID &&
@@ -107,15 +100,6 @@ async function loadMyRecord(userId: string, year: number) {
   });
 }
 
-/**
- * "I've Transferred" (v2.1). NEVER marks the record Paid.
- * - Member supplies paymentMethod + amount (+ optional reference). Amount may be PARTIAL,
- *   but never more than the remaining *verified* balance MINUS anything already pending.
- *   Example: due=100, paid=0, one pending 40 -> max new declaration = 60 (so total pending+paid ≤ due).
- * - Multiple pending declarations are ALLOWED. Each is verified independently.
- * - Idempotent on (participant, clientId).
- * - A late declaration is accepted (money may really have been sent) but flagged in the audit log.
- */
 export async function declareAnnualPayment(userId: string, recordId: string, body: any) {
   const clientId = optString(body?.clientId, 'clientId', 64);
   const rawRef = optString(body?.reference, 'Reference', 100);
@@ -144,7 +128,7 @@ export async function declareAnnualPayment(userId: string, recordId: string, bod
   }
 
   const reference = record.config.referenceEnabled ? rawRef : null;
-  const late = isPastDeadline(record.config.deadlineDate);
+  const late = isPastDeadline(record.config.deadlineGregorian);
 
   try {
     const decl = await prisma.$transaction(async (tx) => {
@@ -157,7 +141,6 @@ export async function declareAnnualPayment(userId: string, recordId: string, bod
         throw ApiError.conflict('This contribution is already fully paid.', 'ALREADY_PAID');
       }
 
-      // Cap = remaining verified balance MINUS everything already pending.
       const pendingTotal = fresh.declarations.reduce((s, d) => s + d.amountMinor, 0);
       const remaining = fresh.amountDueMinor - fresh.paidMinor - pendingTotal;
       if (remaining <= 0) {
@@ -173,9 +156,7 @@ export async function declareAnnualPayment(userId: string, recordId: string, bod
         );
       }
 
-      // Move to PENDING_VERIFICATION if not already; bump version (guards concurrent writes).
-      const nextStatus =
-        fresh.status === FundingStatus.PENDING_VERIFICATION ? FundingStatus.PENDING_VERIFICATION : FundingStatus.PENDING_VERIFICATION;
+      const nextStatus = FundingStatus.PENDING_VERIFICATION;
       const moved = await tx.annualContributionRecord.updateMany({
         where: { id: recordId, participantId: userId, version: fresh.version },
         data: { status: nextStatus, rejectionReason: null, version: { increment: 1 } },
@@ -207,10 +188,6 @@ export async function declareAnnualPayment(userId: string, recordId: string, bod
   }
 }
 
-// ============================================================
-// Leader: configuration
-// ============================================================
-
 export async function leaderGetAnnualConfig() {
   const c = await getCurrentConfig();
   return c ? configDto(c) : null;
@@ -221,10 +198,6 @@ export { previewDeadline as leaderPreviewDeadline };
 export async function leaderUpsertAnnualConfig(leaderId: string, body: any) {
   return adminUpsertConfig(leaderId, body);
 }
-
-// ============================================================
-// Leader: list / detail
-// ============================================================
 
 export async function leaderListAnnual(q: Record<string, unknown>) {
   const config = await getCurrentConfig();
@@ -248,7 +221,7 @@ export async function leaderListAnnual(q: Record<string, unknown>) {
       include: {
         participant: { select: { id: true, phone: true, role: true, memberProfile: { select: { fullName: true, profilePhotoUrl: true } } } },
         declarations: { orderBy: { declaredAt: 'desc' }, take: 5 },
-        config: { select: { deadlineDate: true } },
+        config: { select: { deadlineGregorian: true } },
       },
     }),
     prisma.annualContributionRecord.count({ where }),
@@ -284,7 +257,7 @@ export async function leaderListAnnual(q: Record<string, unknown>) {
         status: r.status,
         amountDue: moneyDto(r.amountDueMinor),
         progress: progressDto(r.paidMinor, r.amountDueMinor),
-        deadline: dateDto(r.config.deadlineDate),
+        deadline: dateDto(r.config.deadlineGregorian),
         participant: {
           id: r.participant.id,
           fullName: r.participant.memberProfile?.fullName ?? r.participant.phone,
@@ -317,14 +290,14 @@ export async function leaderGetAnnual(recordId: string) {
         orderBy: { declaredAt: 'desc' }, take: 50,
         include: { decidedBy: { select: { memberProfile: { select: { fullName: true } } } } },
       },
-      config: { select: { deadlineDate: true } },
+      config: { select: { deadlineGregorian: true } },
     },
   });
   if (!r) throw ApiError.notFound('Record not found.');
   return {
     id: r.id, contributionYear: r.contributionYear, status: r.status,
     amountDue: moneyDto(r.amountDueMinor), progress: progressDto(r.paidMinor, r.amountDueMinor),
-    deadline: dateDto(r.config.deadlineDate),
+    deadline: dateDto(r.config.deadlineGregorian),
     participant: {
       id: r.participant.id,
       fullName: r.participant.memberProfile?.fullName ?? r.participant.phone,
@@ -337,17 +310,6 @@ export async function leaderGetAnnual(recordId: string) {
   };
 }
 
-// ============================================================
-// Leader: verify (per-declaration, not per-record)
-// ============================================================
-
-/**
- * Approve a SPECIFIC declaration (default = oldest pending one).
- * - Adds THIS declaration's amount to paidMinor.
- * - If other declarations are still pending -> record stays PENDING_VERIFICATION.
- * - If none left pending -> PAID (paid >= due) or UNPAID (still short).
- * - The declaration is claimed with a conditional update (first-writer-wins).
- */
 export async function approveAnnual(recordId: string, leaderId: string, body?: any) {
   const declarationId = optString(body?.declarationId, 'declarationId', 64);
 
@@ -361,7 +323,7 @@ export async function approveAnnual(recordId: string, leaderId: string, body?: a
   const out = await prisma.$transaction(async (tx) => {
     const decl = await tx.fundingDeclaration.findFirst({
       where: { annualRecordId: recordId, status: DeclarationStatus.PENDING, ...(declarationId ? { id: declarationId } : {}) },
-      orderBy: { declaredAt: 'asc' }, // oldest first by default
+      orderBy: { declaredAt: 'asc' },
     });
     const fresh = await tx.annualContributionRecord.findUnique({ where: { id: recordId } });
     if (!decl || !fresh || fresh.status !== FundingStatus.PENDING_VERIFICATION) {
@@ -378,7 +340,6 @@ export async function approveAnnual(recordId: string, leaderId: string, body?: a
 
     const paidMinor = fresh.paidMinor + decl.amountMinor;
 
-    // Recompute status: still pending others? -> PENDING_VERIFICATION. Otherwise settle.
     const stillPending = await tx.fundingDeclaration.count({
       where: { annualRecordId: recordId, status: DeclarationStatus.PENDING },
     });
@@ -444,7 +405,6 @@ export async function rejectAnnual(recordId: string, leaderId: string, body: any
     const stillPending = await tx.fundingDeclaration.count({
       where: { annualRecordId: recordId, status: DeclarationStatus.PENDING },
     });
-    // Status: if other declarations are still pending, stay pending. Otherwise REJECTED.
     const nextStatus = stillPending > 0 ? FundingStatus.PENDING_VERIFICATION : FundingStatus.REJECTED;
     const moved = await tx.annualContributionRecord.updateMany({
       where: { id: recordId, status: FundingStatus.PENDING_VERIFICATION },
@@ -467,10 +427,6 @@ export async function rejectAnnual(recordId: string, leaderId: string, body: any
   });
   return { ok: true, status: declared.stillPending > 0 ? FundingStatus.PENDING_VERIFICATION : FundingStatus.REJECTED, stillPending: declared.stillPending };
 }
-
-// ============================================================
-// Admin: exceptional correction
-// ============================================================
 
 export async function adminCorrectAnnual(recordId: string, adminId: string, body: any) {
   const reason = reqString(body?.reason, 'Reason for correction', 5, 500);

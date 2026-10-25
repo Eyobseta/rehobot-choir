@@ -3,6 +3,8 @@ import { hashPassword } from '../auth/password';
 import { ApiError } from '../utils/ApiError';
 import { ApplicationStatus, UserRole, UserStatus } from '@prisma/client';
 import { uploadBuffer, UploadResult } from '../storage/cloudinary';
+import { EthDate } from '../utils/ethiopianCalendar';
+import { ethFields } from '../utils/eth-fields';
 
 export type RegisterInput = {
   fullName: string;
@@ -10,16 +12,13 @@ export type RegisterInput = {
   email: string;
   password: string;
   gender: string;
-  dateOfBirth: string; // ISO
+  dateOfBirth: EthDate;
   emergencyContactName: string;
   emergencyContactPhone: string;
-  joiningDate?: string; // ISO, optional
+  joiningDate?: EthDate;
   photo: { buffer: Buffer; mimetype: string };
 };
 
-/**
- * Create a new registration application (SRS 5.2).
- */
 export async function register(input: RegisterInput) {
   const phone = input.phone.trim();
   const email = input.email.trim().toLowerCase();
@@ -36,29 +35,20 @@ export async function register(input: RegisterInput) {
     throw ApiError.badRequest('Emergency contact is required.');
   }
 
-  // Phone must not be in use by an active (not deleted) user (SRS 5.7).
   const activeUser = await prisma.user.findFirst({
     where: { phone, deletedAt: null },
   });
   if (activeUser) {
-    throw ApiError.conflict(
-      'This phone number is already registered.',
-      'PHONE_TAKEN',
-    );
+    throw ApiError.conflict('This phone number is already registered.', 'PHONE_TAKEN');
   }
 
-  // A PENDING application with the same phone already exists?
   const pendingApp = await prisma.registrationApplication.findFirst({
     where: { phone, status: ApplicationStatus.PENDING },
   });
   if (pendingApp) {
-    throw ApiError.conflict(
-      'An application with this phone number is already pending review.',
-      'APPLICATION_PENDING',
-    );
+    throw ApiError.conflict('An application with this phone number is already pending review.', 'APPLICATION_PENDING');
   }
 
-  // Upload photo.
   const uploaded: UploadResult = await uploadBuffer(
     input.photo.buffer,
     'rehobot/profile-photos',
@@ -76,20 +66,17 @@ export async function register(input: RegisterInput) {
       profilePhotoUrl: uploaded.url,
       profilePhotoPublicId: uploaded.publicId,
       gender: input.gender.trim(),
-      dateOfBirth: new Date(input.dateOfBirth),
       emergencyContactName: input.emergencyContactName.trim(),
       emergencyContactPhone: input.emergencyContactPhone.trim(),
-      joiningDate: input.joiningDate ? new Date(input.joiningDate) : null,
       status: ApplicationStatus.PENDING,
+      ...(ethFields(input.dateOfBirth, 'dateOfBirth') as any),
+      ...(input.joiningDate ? (ethFields(input.joiningDate, 'joiningDate') as any) : {}),
     },
   });
 
   return { applicationId: app.id, status: app.status };
 }
 
-/**
- * Public status lookup by phone (SRS 5.6).
- */
 export async function getStatus(phone: string) {
   const cleanPhone = phone.trim();
   if (!cleanPhone) throw ApiError.badRequest('Phone is required.');
@@ -105,16 +92,12 @@ export async function getStatus(phone: string) {
 
   return {
     status: app.status,
-    rejectionReason:
-      app.status === ApplicationStatus.REJECTED ? app.rejectionReason : null,
+    rejectionReason: app.status === ApplicationStatus.REJECTED ? app.rejectionReason : null,
     createdAt: app.createdAt,
     reviewedAt: app.reviewedAt,
   };
 }
 
-/**
- * Leader: list pending applications (SRS 5.3).
- */
 export async function listPending() {
   return prisma.registrationApplication.findMany({
     where: { status: ApplicationStatus.PENDING },
@@ -125,17 +108,18 @@ export async function listPending() {
       phone: true,
       email: true,
       gender: true,
-      dateOfBirth: true,
-      joiningDate: true,
+      dateOfBirthEthYear: true,
+      dateOfBirthEthMonth: true,
+      dateOfBirthEthDay: true,
+      joiningDateEthYear: true,
+      joiningDateEthMonth: true,
+      joiningDateEthDay: true,
       profilePhotoUrl: true,
       createdAt: true,
     },
   });
 }
 
-/**
- * Leader: get full application detail (SRS 5.3).
- */
 export async function getApplication(id: string) {
   const app = await prisma.registrationApplication.findUnique({ where: { id } });
   if (!app) throw ApiError.notFound('Application not found.');
@@ -143,13 +127,7 @@ export async function getApplication(id: string) {
   return safe;
 }
 
-/**
- * Leader: approve (SRS 5.3, 5.5).
- */
-export async function approveApplication(
-  applicationId: string,
-  leaderUserId: string,
-) {
+export async function approveApplication(applicationId: string, leaderUserId: string) {
   const app = await prisma.registrationApplication.findUnique({
     where: { id: applicationId },
   });
@@ -181,12 +159,18 @@ export async function approveApplication(
         userId: user.id,
         fullName: app.fullName,
         gender: app.gender,
-        dateOfBirth: app.dateOfBirth,
         emergencyContactName: app.emergencyContactName,
         emergencyContactPhone: app.emergencyContactPhone,
-        joiningDate: app.joiningDate,
         profilePhotoUrl: app.profilePhotoUrl,
         profilePhotoPublicId: app.profilePhotoPublicId,
+        dateOfBirthEthYear: app.dateOfBirthEthYear,
+        dateOfBirthEthMonth: app.dateOfBirthEthMonth,
+        dateOfBirthEthDay: app.dateOfBirthEthDay,
+        dateOfBirthGregorian: app.dateOfBirthGregorian,
+        joiningDateEthYear: app.joiningDateEthYear,
+        joiningDateEthMonth: app.joiningDateEthMonth,
+        joiningDateEthDay: app.joiningDateEthDay,
+        joiningDateGregorian: app.joiningDateGregorian,
       },
     });
 
@@ -205,14 +189,7 @@ export async function approveApplication(
   return { userId: result.id };
 }
 
-/**
- * Leader: reject with REQUIRED reason (SRS 5.3).
- */
-export async function rejectApplication(
-  applicationId: string,
-  leaderUserId: string,
-  reason: string,
-) {
+export async function rejectApplication(applicationId: string, leaderUserId: string, reason: string) {
   const trimmedReason = reason.trim();
   if (!trimmedReason) {
     throw ApiError.badRequest('Rejection reason is required.');

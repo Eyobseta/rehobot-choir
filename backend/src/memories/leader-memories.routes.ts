@@ -10,6 +10,7 @@ import {
   deleteMemory,
 } from './memories.service';
 import { ApiError } from '../utils/ApiError';
+import { reqEthDate } from '../funding/funding.validation';
 
 const router = Router();
 
@@ -82,8 +83,7 @@ router.patch(
         | undefined;
       const photos = files?.photos ?? [];
       const audio = files?.audio?.[0];
-      const { title, description, date, youtubeUrls, replaceMedia } =
-        req.body ?? {};
+      const { title, description, youtubeUrls, replaceMedia } = req.body ?? {};
 
       let youtubeList: string[] | undefined;
       if (youtubeUrls) {
@@ -95,11 +95,12 @@ router.patch(
       }
 
       const shouldReplace = String(replaceMedia ?? 'false') === 'true';
+      const date = req.body?.date ? reqEthDate(req.body.date, 'Date') : undefined;
 
       const result = await editMemory(id, req.auth.userId, {
         title: title !== undefined ? String(title) : undefined,
         description: description !== undefined ? String(description) : undefined,
-        date: date !== undefined ? String(date) : undefined,
+        date,
         replaceMedia: shouldReplace
           ? {
               photos: photos.map((f) => ({

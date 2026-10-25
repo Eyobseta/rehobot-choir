@@ -1,13 +1,8 @@
 import { prisma } from '../db/prisma';
 import { ApiError } from '../utils/ApiError';
+import { todayEthiopian, addEthDays, EthDate } from '../utils/ethiopianCalendar';
+import { ethFields } from '../utils/eth-fields';
 
-/**
- * Return the approved member directory (SRS 18).
- * - Approved only.
- * - Search by full name.
- * - Sorted by lastActiveAt desc (recently active first).
- * - No alternate sorting (SRS 18).
- */
 export async function listMembers(search?: string) {
   const q = (search ?? '').trim();
 
@@ -40,14 +35,6 @@ export async function listMembers(search?: string) {
   }));
 }
 
-/**
- * Get a member profile (SRS 17.3).
- *
- * Visible to other approved members:
- * - profile photo, full name, phone, email, gender, full DOB, joining date.
- * Private:
- * - emergency contact, attendance.
- */
 export async function getMemberProfile(viewerId: string, memberId: string) {
   const viewer = await prisma.user.findUnique({ where: { id: viewerId } });
   if (!viewer || viewer.deletedAt || viewer.status !== 'APPROVED') {
@@ -68,8 +55,12 @@ export async function getMemberProfile(viewerId: string, memberId: string) {
           fullName: true,
           profilePhotoUrl: true,
           gender: true,
-          dateOfBirth: true,
-          joiningDate: true,
+          dateOfBirthEthYear: true,
+          dateOfBirthEthMonth: true,
+          dateOfBirthEthDay: true,
+          joiningDateEthYear: true,
+          joiningDateEthMonth: true,
+          joiningDateEthDay: true,
         },
       },
     },
@@ -77,7 +68,6 @@ export async function getMemberProfile(viewerId: string, memberId: string) {
 
   if (!user) throw ApiError.notFound('Member not found.');
 
-  // If the member is deleted, expose only the retained basics (SRS 7.3).
   if (user.deletedAt || user.status === 'DELETED') {
     return {
       id: user.id,
@@ -87,24 +77,30 @@ export async function getMemberProfile(viewerId: string, memberId: string) {
     };
   }
 
+  const p = user.memberProfile;
+
   return {
     id: user.id,
-    fullName: user.memberProfile?.fullName ?? '',
-    profilePhotoUrl: user.memberProfile?.profilePhotoUrl ?? null,
+    fullName: p?.fullName ?? '',
+    profilePhotoUrl: p?.profilePhotoUrl ?? null,
     phone: user.phone,
     email: user.email,
-    gender: user.memberProfile?.gender ?? null,
-    dateOfBirth: user.memberProfile?.dateOfBirth ?? null,
-    joiningDate: user.memberProfile?.joiningDate ?? null,
+    gender: p?.gender ?? null,
+    dateOfBirth: p?.dateOfBirthEthYear ? {
+      year: p.dateOfBirthEthYear,
+      month: p.dateOfBirthEthMonth,
+      day: p.dateOfBirthEthDay,
+    } : null,
+    joiningDate: p?.joiningDateEthYear ? {
+      year: p.joiningDateEthYear,
+      month: p.joiningDateEthMonth,
+      day: p.joiningDateEthDay,
+    } : null,
     lastActiveAt: user.lastActiveAt,
     deleted: false,
   };
 }
 
-/**
- * Own profile (SRS 17.1 / 17.2).
- * Returns editable + leader-controlled fields separately for clarity.
- */
 export async function getOwnProfile(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -119,8 +115,12 @@ export async function getOwnProfile(userId: string) {
           fullName: true,
           profilePhotoUrl: true,
           gender: true,
-          dateOfBirth: true,
-          joiningDate: true,
+          dateOfBirthEthYear: true,
+          dateOfBirthEthMonth: true,
+          dateOfBirthEthDay: true,
+          joiningDateEthYear: true,
+          joiningDateEthMonth: true,
+          joiningDateEthDay: true,
           emergencyContactName: true,
           emergencyContactPhone: true,
         },
@@ -129,6 +129,8 @@ export async function getOwnProfile(userId: string) {
   });
   if (!user) throw ApiError.unauthorized();
 
+  const p = user.memberProfile;
+
   return {
     id: user.id,
     role: user.role,
@@ -136,23 +138,27 @@ export async function getOwnProfile(userId: string) {
     editable: {
       phone: user.phone,
       email: user.email,
-      emergencyContactName: user.memberProfile?.emergencyContactName ?? '',
-      emergencyContactPhone: user.memberProfile?.emergencyContactPhone ?? '',
-      profilePhotoUrl: user.memberProfile?.profilePhotoUrl ?? null,
+      emergencyContactName: p?.emergencyContactName ?? '',
+      emergencyContactPhone: p?.emergencyContactPhone ?? '',
+      profilePhotoUrl: p?.profilePhotoUrl ?? null,
     },
     official: {
-      fullName: user.memberProfile?.fullName ?? '',
-      gender: user.memberProfile?.gender ?? '',
-      dateOfBirth: user.memberProfile?.dateOfBirth ?? null,
-      joiningDate: user.memberProfile?.joiningDate ?? null,
+      fullName: p?.fullName ?? '',
+      gender: p?.gender ?? '',
+      dateOfBirth: p?.dateOfBirthEthYear ? {
+        year: p.dateOfBirthEthYear,
+        month: p.dateOfBirthEthMonth,
+        day: p.dateOfBirthEthDay,
+      } : null,
+      joiningDate: p?.joiningDateEthYear ? {
+        year: p.joiningDateEthYear,
+        month: p.joiningDateEthMonth,
+        day: p.joiningDateEthDay,
+      } : null,
     },
   };
 }
 
-/**
- * Update allowed fields only (SRS 17.1).
- * Rejects attempts to edit official fields.
- */
 export async function updateOwnProfile(
   userId: string,
   input: {
@@ -162,20 +168,16 @@ export async function updateOwnProfile(
     emergencyContactPhone?: string;
   },
 ) {
-  // Explicitly reject any attempt to change official fields.
   const forbidden = ['fullName', 'gender', 'dateOfBirth', 'joiningDate'];
   for (const key of forbidden) {
     if (key in (input as Record<string, unknown>)) {
-      throw ApiError.forbidden(
-        `${key} cannot be edited by members. Contact a choir leader.`,
-      );
+      throw ApiError.forbidden(`${key} cannot be edited by members. Contact a choir leader.`);
     }
   }
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw ApiError.unauthorized();
 
-  // Phone uniqueness check.
   if (input.phone !== undefined && input.phone.trim() !== user.phone) {
     const cleanPhone = input.phone.trim();
     if (!cleanPhone) throw ApiError.badRequest('Phone cannot be empty.');
@@ -187,7 +189,6 @@ export async function updateOwnProfile(
     }
   }
 
-  // Email uniqueness check.
   if (input.email !== undefined) {
     const cleanEmail = input.email.trim().toLowerCase();
     if (cleanEmail) {
@@ -205,30 +206,18 @@ export async function updateOwnProfile(
       await tx.user.update({
         where: { id: userId },
         data: {
-          email:
-            input.email !== undefined
-              ? input.email.trim().toLowerCase() || null
-              : undefined,
+          email: input.email !== undefined ? input.email.trim().toLowerCase() || null : undefined,
           phone: input.phone !== undefined ? input.phone.trim() : undefined,
         },
       });
     }
 
-    if (
-      input.emergencyContactName !== undefined ||
-      input.emergencyContactPhone !== undefined
-    ) {
+    if (input.emergencyContactName !== undefined || input.emergencyContactPhone !== undefined) {
       await tx.memberProfile.update({
         where: { userId },
         data: {
-          emergencyContactName:
-            input.emergencyContactName !== undefined
-              ? input.emergencyContactName.trim()
-              : undefined,
-          emergencyContactPhone:
-            input.emergencyContactPhone !== undefined
-              ? input.emergencyContactPhone.trim()
-              : undefined,
+          emergencyContactName: input.emergencyContactName !== undefined ? input.emergencyContactName.trim() : undefined,
+          emergencyContactPhone: input.emergencyContactPhone !== undefined ? input.emergencyContactPhone.trim() : undefined,
         },
       });
     }
@@ -237,14 +226,7 @@ export async function updateOwnProfile(
   return getOwnProfile(userId);
 }
 
-/**
- * Replace the member's profile photo (SRS 17.4).
- */
-export async function updateOwnProfilePhoto(
-  userId: string,
-  newUrl: string,
-  newPublicId: string,
-) {
+export async function updateOwnProfilePhoto(userId: string, newUrl: string, newPublicId: string) {
   const profile = await prisma.memberProfile.findUnique({ where: { userId } });
   if (!profile) throw ApiError.notFound('Profile not found.');
 
@@ -259,133 +241,28 @@ export async function updateOwnProfilePhoto(
   return { profilePhotoUrl: newUrl };
 }
 
-/**
- * Birthdays today and tomorrow (SRS 9, 16.5).
- * No age is returned.
- */
-export async function listUpcomingBirthdays(viewerId: string) {
-  const viewer = await prisma.user.findUnique({ where: { id: viewerId } });
-  if (!viewer || viewer.deletedAt || viewer.status !== 'APPROVED') {
-    throw ApiError.forbidden('Only approved members can view birthdays.');
-  }
-
-  const profiles = await prisma.memberProfile.findMany({
-    where: {
-      user: {
-        status: 'APPROVED',
-        deletedAt: null,
-      },
-    },
-    select: {
-      userId: true,
-      fullName: true,
-      profilePhotoUrl: true,
-      dateOfBirth: true,
-    },
-  });
-
-  const now = new Date();
-  const todayMonth = now.getUTCMonth();
-  const todayDay = now.getUTCDate();
-
-  const tomorrow = new Date(now);
-  tomorrow.setUTCDate(now.getUTCDate() + 1);
-  const tMonth = tomorrow.getUTCMonth();
-  const tDay = tomorrow.getUTCDate();
-
-  const today: typeof profiles = [];
-  const tomorrowList: typeof profiles = [];
-
-  for (const p of profiles) {
-    const m = p.dateOfBirth.getUTCMonth();
-    const d = p.dateOfBirth.getUTCDate();
-    if (m === todayMonth && d === todayDay) today.push(p);
-    else if (m === tMonth && d === tDay) tomorrowList.push(p);
-  }
-
-  const shape = (arr: typeof profiles) =>
-    arr.map((p) => ({
-      userId: p.userId,
-      fullName: p.fullName,
-      profilePhotoUrl: p.profilePhotoUrl,
-    }));
-
-  return {
-    today: shape(today),
-    tomorrow: shape(tomorrowList),
-  };
-}
-
-/**
- * Ensure a BirthdayPost exists for the given member for the current UTC year.
- * Returns the post.
- */
-async function ensureBirthdayPostFor(userId: string, dateOfBirth: Date) {
-  const now = new Date();
-  const year = now.getUTCFullYear();
-
-  // Birthday date this year at UTC midnight of the actual DOB month/day.
-  const bday = new Date(
-    Date.UTC(year, dateOfBirth.getUTCMonth(), dateOfBirth.getUTCDate()),
-  );
-
-  const existing = await prisma.birthdayPost.findUnique({
-    where: { userId_year: { userId, year } },
-  });
-  if (existing) return existing;
-
-  return prisma.birthdayPost.create({
-    data: {
-      userId,
-      year,
-      birthdayDate: bday,
-    },
-  });
-}
-
-/**
- * Birthdays today and tomorrow (SRS 9, 16.5) with post ids.
- * Each item now carries a `postId` so the client can open the detail view.
- */
 export async function listBirthdaysWithPosts(viewerId: string) {
   const viewer = await prisma.user.findUnique({ where: { id: viewerId } });
   if (!viewer || viewer.deletedAt || viewer.status !== 'APPROVED') {
     throw ApiError.forbidden('Only approved members can view birthdays.');
   }
 
-  const now = new Date();
-  const todayMonth = now.getUTCMonth();
-  const todayDay = now.getUTCDate();
-
-  const tomorrow = new Date(now);
-  tomorrow.setUTCDate(now.getUTCDate() + 1);
-  const tMonth = tomorrow.getUTCMonth();
-  const tDay = tomorrow.getUTCDate();
+  const today = todayEthiopian();
+  const tomorrow = addEthDays(today, 1);
 
   const profiles = await prisma.memberProfile.findMany({
-    where: {
-      user: {
-        status: 'APPROVED',
-        deletedAt: null,
-      },
-    },
+    where: { user: { status: 'APPROVED', deletedAt: null } },
     select: {
       userId: true,
       fullName: true,
       profilePhotoUrl: true,
-      dateOfBirth: true,
+      dateOfBirthEthMonth: true,
+      dateOfBirthEthDay: true,
     },
   });
 
-  const todayList: typeof profiles = [];
-  const tomorrowList: typeof profiles = [];
-
-  for (const p of profiles) {
-    const m = p.dateOfBirth.getUTCMonth();
-    const d = p.dateOfBirth.getUTCDate();
-    if (m === todayMonth && d === todayDay) todayList.push(p);
-    else if (m === tMonth && d === tDay) tomorrowList.push(p);
-  }
+  const todayList = profiles.filter((p) => p.dateOfBirthEthMonth === today.month && p.dateOfBirthEthDay === today.day);
+  const tomorrowList = profiles.filter((p) => p.dateOfBirthEthMonth === tomorrow.month && p.dateOfBirthEthDay === tomorrow.day);
 
   const shapeWithPost = async (arr: typeof profiles) => {
     const out: {
@@ -395,7 +272,7 @@ export async function listBirthdaysWithPosts(viewerId: string) {
       postId: string;
     }[] = [];
     for (const p of arr) {
-      const post = await ensureBirthdayPostFor(p.userId, p.dateOfBirth);
+      const post = await ensureBirthdayPostFor(p.userId, p.dateOfBirthEthMonth, p.dateOfBirthEthDay);
       out.push({
         userId: p.userId,
         fullName: p.fullName,
@@ -410,4 +287,23 @@ export async function listBirthdaysWithPosts(viewerId: string) {
     today: await shapeWithPost(todayList),
     tomorrow: await shapeWithPost(tomorrowList),
   };
+}
+
+async function ensureBirthdayPostFor(userId: string, dobEthMonth: number, dobEthDay: number) {
+  const today = todayEthiopian();
+  
+  const bday: EthDate = { year: today.year, month: dobEthMonth, day: dobEthDay };
+
+  const existing = await prisma.birthdayPost.findUnique({
+    where: { userId_year: { userId, year: today.year } },
+  });
+  if (existing) return existing;
+
+  return prisma.birthdayPost.create({
+    data: {
+      userId,
+      year: today.year,
+      ...(ethFields(bday, 'birthday') as any),
+    },
+  });
 }

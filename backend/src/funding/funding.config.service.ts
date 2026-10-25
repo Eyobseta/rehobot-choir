@@ -16,7 +16,6 @@ import {
 // ============================================================
 
 export async function getCurrentConfig() {
-  // "Current" = the active configuration with the highest contribution year.
   return prisma.annualFundingConfiguration.findFirst({
     where: { active: true },
     orderBy: { contributionYear: 'desc' },
@@ -32,8 +31,8 @@ export function configDto(c: ConfigRow) {
     amount: moneyDto(c.amountMinor),
     includeMembers: c.includeMembers,
     includeLeaders: c.includeLeaders,
-    expiry: dateDto(c.expiryDate),
-    deadline: dateDto(c.deadlineDate),
+    expiry: dateDto(c.expiryGregorian),
+    deadline: dateDto(c.deadlineGregorian),
     monthlyReminderEnabled: c.monthlyReminderEnabled,
     monthlyReminderEthDay: c.monthlyReminderEthDay,
     preDeadlineReminderDays: c.preDeadlineReminderDays,
@@ -52,7 +51,6 @@ export async function adminGetConfigs() {
   return rows.map(configDto);
 }
 
-/** Server-authoritative deadline preview (SRS 3.3). The app shows this before the admin saves. */
 export function previewDeadline(body: any) {
   const expiry = reqEthDate(body?.expiry, 'Expiry date');
   const deadline = calculateAnnualDeadline(expiry);
@@ -74,7 +72,6 @@ export async function adminUpsertConfig(adminId: string, body: any) {
   const expiry = reqEthDate(body?.expiry, 'Expiry date');
   const deadline = calculateAnnualDeadline(expiry);
 
-  // Admin must have reviewed THIS deadline (backend is authoritative).
   const confirmed = reqEthDate(body?.confirmedDeadline, 'Confirmed deadline');
   if (compareEth(confirmed, deadline) !== 0) {
     throw ApiError.conflict(
@@ -96,9 +93,9 @@ export async function adminUpsertConfig(adminId: string, body: any) {
   const data = {
     amountMinor, includeMembers, includeLeaders,
     expiryEthYear: expiry.year, expiryEthMonth: expiry.month, expiryEthDay: expiry.day,
-    expiryDate: ethToUtcDate(expiry),
+    expiryGregorian: ethToUtcDate(expiry),
     deadlineEthYear: deadline.year, deadlineEthMonth: deadline.month, deadlineEthDay: deadline.day,
-    deadlineDate: ethToUtcDate(deadline),
+    deadlineGregorian: ethToUtcDate(deadline),
     monthlyReminderEnabled, monthlyReminderEthDay, preDeadlineReminderDays,
     receiptUploadsEnabled, referenceEnabled, active,
     updatedByUserId: adminId,
@@ -111,12 +108,10 @@ export async function adminUpsertConfig(adminId: string, body: any) {
           data: { ...data, contributionYear, createdByUserId: adminId },
         });
 
-    // A changed amount only affects records nobody has declared against yet.
-    // Declared/Paid/Rejected records keep the amount they were created/decided with.
     let repriced = 0;
     if (existing && existing.amountMinor !== amountMinor) {
       const r = await tx.annualContributionRecord.updateMany({
-        where: { configId: row.id, status: FundingStatus.UNPAID, paidMinor: 0 }, // partially-paid keep their snapshot
+        where: { configId: row.id, status: FundingStatus.UNPAID, paidMinor: 0 },
         data: { amountDueMinor: amountMinor },
       });
       repriced = r.count;
@@ -137,7 +132,6 @@ export async function adminUpsertConfig(adminId: string, body: any) {
     return row;
   });
 
-  // Create any missing per-participant records (works for Admin AND Leader callers).
   if (saved.active) await ensureRecordsForConfig(saved);
   return configDto(saved);
 }
@@ -154,7 +148,6 @@ function snapshot(c: ConfigRow) {
   } satisfies Prisma.InputJsonValue;
 }
 
-/** Eligible = approved, not deleted, in an included role. The Admin is never a payer. */
 export function eligibleWhere(c: { includeMembers: boolean; includeLeaders: boolean }): Prisma.UserWhereInput {
   const roles: UserRole[] = [];
   if (c.includeMembers) roles.push(UserRole.MEMBER);
@@ -162,7 +155,6 @@ export function eligibleWhere(c: { includeMembers: boolean; includeLeaders: bool
   return { status: 'APPROVED', deletedAt: null, role: { in: roles } };
 }
 
-/** Creates the missing yearly records. Existing records (any status) are never touched. */
 export async function ensureRecordsForConfig(c: ConfigRow) {
   const users = await prisma.user.findMany({ where: eligibleWhere(c), select: { id: true } });
   if (users.length === 0) return 0;
@@ -171,13 +163,13 @@ export async function ensureRecordsForConfig(c: ConfigRow) {
       configId: c.id, participantId: u.id,
       contributionYear: c.contributionYear, amountDueMinor: c.amountMinor,
     })),
-    skipDuplicates: true, // @@unique([participantId, contributionYear])
+    skipDuplicates: true,
   });
   return r.count;
 }
 
 // ============================================================
-// Payment instructions (admin writes, everyone authenticated reads active ones)
+// Payment instructions
 // ============================================================
 
 const CREDENTIAL_WORDS = /\b(pin|otp|password|passcode|cvv)\b/i;
