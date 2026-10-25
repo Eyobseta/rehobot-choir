@@ -15,9 +15,16 @@ const ARGON2_OPTIONS: Parameters<typeof argon2.hash>[1] = {
 async function main() {
   console.log('Creating initial Admin account...');
 
-  const adminPhone = '0000000001'; // You can log in with this
-  const adminPassword = 'AdminPassword123!'; // Change this immediately after login!
-  const adminEmail = 'admin@yourdomain.com';
+  // Read credentials from .env
+  const adminPhone = process.env.ADMIN_PHONE;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const adminEmail = process.env.ADMIN_EMAIL;
+
+  // Ensure they are actually set
+  if (!adminPhone || !adminPassword || !adminEmail) {
+    console.error('❌ Error: Missing ADMIN_PHONE, ADMIN_PASSWORD, or ADMIN_EMAIL in .env file.');
+    process.exit(1);
+  }
 
   const passwordHash = await argon2.hash(adminPassword, ARGON2_OPTIONS);
 
@@ -39,7 +46,8 @@ async function main() {
 
   console.log('✅ Admin created successfully!');
   console.log(`Phone: ${adminPhone}`);
-  console.log(`Password: ${adminPassword}`);
+  console.log(`Email: ${adminEmail}`);
+  console.log('Password: (hidden, check your .env file)');
 }
 
 main()
