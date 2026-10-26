@@ -24,7 +24,7 @@ import {
 import { ApiError } from '../../services/api';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
 import { formatEthDate } from '../../utils/ethiopianCalendar';
-import { DatePill, EmptyState } from './Memorykit';
+import { DatePill, EmptyState, memoryToEthDate } from './Memorykit';
 import GlassBackButton from '../../components/GlassBackButton';
 
 export default function LeaderMemoriesScreen({ navigation }: any) {
@@ -75,7 +75,6 @@ export default function LeaderMemoriesScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ---------- Full-bleed gradient hero ---------- */}
       <LinearGradient
         colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
         start={{ x: 0, y: 0 }}
@@ -171,8 +170,6 @@ export default function LeaderMemoriesScreen({ navigation }: any) {
   );
 }
 
-// ---------- Card (module scope) ----------
-
 function ReviewCard({
   item,
   index,
@@ -255,7 +252,7 @@ function ReviewCard({
             {item.title}
           </Text>
           <View style={{ marginTop: 6, alignSelf: 'flex-start' }}>
-            <DatePill text={formatEthDate(item.date, 'en')} />
+            <DatePill text={formatEthDate(memoryToEthDate(item), 'en')} />
           </View>
           {submitter ? (
             <View style={styles.byRow}>

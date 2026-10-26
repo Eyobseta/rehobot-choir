@@ -52,6 +52,7 @@ import {
   YOUTUBE_COLORS,
   SUCCESS_COLORS,
   DANGER_COLORS,
+  memoryToEthDate,
 } from './Memorykit';
 
 export default function MemoryReviewDetailScreen({ route, navigation }: any) {
@@ -71,7 +72,6 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
 
-  // ---- Audio player state (shared singleton from services/audioPlayer) ----
   const [playerStatus, setPlayerStatus] = useState<SimpleStatus>(getSnapshot());
   useEffect(() => {
     const unsub = subscribe(setPlayerStatus);
@@ -220,7 +220,6 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
   const submitter = item.submittedBy.memberProfile?.fullName ?? '';
   const initial = submitter.trim().charAt(0).toUpperCase();
 
-  // ---- audio toggle (same key scheme as MemoryDetailScreen) ----
   const audioKey = `memory:${item.id}`;
   const isAudioPlaying =
     playerStatus.isLoaded &&
@@ -282,7 +281,7 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
             </Text>
 
             <View style={styles.metaRow}>
-              <DatePill text={formatEthDate(item.date, 'en')} />
+              <DatePill text={formatEthDate(memoryToEthDate(item), 'en')} />
               {submitter ? (
                 <View
                   style={[
@@ -341,7 +340,6 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
             </Animated.View>
           )}
 
-          {/* ---------- Audio: playable card (was a static note) ---------- */}
           {audio?.storageUrl && (
             <Animated.View style={[{ marginTop: spacing.lg }, fadeUp(2)]}>
               <Animated.View
@@ -392,7 +390,6 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
             </Animated.View>
           )}
 
-          {/* ---------- YouTube: in-app player ---------- */}
           {youtubes.length > 0 && (
             <Animated.View
               style={[
@@ -423,7 +420,6 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
             </View>
           )}
 
-          {/* Decision actions */}
           <Animated.View style={[{ marginTop: spacing.xl }, fadeUp(4)]}>
             <View style={{ flexDirection: 'row', gap: spacing.md }}>
               <GradientButton
@@ -461,7 +457,6 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
         onClose={() => setViewerOpen(false)}
       />
 
-      {/* Reject sheet */}
       <Modal
         visible={rejectOpen}
         transparent
@@ -586,8 +581,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   quoteBar: { width: 4, borderRadius: 2 },
-
-  // ---- audio card (matches MemoryDetailScreen) ----
   audioCard: {
     flexDirection: 'row',
     alignItems: 'center',

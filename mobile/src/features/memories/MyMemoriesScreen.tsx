@@ -19,8 +19,8 @@ import { useTheme } from '../../theme/ThemeContext';
 import { listMyMemories, MyMemoryRow } from '../../services/memories';
 import { ApiError } from '../../services/api';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
-import { StatusPill, DatePill, EmptyState } from './Memorykit';
-import { formatEthDate } from '../../utils/ethiopianCalendar'; // NEW
+import { StatusPill, DatePill, EmptyState, memoryToEthDate } from './Memorykit';
+import { formatEthDate } from '../../utils/ethiopianCalendar';
 import GlassBackButton from '../../components/GlassBackButton';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -317,8 +317,7 @@ function MyMemoryCard({
             </View>
 
             <View style={{ marginTop: 8, alignSelf: 'flex-start' }}>
-              {/* FIXED: Use the Ethiopian date directly */}
-              <DatePill text={formatEthDate(item.date, 'en')} />
+              <DatePill text={formatEthDate(memoryToEthDate(item), 'en')} />
             </View>
 
             {item.status === 'REJECTED' && item.rejectionReason && (
@@ -342,7 +341,6 @@ function MyMemoryCard({
               </View>
             )}
 
-            {/* Tap hint */}
             <View style={styles.hintRow}>
               <Ionicons
                 name="eye-outline"

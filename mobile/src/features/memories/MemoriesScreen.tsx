@@ -27,7 +27,7 @@ import {
 import { ApiError } from '../../services/api';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
 import { formatEthDate } from '../../utils/ethiopianCalendar';
-import { DatePill, EmptyState } from './Memorykit';
+import { DatePill, EmptyState, memoryToEthDate } from './Memorykit';
 import MemoriesHeader from './MemoriesHeader';
 
 const PLACEHOLDERS: readonly [string, string][] = [
@@ -79,8 +79,10 @@ export default function MemoriesScreen({ navigation }: any) {
     }, [search]),
   );
 
-  // m.date is now an EthDate object — filter by the Ethiopian year
-  const filtered = year ? items.filter((m) => m.date.year === year) : items;
+  // Filter by the Ethiopian year on the split fields
+  const filtered = year
+    ? items.filter((m) => m.dateEthYear === year)
+    : items;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -102,7 +104,6 @@ export default function MemoriesScreen({ navigation }: any) {
         }
         ListHeaderComponent={
           <View>
-            {/* Custom header — now scrolls with the list */}
             <MemoriesHeader />
 
             <LinearGradient
@@ -202,8 +203,6 @@ export default function MemoriesScreen({ navigation }: any) {
     </View>
   );
 }
-
-// ---------- Helpers ----------
 
 function SearchBox({
   value,
@@ -375,8 +374,7 @@ function MemoryCard({
   const photoCount = item.media.filter((m) => m.type === 'PHOTO').length;
   const hasAudio = item.media.some((m) => m.type === 'AUDIO');
   const ytCount = item.media.filter((m) => m.type === 'YOUTUBE').length;
-  // item.date is an EthDate object — format directly
-  const ethLabel = formatEthDate(item.date, 'en');
+  const ethLabel = formatEthDate(memoryToEthDate(item), 'en');
   const palette = PLACEHOLDERS[index % PLACEHOLDERS.length];
 
   const enter = useRef(new Animated.Value(0)).current;

@@ -40,6 +40,7 @@ import {
   StatusPill,
   useEnter,
   YOUTUBE_COLORS,
+  memoryToEthDate,
 } from './Memorykit';
 import GlassBackButton from '../../components/GlassBackButton';
 
@@ -180,7 +181,7 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
             </Text>
 
             <View style={styles.metaRow}>
-              <DatePill text={formatEthDate(item.date, 'en')} />
+              <DatePill text={formatEthDate(memoryToEthDate(item), 'en')} />
               {photos.length > 0 && (
                 <StatusPill
                   label={String(photos.length)}
@@ -199,7 +200,6 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
             </View>
           </Animated.View>
 
-          {/* Status banner — only when opened from "My submissions" */}
           {isNonPublished && (
             <Animated.View
               style={[
@@ -270,7 +270,6 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
             </Animated.View>
           )}
 
-          {/* Rejection reason */}
           {isNonPublished &&
             item.status === 'REJECTED' &&
             item.rejectionReason && (

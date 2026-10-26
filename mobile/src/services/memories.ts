@@ -15,7 +15,9 @@ export type MemorySummary = {
   id: string;
   title: string;
   description: string | null;
-  date: { year: number; month: number; day: number }; // Ethiopian date
+  dateEthYear: number;
+  dateEthMonth: number;
+  dateEthDay: number;
   dateGregorian: string;
   media: { id: string; type: MemoryMediaType; storageUrl: string | null }[];
 };
@@ -24,7 +26,9 @@ export type MemoryDetail = {
   id: string;
   title: string;
   description: string | null;
-  date: { year: number; month: number; day: number };
+  dateEthYear: number;
+  dateEthMonth: number;
+  dateEthDay: number;
   dateGregorian: string;
   status: 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'DELETED';
   rejectionReason?: string | null;
@@ -39,8 +43,9 @@ export type MemoryYear = {
 export type MyMemoryRow = {
   id: string;
   title: string;
-  date: { year: number; month: number; day: number };
-  dateGregorian: string;
+  dateEthYear: number;
+  dateEthMonth: number;
+  dateEthDay: number;
   status: 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'DELETED';
   rejectionReason: string | null;
   reviewedAt: string | null;
@@ -103,7 +108,7 @@ export async function listMyMemories(): Promise<MyMemoryRow[]> {
 export type SubmitMemoryInput = {
   title: string;
   description?: string;
-  date: { year: number; month: number; day: number }; // Ethiopian date
+  date: { year: number; month: number; day: number };
   photoUris?: string[];
   audioUri?: string | null;
   audioName?: string | null;
@@ -115,7 +120,7 @@ export async function submitMemory(input: SubmitMemoryInput): Promise<{ id: stri
   const form = new FormData();
   form.append('title', input.title);
   if (input.description) form.append('description', input.description);
-  form.append('date', JSON.stringify(input.date)); // Send as JSON
+  form.append('date', JSON.stringify(input.date));
 
   if (input.youtubeUrls && input.youtubeUrls.length > 0) {
     form.append('youtubeUrls', JSON.stringify(input.youtubeUrls));
@@ -146,13 +151,14 @@ export async function submitMemory(input: SubmitMemoryInput): Promise<{ id: stri
 }
 
 // ---------- Leader ----------
-// (leaderListPendingMemories, leaderGetMemory, etc. unchanged - just add cache invalidation)
 
 export type PendingMemory = {
   id: string;
   title: string;
   description: string | null;
-  date: { year: number; month: number; day: number };
+  dateEthYear: number;
+  dateEthMonth: number;
+  dateEthDay: number;
   dateGregorian: string;
   status: 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED';
   media: MemoryMediaItem[];

@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
+import { EthDate } from '../../utils/ethiopianCalendar';
 
 /**
  * Shared pieces for all Memories screens.
@@ -476,3 +477,20 @@ const styles = StyleSheet.create({
   heroTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF' },
   heroSubtitle: { marginTop: 4, fontSize: 13, lineHeight: 19, color: 'rgba(255,255,255,0.82)' },
 });
+
+
+/**
+ * Memories come from the backend with split Ethiopian date fields,
+ * not a `date` object. Convert to an EthDate for formatEthDate.
+ */
+export function memoryToEthDate(m: {
+  dateEthYear: number;
+  dateEthMonth: number;
+  dateEthDay: number;
+}): EthDate {
+  return {
+    year: m.dateEthYear,
+    month: m.dateEthMonth,
+    day: m.dateEthDay,
+  };
+}
