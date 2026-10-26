@@ -1,11 +1,13 @@
 import { apiGet, http } from './api';
 import { cachedFetch, cacheInvalidatePrefix } from './cache';
 import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
-import { EthDate } from '../utils/ethiopianCalendar';
 
 export type DailyQuote = {
   id: string;
-  dateOnly: string;
+  dateEthYear: number;
+  dateEthMonth: number;
+  dateEthDay: number;
+  dateGregorian: string;
   quoteText: string;
   source: string;
   youtubeUrl: string | null;

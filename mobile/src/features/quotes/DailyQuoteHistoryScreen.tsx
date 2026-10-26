@@ -16,6 +16,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { listRecentQuotes, DailyQuote } from '../../services/quotes';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { formatEthDate } from '../../utils/ethiopianCalendar'; // NEW
 
 const BROWN = '#9A6735';
 const CREAM = '#FFF4E0';
@@ -275,8 +276,16 @@ export default function DailyQuoteHistoryScreen({ navigation }: any) {
                     }}
                   >
                     <Ionicons name="calendar-outline" size={12} color={BROWN} />
+                    {/* FIXED: use formatEthDate with the Ethiopian date fields */}
                     <Text style={[typography.caption, { color: BROWN, fontWeight: '800' }]}>
-                      {item.dateOnly.slice(0, 10)}
+                      {formatEthDate(
+                        {
+                          year: item.dateEthYear,
+                          month: item.dateEthMonth,
+                          day: item.dateEthDay,
+                        },
+                        'en',
+                      )}
                     </Text>
                   </View>
 
