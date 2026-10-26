@@ -29,6 +29,7 @@ import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import type { LeaderStackParamList } from '../../navigation/LeaderStack';
+import { formatEthDate, EthDate } from '../../utils/ethiopianCalendar';
 
 type Props = NativeStackScreenProps<LeaderStackParamList, 'ApplicantDetail'>;
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -40,6 +41,16 @@ const accents = {
   gold: '#E6C779', goldSoft: '#E6C77922',
   lime: '#B8E986', limeSoft: '#B8E98622',
 };
+
+// Safe helper to prevent crashes if dates are missing
+function getSafeEthDate(year?: number | null, month?: number | null, day?: number | null): string {
+  if (!year || !month || !day) return '—';
+  try {
+    return formatEthDate({ year, month, day } as EthDate, 'en');
+  } catch {
+    return '—';
+  }
+}
 
 export default function ApplicantDetailScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
@@ -319,13 +330,15 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
             <InfoRow icon="call" tint={accents.lime} soft={accents.limeSoft} label={t('register.phone')} value={item.phone} />
             <InfoRow icon="mail" tint={accents.cyan} soft={accents.cyanSoft} label={t('register.email')} value={item.email} />
             <InfoRow icon="male-female" tint={accents.pink} soft={accents.pinkSoft} label={t('register.gender')} value={genderLabel} />
+            
             <InfoRow
               icon="gift"
               tint={accents.gold}
               soft={accents.goldSoft}
               label={t('register.dateOfBirth')}
-              value={new Date(item.dateOfBirth).toISOString().slice(0, 10)}
+              value={getSafeEthDate(item.dateOfBirthEthYear, item.dateOfBirthEthMonth, item.dateOfBirthEthDay)}
             />
+
             <InfoRow
               icon="heart"
               tint={accents.pink}
@@ -340,15 +353,17 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
               label={t('register.emergencyContactPhone')}
               value={item.emergencyContactPhone}
             />
-            {item.joiningDate && (
+            
+            {item.joiningDateEthYear && (
               <InfoRow
                 icon="calendar"
                 tint={accents.violet}
                 soft={accents.violetSoft}
                 label={t('register.joiningDate')}
-                value={new Date(item.joiningDate).toISOString().slice(0, 10)}
+                value={getSafeEthDate(item.joiningDateEthYear, item.joiningDateEthMonth, item.joiningDateEthDay)}
               />
             )}
+            
             <InfoRow
               icon="time"
               tint={accents.cyan}
@@ -607,7 +622,7 @@ function InfoRow({
   tint: string;
   soft: string;
   label: string;
-  value: string;
+  value: string | null | undefined;
   last?: boolean;
 }) {
   const { theme } = useTheme();

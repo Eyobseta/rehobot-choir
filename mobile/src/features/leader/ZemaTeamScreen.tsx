@@ -9,6 +9,8 @@ import { useTheme } from '../../theme/ThemeContext';
 import { leaderListZemaMembers, leaderAddZemaMember, leaderRemoveZemaMember, ZemaMember } from '../../services/songs';
 import { listMembers, DirectoryMember } from '../../services/members';
 import { ApiError } from '../../services/api';
+import { cachedFetch } from '../../services/cache';
+import { CACHE_KEYS } from '../../services/cacheKeys';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 
@@ -26,7 +28,7 @@ export default function ZemaTeamScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<ZemaMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // FIXED
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -34,16 +36,29 @@ export default function ZemaTeamScreen({ navigation }: any) {
 
   const load = useCallback(async () => {
     setError(null);
-    try { setItems(await leaderListZemaMembers()); }
-    catch (e) { const err = e as ApiError; setError(`${err.message} [${err.code}]`); }
-    finally { setLoading(false); }
+    try {
+      await cachedFetch(
+        CACHE_KEYS.leaderZema,
+        () => leaderListZemaMembers(),
+        (freshData) => setItems(freshData)
+      );
+    } catch (e) { 
+      const err = e as ApiError; 
+      setError(`${err.message} [${err.code}]`); 
+    } finally { 
+      setLoading(false); 
+    }
   }, []);
 
   const loadDirectory = useCallback(async () => {
     try { setDirectory(await listMembers('')); } catch {}
   }, []);
 
-  useFocusEffect(useCallback(() => { setLoading(true); void load(); void loadDirectory(); }, [load, loadDirectory]));
+  useFocusEffect(useCallback(() => { 
+    if (items.length === 0) setLoading(true);
+    void load(); 
+    void loadDirectory(); 
+  }, [load, loadDirectory, items.length]));
 
   const onAdd = async (userId: string) => {
     setBusy(true);
@@ -87,7 +102,6 @@ export default function ZemaTeamScreen({ navigation }: any) {
           <GlassBackButton onPress={() => navigation.goBack()} size={44} />
         </View>
 
-        {/* Add toggle */}
         <Pressable onPress={() => setShowPicker((s) => !s)} accessibilityRole="button"
           style={{ marginTop: 18, borderRadius: 16, overflow: 'hidden', shadowColor: BRAND.gold, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 }}>
           <LinearGradient colors={showPicker ? ['#E5E7EB', '#9CA3AF'] : [BRAND.gold, '#FFA94D']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}

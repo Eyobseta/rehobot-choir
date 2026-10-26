@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { leaderListSongs, LeaderSongRow } from '../../services/songs';
 import { ApiError } from '../../services/api';
+import { cachedFetch } from '../../services/cache';
+import { CACHE_KEYS } from '../../services/cacheKeys';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 
@@ -36,14 +38,18 @@ export default function LeaderSongsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<LeaderSongRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // FIXED
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      setItems(await leaderListSongs());
+      await cachedFetch(
+        CACHE_KEYS.leaderSongs,
+        () => leaderListSongs(),
+        (freshData) => setItems(freshData)
+      );
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
@@ -55,9 +61,11 @@ export default function LeaderSongsScreen({ navigation }: any) {
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
+      if (items.length === 0) {
+        setLoading(true);
+      }
       void load();
-    }, [load]),
+    }, [load, items.length]),
   );
 
   const statusTint = (s: LeaderSongRow['status']) => {
@@ -125,7 +133,6 @@ export default function LeaderSongsScreen({ navigation }: any) {
         }
         ListHeaderComponent={
           <View>
-            {/* Hero */}
             <LinearGradient
               colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
               start={{ x: 0, y: 0 }}
@@ -157,7 +164,6 @@ export default function LeaderSongsScreen({ navigation }: any) {
                 <GlassBackButton onPress={() => navigation.goBack()} size={44} />
               </View>
 
-              {/* New song CTA */}
               <Pressable
                 onPress={() => navigation.navigate('SongEditor', { id: null })}
                 style={{ marginTop: 18, borderRadius: 16, overflow: 'hidden', shadowColor: BRAND.gold, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 }}
@@ -173,7 +179,6 @@ export default function LeaderSongsScreen({ navigation }: any) {
                 </LinearGradient>
               </Pressable>
 
-              {/* Quick shortcuts */}
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
                 <QuickShortcut icon="albums" label={t('leaderSongs.categories')} onPress={() => navigation.navigate('SongCategories')} />
                 <QuickShortcut icon="people" label={t('leaderSongs.zemaTeam')} onPress={() => navigation.navigate('ZemaTeam')} />

@@ -22,6 +22,8 @@ import {
   PendingApplication,
 } from '../../services/leaders';
 import { ApiError } from '../../services/api';
+import { cachedFetch } from '../../services/cache';
+import { CACHE_KEYS } from '../../services/cacheKeys';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import type { LeaderStackParamList } from '../../navigation/LeaderStack';
@@ -36,7 +38,6 @@ const AVATAR_PALETTE: readonly [string, string][] = [
   [BRAND.deep, BRAND.violet],
 ];
 
-// Quick-launch tiles — same destinations as before, but as a grid.
 const TOOLS: {
   key: string;
   icon: IconName;
@@ -59,15 +60,18 @@ export default function ApprovalsListScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<PendingApplication[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // FIXED: No spinner flash
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const list = await listPendingApplications();
-      setItems(list);
+      await cachedFetch(
+        CACHE_KEYS.leaderApprovals,
+        () => listPendingApplications(),
+        (freshData) => setItems(freshData)
+      );
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
@@ -79,9 +83,11 @@ export default function ApprovalsListScreen({ navigation }: Props) {
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
+      if (items.length === 0) {
+        setLoading(true);
+      }
       void load();
-    }, [load]),
+    }, [load, items.length]),
   );
 
   if (loading && items.length === 0) {
@@ -119,7 +125,6 @@ export default function ApprovalsListScreen({ navigation }: Props) {
         }
         ListHeaderComponent={
           <View>
-            {/* ---------- Full-bleed hero ---------- */}
             <LinearGradient
               colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
               start={{ x: 0, y: 0 }}
@@ -217,7 +222,6 @@ export default function ApprovalsListScreen({ navigation }: Props) {
                 />
               </View>
 
-              {/* Quick-launch tools grid */}
               <View
                 style={{
                   flexDirection: 'row',
@@ -239,7 +243,6 @@ export default function ApprovalsListScreen({ navigation }: Props) {
               </View>
             </LinearGradient>
 
-            {/* ---------- Section label ---------- */}
             <View
               style={{
                 paddingHorizontal: spacing.lg,
@@ -445,7 +448,7 @@ function ApplicationCard({
       duration: 420,
       delay: Math.min(index, 8) * 55,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false, // <--- CHANGED TO FALSE
+      useNativeDriver: false,
     });
     a.start();
     return () => a.stop();

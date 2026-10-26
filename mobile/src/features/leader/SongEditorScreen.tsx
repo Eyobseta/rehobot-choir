@@ -31,7 +31,7 @@ export default function SongEditorScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const editingId: string | null = route.params?.id ?? null;
 
-  const [loading, setLoading] = useState(!!editingId);
+  const [loading, setLoading] = useState(!!editingId); // Keep this as true ONLY for initial edit load
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -145,7 +145,6 @@ export default function SongEditorScreen({ route, navigation }: any) {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={{ paddingBottom: spacing.xxl * 2 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-        {/* Hero */}
         <LinearGradient
           colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -206,7 +205,6 @@ export default function SongEditorScreen({ route, navigation }: any) {
             </View>
           </Card>
 
-          {/* ---------- MEDIA PREVIEW ---------- */}
           {(previewAudioUri || previewYoutubeUrl) && (
             <View style={{ marginTop: spacing.lg }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>

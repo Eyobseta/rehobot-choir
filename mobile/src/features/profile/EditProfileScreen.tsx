@@ -24,6 +24,8 @@ import {
   uploadOwnPhoto,
 } from '../../services/members';
 import { ApiError } from '../../services/api';
+import { cachedFetch, cacheInvalidatePrefix } from '../../services/cache'; // NEW
+import { CACHE_KEYS, CACHE_PREFIXES } from '../../services/cacheKeys'; // NEW
 import {
   KeyboardAwareScroll,
   AuthField,
@@ -62,12 +64,27 @@ export default function EditProfileScreen({ navigation }: any) {
   useEffect(() => {
     (async () => {
       try {
-        const p = await getOwnProfile();
-        setPhotoUrl(p.editable.profilePhotoUrl);
-        setEmail(p.editable.email ?? '');
-        setPhone(p.editable.phone);
-        setEmgName(p.editable.emergencyContactName);
-        setEmgPhone(p.editable.emergencyContactPhone);
+        // NEW: Use cachedFetch to load instantly
+        const p = await cachedFetch(
+          CACHE_KEYS.meProfile,
+          () => getOwnProfile(),
+          (fresh) => {
+            // Update UI silently if fresh data arrives while screen is open
+            setPhotoUrl(fresh.editable.profilePhotoUrl);
+            setEmail(fresh.editable.email ?? '');
+            setPhone(fresh.editable.phone);
+            setEmgName(fresh.editable.emergencyContactName);
+            setEmgPhone(fresh.editable.emergencyContactPhone);
+          }
+        );
+        
+        if (p) {
+          setPhotoUrl(p.editable.profilePhotoUrl);
+          setEmail(p.editable.email ?? '');
+          setPhone(p.editable.phone);
+          setEmgName(p.editable.emergencyContactName);
+          setEmgPhone(p.editable.emergencyContactPhone);
+        }
       } catch (e) {
         const err = e as ApiError;
         setError(`${err.message} [${err.code}]`);
@@ -120,21 +137,16 @@ export default function EditProfileScreen({ navigation }: any) {
       setError(null);
       const { profilePhotoUrl } = await uploadOwnPhoto(out.uri);
       setPhotoUrl(profilePhotoUrl);
+      
+      // NEW: Clear cache so other screens (like ProfileScreen) show the new photo instantly
+      await cacheInvalidatePrefix(CACHE_PREFIXES.profile);
+      
     } catch (e) {
       const err = e as ApiError;
-      // Handle backend-specific errors
       if (err.code === 'FILE_TOO_LARGE') {
-        setError(
-          t('editProfile.photoTooLarge', {
-            defaultValue: 'The photo is too large. Please choose a smaller one.',
-          }),
-        );
+        setError(t('editProfile.photoTooLarge', { defaultValue: 'The photo is too large. Please choose a smaller one.' }));
       } else if (err.code === 'INVALID_FILE_TYPE') {
-        setError(
-          t('editProfile.invalidFileType', {
-            defaultValue: 'Only images are allowed.',
-          }),
-        );
+        setError(t('editProfile.invalidFileType', { defaultValue: 'Only images are allowed.' }));
       } else {
         setError(`${err.message} [${err.code}]`);
       }
@@ -154,22 +166,18 @@ export default function EditProfileScreen({ navigation }: any) {
         emergencyContactName: emgName.trim(),
         emergencyContactPhone: emgPhone.trim(),
       });
+      
+      // NEW: Clear cache so ProfileScreen updates the name/phone instantly
+      await cacheInvalidatePrefix(CACHE_PREFIXES.profile);
+      
       setSaved(true);
       setTimeout(() => navigation.goBack(), 700);
     } catch (e) {
       const err = e as ApiError;
       if (err.code === 'PHONE_TAKEN') {
-        setError(
-          t('editProfile.phoneTaken', {
-            defaultValue: 'This phone number is already in use.',
-          }),
-        );
+        setError(t('editProfile.phoneTaken', { defaultValue: 'This phone number is already in use.' }));
       } else if (err.code === 'EMAIL_TAKEN') {
-        setError(
-          t('editProfile.emailTaken', {
-            defaultValue: 'This email is already in use.',
-          }),
-        );
+        setError(t('editProfile.emailTaken', { defaultValue: 'This email is already in use.' }));
       } else {
         setError(`${err.message} [${err.code}]`);
       }
@@ -193,18 +201,8 @@ export default function EditProfileScreen({ navigation }: any) {
     }).start();
     const bob = Animated.loop(
       Animated.sequence([
-        Animated.timing(camBob, {
-          toValue: 1,
-          duration: 900,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(camBob, {
-          toValue: 0,
-          duration: 900,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
+        Animated.timing(camBob, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(camBob, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
       ]),
     );
     bob.start();
@@ -214,11 +212,7 @@ export default function EditProfileScreen({ navigation }: any) {
   useEffect(() => {
     if (saved) {
       savedPop.setValue(0);
-      Animated.spring(savedPop, {
-        toValue: 1,
-        useNativeDriver: true,
-        bounciness: 14,
-      }).start();
+      Animated.spring(savedPop, { toValue: 1, useNativeDriver: true, bounciness: 14 }).start();
     }
   }, [saved, savedPop]);
 
@@ -226,27 +220,14 @@ export default function EditProfileScreen({ navigation }: any) {
     if (error) {
       shake.setValue(0);
       Animated.sequence(
-        [10, -10, 6, -6, 0].map((v) =>
-          Animated.timing(shake, {
-            toValue: v,
-            duration: 60,
-            useNativeDriver: true,
-          }),
-        ),
+        [10, -10, 6, -6, 0].map((v) => Animated.timing(shake, { toValue: v, duration: 60, useNativeDriver: true })),
       ).start();
     }
   }, [error, shake]);
 
   if (loading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.background,
-        }}
-      >
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={BRAND.violet} />
       </View>
     );
@@ -254,20 +235,10 @@ export default function EditProfileScreen({ navigation }: any) {
 
   const fadeUp = (i: number) => ({
     opacity: enter,
-    transform: [
-      {
-        translateY: enter.interpolate({
-          inputRange: [0, 1],
-          outputRange: [24 + i * 10, 0],
-        }),
-      },
-    ],
+    transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [24 + i * 10, 0] }) }],
   });
 
-  const fieldIcon = (
-    name: React.ComponentProps<typeof Ionicons>['name'],
-    tint: string,
-  ) => (
+  const fieldIcon = (name: React.ComponentProps<typeof Ionicons>['name'], tint: string) => (
     <View style={[styles.fieldIcon, { backgroundColor: withAlpha(tint, 0.18) }]}>
       <Ionicons name={name} size={16} color={tint} />
     </View>
@@ -276,7 +247,6 @@ export default function EditProfileScreen({ navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAwareScroll contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}>
-        {/* Hero with avatar + back button */}
         <Animated.View style={fadeUp(0)}>
           <LinearGradient
             colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
@@ -284,28 +254,12 @@ export default function EditProfileScreen({ navigation }: any) {
             end={{ x: 1, y: 1 }}
             style={[styles.hero, { paddingTop: insets.top + 16 }]}
           >
-            <View
-              pointerEvents="none"
-              style={[
-                styles.blob,
-                { top: -50, right: -50, backgroundColor: withAlpha(BRAND.gold, 0.18) },
-              ]}
-            />
-            <View
-              pointerEvents="none"
-              style={[
-                styles.blob,
-                { bottom: -70, left: -50, backgroundColor: withAlpha(BRAND.water, 0.2) },
-              ]}
-            />
+            <View pointerEvents="none" style={[styles.blob, { top: -50, right: -50, backgroundColor: withAlpha(BRAND.gold, 0.18) }]} />
+            <View pointerEvents="none" style={[styles.blob, { bottom: -70, left: -50, backgroundColor: withAlpha(BRAND.water, 0.2) }]} />
 
-            {/* Back button row */}
             <View style={styles.heroTopRow}>
               <View style={{ flex: 1 }} />
-              <GlassBackButton
-                onPress={() => navigation.goBack()}
-                accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
-              />
+              <GlassBackButton onPress={() => navigation.goBack()} accessibilityLabel={t('common.back', { defaultValue: 'Back' })} />
             </View>
 
             <PressScale onPress={pickPhoto} disabled={busy}>
@@ -313,34 +267,14 @@ export default function EditProfileScreen({ navigation }: any) {
                 size={160}
                 uri={photoUrl}
                 gapColor={BRAND.deep}
-                fallback={
-                  <Ionicons
-                    name="person"
-                    size={52}
-                    color={withAlpha('#FFFFFF', 0.6)}
-                  />
-                }
+                fallback={<Ionicons name="person" size={52} color={withAlpha('#FFFFFF', 0.6)} />}
               >
                 {busy ? (
                   <View style={styles.busyOverlay}>
                     <ActivityIndicator color="#FFFFFF" />
                   </View>
                 ) : null}
-                <Animated.View
-                  style={[
-                    styles.camBadge,
-                    {
-                      transform: [
-                        {
-                          translateY: camBob.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, -3],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
-                >
+                <Animated.View style={[styles.camBadge, { transform: [{ translateY: camBob.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }) }] }]}>
                   <Ionicons name="camera" size={20} color={BRAND.deep} />
                 </Animated.View>
               </AvatarRing>
@@ -348,103 +282,33 @@ export default function EditProfileScreen({ navigation }: any) {
 
             <Pressable onPress={pickPhoto} disabled={busy} style={styles.chip}>
               <Ionicons name="image" size={13} color={BRAND.gold} />
-              <Text style={{ color: BRAND.gold, fontSize: 13, fontWeight: '700' }}>
-                {t('myProfile.editPhoto')}
-              </Text>
+              <Text style={{ color: BRAND.gold, fontSize: 13, fontWeight: '700' }}>{t('myProfile.editPhoto')}</Text>
             </Pressable>
           </LinearGradient>
         </Animated.View>
 
-        {/* Fields */}
         <View style={{ paddingHorizontal: spacing.xl }}>
-          <Animated.View
-            style={[
-              styles.card,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-              fadeUp(1),
-            ]}
-          >
-            <AuthField
-              label={t('register.phone')}
-              iconNode={fieldIcon('call', accents.lime)}
-              showCheck
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              autoCapitalize="none"
-            />
-            <AuthField
-              label={t('register.email')}
-              iconNode={fieldIcon('mail', accents.cyan)}
-              showCheck
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <AuthField
-              label={t('register.emergencyContactName')}
-              iconNode={fieldIcon('heart', accents.pink)}
-              showCheck
-              value={emgName}
-              onChangeText={setEmgName}
-              autoCapitalize="words"
-            />
-            <AuthField
-              label={t('register.emergencyContactPhone')}
-              iconNode={fieldIcon('medkit', accents.gold)}
-              showCheck
-              value={emgPhone}
-              onChangeText={setEmgPhone}
-              keyboardType="phone-pad"
-            />
+          <Animated.View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, fadeUp(1)]}>
+            <AuthField label={t('register.phone')} iconNode={fieldIcon('call', accents.lime)} showCheck value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoCapitalize="none" />
+            <AuthField label={t('register.email')} iconNode={fieldIcon('mail', accents.cyan)} showCheck value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+            <AuthField label={t('register.emergencyContactName')} iconNode={fieldIcon('heart', accents.pink)} showCheck value={emgName} onChangeText={setEmgName} autoCapitalize="words" />
+            <AuthField label={t('register.emergencyContactPhone')} iconNode={fieldIcon('medkit', accents.gold)} showCheck value={emgPhone} onChangeText={setEmgPhone} keyboardType="phone-pad" />
           </Animated.View>
 
           {error && (
-            <Animated.View
-              style={{ marginTop: spacing.lg, transform: [{ translateX: shake }] }}
-            >
+            <Animated.View style={{ marginTop: spacing.lg, transform: [{ translateX: shake }] }}>
               <ErrorBanner message={error} />
             </Animated.View>
           )}
           {saved && (
-            <Animated.View
-              style={[
-                styles.savedBox,
-                {
-                  borderLeftColor: colors.success,
-                  backgroundColor: withAlpha(colors.success, 0.14),
-                  opacity: savedPop,
-                  transform: [
-                    {
-                      scale: savedPop.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.8, 1],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
+            <Animated.View style={[styles.savedBox, { borderLeftColor: colors.success, backgroundColor: withAlpha(colors.success, 0.14), opacity: savedPop, transform: [{ scale: savedPop.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }] }]}>
               <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-              <Text
-                style={[
-                  typography.bodySmall,
-                  { color: colors.success, flex: 1, fontWeight: '600' },
-                ]}
-              >
-                {t('myProfile.saved')}
-              </Text>
+              <Text style={[typography.bodySmall, { color: colors.success, flex: 1, fontWeight: '600' }]}>{t('myProfile.saved')}</Text>
             </Animated.View>
           )}
 
           <Animated.View style={[{ marginTop: 28 }, fadeUp(2)]}>
-            <PrimaryButton
-              label={t('myProfile.saveChanges')}
-              onPress={onSave}
-              busy={busy}
-              iconNode={<Ionicons name="save-outline" size={18} color="#FFFFFF" />}
-            />
+            <PrimaryButton label={t('myProfile.saveChanges')} onPress={onSave} busy={busy} iconNode={<Ionicons name="save-outline" size={18} color="#FFFFFF" />} />
           </Animated.View>
         </View>
       </KeyboardAwareScroll>
@@ -454,90 +318,22 @@ export default function EditProfileScreen({ navigation }: any) {
 
 function PressScale({ onPress, children, disabled }: any) {
   const s = useRef(new Animated.Value(1)).current;
-  const to = (v: number) =>
-    Animated.spring(s, {
-      toValue: v,
-      useNativeDriver: true,
-      speed: 40,
-      bounciness: 8,
-    }).start();
+  const to = (v: number) => Animated.spring(s, { toValue: v, useNativeDriver: true, speed: 40, bounciness: 8 }).start();
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      onPressIn={() => to(0.95)}
-      onPressOut={() => to(1)}
-    >
+    <Pressable onPress={onPress} disabled={disabled} onPressIn={() => to(0.95)} onPressOut={() => to(1)}>
       <Animated.View style={{ transform: [{ scale: s }] }}>{children}</Animated.View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: {
-    alignItems: 'center',
-    paddingBottom: 28,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    overflow: 'hidden',
-  },
-  heroTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    marginBottom: 4,
-  },
+  hero: { alignItems: 'center', paddingBottom: 28, paddingHorizontal: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden' },
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', marginBottom: 4 },
   blob: { position: 'absolute', width: 190, height: 190, borderRadius: 95 },
-  camBadge: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 3,
-    borderColor: BRAND.deep,
-    backgroundColor: BRAND.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  busyOverlay: {
-    position: 'absolute',
-    top: 5,
-    left: 5,
-    right: 5,
-    bottom: 5,
-    borderRadius: 72,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-    marginTop: 14,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-  },
+  camBadge: { position: 'absolute', right: 0, bottom: 0, width: 40, height: 40, borderRadius: 20, borderWidth: 3, borderColor: BRAND.deep, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center' },
+  busyOverlay: { position: 'absolute', top: 5, left: 5, right: 5, bottom: 5, borderRadius: 72, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, marginTop: 14, backgroundColor: 'rgba(255,255,255,0.16)' },
   card: { borderWidth: 1, borderRadius: 24, padding: 16, marginTop: 20 },
-  fieldIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  savedBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-  },
+  fieldIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  savedBox: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, padding: 12, borderRadius: 12, borderLeftWidth: 4 },
 });

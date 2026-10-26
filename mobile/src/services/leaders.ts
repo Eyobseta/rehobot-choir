@@ -6,8 +6,13 @@ export type PendingApplication = {
   phone: string;
   email: string;
   gender: string;
-  dateOfBirth: string;
-  joiningDate: string | null;
+  // Updated to match backend Ethiopian calendar fields
+  dateOfBirthEthYear: number;
+  dateOfBirthEthMonth: number;
+  dateOfBirthEthDay: number;
+  joiningDateEthYear: number | null;
+  joiningDateEthMonth: number | null;
+  joiningDateEthDay: number | null;
   profilePhotoUrl: string;
   createdAt: string;
 };

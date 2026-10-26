@@ -44,6 +44,13 @@ export const CACHE_KEYS = {
   leaderAnnualList: (status: string, q: string, page: number) =>
     `funding:leader:annual:${status}:${q}:${page}`,
   leaderCampaigns: 'funding:leader:campaigns',
+
+  // Leader Tools (NEW)
+  leaderApprovals: 'leader:approvals',
+  leaderSongs: 'leader:songs',
+  leaderCategories: 'leader:categories',
+  leaderZema: 'leader:zema',
+  leaderSubmissions: 'leader:submissions',
 } as const;
 
 export const CACHE_PREFIXES = {
@@ -60,4 +67,5 @@ export const CACHE_PREFIXES = {
   member: 'member:',
   profile: 'profile:',
   chats: 'chats:',
+  leader: 'leader:', // NEW
 } as const;

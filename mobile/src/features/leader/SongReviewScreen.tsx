@@ -17,6 +17,8 @@ import {
   PendingSubmission,
 } from '../../services/songs';
 import { ApiError } from '../../services/api';
+import { cachedFetch } from '../../services/cache';
+import { CACHE_KEYS } from '../../services/cacheKeys';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import {
@@ -38,7 +40,7 @@ export default function SongReviewScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<PendingSubmission[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // FIXED
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,12 +69,29 @@ export default function SongReviewScreen({ navigation }: any) {
 
   const load = useCallback(async () => {
     setError(null);
-    try { setItems(await leaderListPendingSubmissions()); }
-    catch (e) { const err = e as ApiError; setError(`${err.message} [${err.code}]`); }
-    finally { setLoading(false); setRefreshing(false); }
+    try {
+      await cachedFetch(
+        CACHE_KEYS.leaderSubmissions,
+        () => leaderListPendingSubmissions(),
+        (freshData) => setItems(freshData)
+      );
+    } catch (e) {
+      const err = e as ApiError;
+      setError(`${err.message} [${err.code}]`);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  useFocusEffect(useCallback(() => { setLoading(true); void load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      if (items.length === 0) {
+        setLoading(true);
+      }
+      void load();
+    }, [load, items.length]),
+  );
 
   const onApprove = async (sub: PendingSubmission) => {
     setBusy(true);

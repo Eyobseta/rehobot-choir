@@ -213,11 +213,25 @@ export async function updateOwnProfile(
     }
 
     if (input.emergencyContactName !== undefined || input.emergencyContactPhone !== undefined) {
-      await tx.memberProfile.update({
+      // FIX: Use upsert to create the profile if it's missing
+      await tx.memberProfile.upsert({
         where: { userId },
-        data: {
+        update: {
           emergencyContactName: input.emergencyContactName !== undefined ? input.emergencyContactName.trim() : undefined,
           emergencyContactPhone: input.emergencyContactPhone !== undefined ? input.emergencyContactPhone.trim() : undefined,
+        },
+        create: {
+          userId,
+          fullName: user.phone, // fallback name since we don't have one here
+          gender: 'UNKNOWN',
+          emergencyContactName: input.emergencyContactName?.trim() ?? '',
+          emergencyContactPhone: input.emergencyContactPhone?.trim() ?? '',
+          profilePhotoUrl: '',
+          profilePhotoPublicId: '',
+          dateOfBirthEthYear: 2000,
+          dateOfBirthEthMonth: 1,
+          dateOfBirthEthDay: 1,
+          dateOfBirthGregorian: new Date(),
         },
       });
     }
@@ -227,14 +241,28 @@ export async function updateOwnProfile(
 }
 
 export async function updateOwnProfilePhoto(userId: string, newUrl: string, newPublicId: string) {
-  const profile = await prisma.memberProfile.findUnique({ where: { userId } });
-  if (!profile) throw ApiError.notFound('Profile not found.');
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw ApiError.unauthorized();
 
-  await prisma.memberProfile.update({
+  // FIX: Upsert instead of throwing an error if the profile row is missing
+  await prisma.memberProfile.upsert({
     where: { userId },
-    data: {
+    update: {
       profilePhotoUrl: newUrl,
       profilePhotoPublicId: newPublicId,
+    },
+    create: {
+      userId,
+      fullName: user.phone,
+      gender: 'UNKNOWN',
+      emergencyContactName: '',
+      emergencyContactPhone: '',
+      profilePhotoUrl: newUrl,
+      profilePhotoPublicId: newPublicId,
+      dateOfBirthEthYear: 2000,
+      dateOfBirthEthMonth: 1,
+      dateOfBirthEthDay: 1,
+      dateOfBirthGregorian: new Date(),
     },
   });
 

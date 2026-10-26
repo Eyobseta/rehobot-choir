@@ -8,6 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { listCategories, SongCategory, leaderCreateCategory, leaderRenameCategory, leaderDeleteCategory } from '../../services/songs';
 import { ApiError } from '../../services/api';
+import { cachedFetch } from '../../services/cache';
+import { CACHE_KEYS } from '../../services/cacheKeys';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 
@@ -25,7 +27,7 @@ export default function SongCategoriesScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<SongCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // FIXED
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,11 @@ export default function SongCategoriesScreen({ navigation }: any) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      setItems(await listCategories());
+      await cachedFetch(
+        CACHE_KEYS.leaderCategories,
+        () => listCategories(),
+        (freshData) => setItems(freshData)
+      );
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
@@ -43,7 +49,10 @@ export default function SongCategoriesScreen({ navigation }: any) {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { setLoading(true); void load(); }, [load]));
+  useFocusEffect(useCallback(() => { 
+    if (items.length === 0) setLoading(true);
+    void load(); 
+  }, [load, items.length]));
 
   const onAdd = async () => {
     if (!newName.trim()) return;
@@ -110,7 +119,6 @@ export default function SongCategoriesScreen({ navigation }: any) {
           <GlassBackButton onPress={() => navigation.goBack()} size={44} />
         </View>
 
-        {/* Add row */}
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1.5, borderColor: focused ? BRAND.gold : 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.16)' }}>
             <Ionicons name="pricetag" size={16} color={focused ? BRAND.gold : 'rgba(255,255,255,0.85)'} />

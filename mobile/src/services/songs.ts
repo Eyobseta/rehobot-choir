@@ -99,7 +99,6 @@ export async function listMyFavorites(): Promise<FavoriteRow[]> {
 }
 
 // ---------- Leader-side helpers ----------
-// (leaderListSongs, leaderCreateSong, etc. - add cache invalidation at the end of each mutation)
 
 export type LeaderSongRow = {
   id: string;
@@ -258,5 +257,38 @@ export async function leaderDeleteCategory(id: string): Promise<void> {
   await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
 }
 
-// ---------- Zema Team ----------
-// (keep these as they are, but add cache invalidation where appropriate)
+// ---------- Zema Team & Submissions ----------
+
+export async function leaderListZemaMembers(): Promise<ZemaMember[]> {
+  const res = await apiGet<{ items: ZemaMember[] }>('/leaders/songs/zema');
+  return res.items;
+}
+
+export async function leaderAddZemaMember(userId: string): Promise<{ ok: true }> {
+  const res = await apiPost<{ ok: true }>('/leaders/songs/zema', { userId });
+  await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
+  return res; // <--- Fixed: removed .data
+}
+
+export async function leaderRemoveZemaMember(userId: string): Promise<{ ok: true }> {
+  const res = await apiDelete<{ ok: true }>(`/leaders/songs/zema/${userId}`);
+  await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
+  return res; // <--- Fixed: removed .data
+}
+
+export async function leaderListPendingSubmissions(): Promise<PendingSubmission[]> {
+  const res = await apiGet<{ items: PendingSubmission[] }>('/leaders/songs/submissions');
+  return res.items;
+}
+
+export async function leaderApproveSubmission(submissionId: string): Promise<{ ok: true }> {
+  const res = await apiPost<{ ok: true }>(`/leaders/songs/submissions/${submissionId}/approve`, {});
+  await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
+  return res; // <--- Fixed: removed .data
+}
+
+export async function leaderReturnSubmission(submissionId: string, reason: string): Promise<{ ok: true }> {
+  const res = await apiPost<{ ok: true }>(`/leaders/songs/submissions/${submissionId}/return`, { reason });
+  await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
+  return res; // <--- Fixed: removed .data
+}
