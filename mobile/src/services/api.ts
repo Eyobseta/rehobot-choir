@@ -12,6 +12,7 @@ import {
   saveTokens,
   clearTokens,
 } from './secureStorage';
+import { getSessionVersion } from './session'; // NEW
 
 /**
  * Standard error shape (SRS 24.3):
@@ -111,6 +112,9 @@ let refreshInFlight: Promise<string | null> | null = null;
 async function tryRefresh(): Promise<string | null> {
   if (refreshInFlight) return refreshInFlight;
 
+  // NEW: Grab the version BEFORE we start
+  const startVersion = getSessionVersion();
+
   refreshInFlight = (async () => {
     try {
       const refreshToken = await getRefreshToken();
@@ -132,6 +136,12 @@ async function tryRefresh(): Promise<string | null> {
         accessToken?: string;
         refreshToken?: string;
       };
+
+      // NEW CRITICAL FIX: If a login/logout happened while we were refreshing, ABORT.
+      if (getSessionVersion() !== startVersion) {
+        return null;
+      }
+
       if (!data?.accessToken || !data?.refreshToken) {
         await clearTokens();
         return null;
@@ -142,10 +152,12 @@ async function tryRefresh(): Promise<string | null> {
     } catch {
       // The refresh endpoint rejected us — the refresh token is
       // expired, revoked, or reused. Session is over.
-      try {
-        await clearTokens();
-      } catch {
-        // ignore
+      if (getSessionVersion() === startVersion) {
+        try {
+          await clearTokens();
+        } catch {
+          // ignore
+        }
       }
       return null;
     } finally {

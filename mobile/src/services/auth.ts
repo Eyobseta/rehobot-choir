@@ -1,6 +1,7 @@
 import { apiPost, apiGet, http } from './api';
 import { saveTokens, clearTokens, getAccessToken } from './secureStorage';
 import { setCacheScope, cacheClearAll } from './cache';
+import { bumpSessionVersion, setSessionState } from './session'; // NEW
 
 export type LoginInput = {
   phone: string;
@@ -34,14 +35,22 @@ export type MeResponse = {
 };
 
 export async function login(input: LoginInput): Promise<LoginResponse> {
+  // NEW: Lock the session BEFORE saving tokens
+  bumpSessionVersion();
+  
   const res = await apiPost<LoginResponse>('/auth/login', input);
   await saveTokens(res.accessToken, res.refreshToken);
   // Set cache scope so the app never leaks data across accounts
   setCacheScope(res.user.id);
+  setSessionState('authenticated');
   return res;
 }
 
 export async function logout(): Promise<void> {
+  // NEW: Lock the session immediately
+  bumpSessionVersion();
+  setSessionState('unauthenticated');
+
   try {
     const { unregisterDeviceFromBackend } = await import('./pushTokens');
     await unregisterDeviceFromBackend();
@@ -82,6 +91,9 @@ export async function changePassword(
 export async function deleteOwnAccount(
   password: string,
 ): Promise<{ ok: true }> {
+  // NEW: Lock the session
+  bumpSessionVersion();
+
   const res = await http.delete<{ ok: true }>('/auth/me', {
     data: { password },
   });
@@ -89,5 +101,6 @@ export async function deleteOwnAccount(
   await clearTokens();
   setCacheScope(null);
   await cacheClearAll();
+  setSessionState('unauthenticated');
   return res.data;
 }

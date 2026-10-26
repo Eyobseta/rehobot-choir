@@ -3,8 +3,27 @@ import { getAccessToken } from './secureStorage';
 export type SessionState = 'authenticated' | 'unauthenticated';
 
 let cachedState: SessionState | null = null;
+let currentVersion = 0; // NEW: Session lock
+
 type Listener = (state: SessionState) => void;
 const listeners = new Set<Listener>();
+
+/**
+ * Get the current session version.
+ * Call this BEFORE an async operation, and check it AFTER.
+ */
+export function getSessionVersion(): number {
+  return currentVersion;
+}
+
+/**
+ * Invalidate any in-flight requests (like token refreshes).
+ * Call this on login, logout, and account deletion.
+ */
+export function bumpSessionVersion(): number {
+  currentVersion += 1;
+  return currentVersion;
+}
 
 /**
  * Read session state from SecureStore.

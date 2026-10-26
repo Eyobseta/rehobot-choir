@@ -28,6 +28,10 @@ function AppShell() {
 
   useEffect(() => {
     (async () => {
+      // NEW: Bump the session version on app boot to invalidate any stale refreshes
+      const { bumpSessionVersion } = await import('./src/services/session');
+      bumpSessionVersion();
+
       const state = await refreshSessionState();
       if (state === 'authenticated') {
         const { refreshRole } = await import('./src/services/role');
