@@ -19,6 +19,7 @@ import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import type { HomeStackParamList } from '../../navigation/HomeStack';
+import { formatEthDate } from '../../utils/ethiopianCalendar'; // FIXED: added import
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'MemberProfile'>;
 
@@ -305,7 +306,7 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
                 tint={accents.gold}
                 soft={accents.goldSoft}
                 label={t('memberProfile.dateOfBirth')}
-                value={new Date(member.dateOfBirth).toISOString().slice(0, 10)}
+                value={formatEthDate(member.dateOfBirth, 'en')}
               />
             )}
             {member.joiningDate && (
@@ -314,7 +315,7 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
                 tint={accents.violet}
                 soft={accents.violetSoft}
                 label={t('memberProfile.joiningDate')}
-                value={new Date(member.joiningDate).toISOString().slice(0, 10)}
+                value={formatEthDate(member.joiningDate, 'en')}
                 last
               />
             )}

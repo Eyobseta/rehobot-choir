@@ -1,4 +1,5 @@
 import { apiGet, apiPatch, http } from './api';
+import type { EthDate } from '../utils/ethiopianCalendar';
 
 export type DirectoryMember = {
   id: string;
@@ -14,8 +15,8 @@ export type MemberDetail = {
   phone?: string;
   email?: string | null;
   gender?: string | null;
-  dateOfBirth?: string | null;
-  joiningDate?: string | null;
+  dateOfBirth?: EthDate | null;   // FIXED: was string
+  joiningDate?: EthDate | null;   // FIXED: was string
   lastActiveAt?: string | null;
   deleted: boolean;
 };
@@ -34,8 +35,8 @@ export type OwnProfile = {
   official: {
     fullName: string;
     gender: string;
-    dateOfBirth: string | null;
-    joiningDate: string | null;
+    dateOfBirth: EthDate | null;   // FIXED: was string
+    joiningDate: EthDate | null;   // FIXED: was string
   };
 };
 
@@ -92,7 +93,6 @@ export async function uploadOwnPhoto(photoUri: string): Promise<{ profilePhotoUr
       transformRequest: (data) => data,
     },
   );
-  // Return the extracted URL
   return { profilePhotoUrl: res.data.profilePhotoUrl };
 }
 

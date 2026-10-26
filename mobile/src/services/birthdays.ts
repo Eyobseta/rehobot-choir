@@ -1,6 +1,7 @@
 import { apiGet, apiPost, apiDelete } from './api';
 import { cachedFetch, cacheInvalidatePrefix } from './cache';
 import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
+import type { EthDate } from '../utils/ethiopianCalendar';
 
 export type BirthdayReaction = {
   emoji: string;
@@ -37,15 +38,15 @@ export type BirthdayCommentReply = {
 export type BirthdayPostDetail = {
   id: string;
   year: number;
-  birthdayDate: string;
+  birthdayDate: EthDate;   // FIXED: was string
   person: {
     id: string;
     fullName: string;
     profilePhotoUrl: string | null;
     phone: string;
     gender: string | null;
-    dateOfBirth: string | null;
-    joiningDate: string | null;
+    dateOfBirth: EthDate | null;   // FIXED: was string
+    joiningDate: EthDate | null;   // FIXED: was string
   };
   reactions: BirthdayReaction[];
   myReaction: string | null;
