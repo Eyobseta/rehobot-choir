@@ -370,7 +370,11 @@ export async function findMemberByPhone(phone: string) {
           fullName: true,
           profilePhotoUrl: true,
           gender: true,
-          dateOfBirth: true,
+          // FIXED: removed `dateOfBirth: true` — that field doesn't exist on MemberProfile.
+          // If you ever need the DOB here, use:
+          //   dateOfBirthEthYear: true,
+          //   dateOfBirthEthMonth: true,
+          //   dateOfBirthEthDay: true,
         },
       },
     },
