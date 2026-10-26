@@ -20,6 +20,7 @@ import { listMyMemories, MyMemoryRow } from '../../services/memories';
 import { ApiError } from '../../services/api';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
 import { StatusPill, DatePill, EmptyState } from './Memorykit';
+import { formatEthDate } from '../../utils/ethiopianCalendar'; // NEW
 import GlassBackButton from '../../components/GlassBackButton';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -316,7 +317,8 @@ function MyMemoryCard({
             </View>
 
             <View style={{ marginTop: 8, alignSelf: 'flex-start' }}>
-              <DatePill text={new Date(item.date).toISOString().slice(0, 10)} />
+              {/* FIXED: Use the Ethiopian date directly */}
+              <DatePill text={formatEthDate(item.date, 'en')} />
             </View>
 
             {item.status === 'REJECTED' && item.rejectionReason && (

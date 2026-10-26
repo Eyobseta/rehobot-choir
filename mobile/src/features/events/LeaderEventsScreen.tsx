@@ -17,6 +17,7 @@ import { leaderListEvents, LeaderEventRow } from '../../services/events';
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { EthDate, formatEthDate } from '../../utils/ethiopianCalendar';
 
 export default function LeaderEventsScreen({ navigation }: any) {
   const { t } = useTranslation();
@@ -253,8 +254,18 @@ export default function LeaderEventsScreen({ navigation }: any) {
         }
         renderItem={({ item }) => {
           const published = item.status === 'PUBLISHED';
-          const tint = published ? colors.success : colors.warning;
-          const d = new Date(item.date);
+          const tint = published ? colors.success : '#F59E0B'; // Use warning color fallback
+          
+          // FIXED: Safely extract the Ethiopian date
+          let eth: EthDate = { year: 0, month: 1, day: 1 };
+          if (typeof item.date === 'object' && item.date !== null) {
+            eth = item.date as unknown as EthDate;
+          } else if (item.dateEthYear && item.dateEthMonth && item.dateEthDay) {
+            eth = { year: item.dateEthYear, month: item.dateEthMonth, day: item.dateEthDay };
+          }
+
+          const monthShort = eth.month ? formatEthDate(eth, 'en').split(' ')[0].slice(0, 3) : '';
+
           return (
             <Pressable
               onPress={() => navigation.navigate('EventEditor', { id: item.id })}
@@ -284,7 +295,7 @@ export default function LeaderEventsScreen({ navigation }: any) {
                 }}
               >
                 <Text style={{ fontSize: 22, fontWeight: '800', color: '#FFFFFF', lineHeight: 24 }}>
-                  {d.getDate()}
+                  {eth.day}
                 </Text>
                 <Text
                   style={{
@@ -294,7 +305,7 @@ export default function LeaderEventsScreen({ navigation }: any) {
                     textTransform: 'uppercase',
                   }}
                 >
-                  {d.toLocaleString(undefined, { month: 'short' })}
+                  {monthShort}
                 </Text>
               </LinearGradient>
 
@@ -309,7 +320,7 @@ export default function LeaderEventsScreen({ navigation }: any) {
                   style={[typography.bodySmall, { color: colors.textSecondary, marginTop: 2 }]}
                   numberOfLines={1}
                 >
-                  {new Date(item.date).toLocaleString()}
+                  {formatEthDate(eth, 'en')}
                 </Text>
                 <View
                   style={{

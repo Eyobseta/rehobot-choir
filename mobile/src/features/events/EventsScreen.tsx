@@ -18,7 +18,7 @@ import { listEvents, EventSummary } from '../../services/events';
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
-import { EthDate, utcDateToEth, formatEthDate } from '../../utils/ethiopianCalendar';
+import { EthDate, formatEthDate } from '../../utils/ethiopianCalendar';
 
 export default function EventsScreen({ navigation }: any) {
   const { t } = useTranslation();
@@ -35,7 +35,6 @@ export default function EventsScreen({ navigation }: any) {
   const load = useCallback(async (s: 'upcoming' | 'past') => {
     setError(null);
     try {
-      // Show cache instantly, then network (handled in listEvents)
       const fresh = await listEvents(s);
       setItems(fresh);
     } catch (e) {
@@ -135,7 +134,6 @@ export default function EventsScreen({ navigation }: any) {
           />
         </View>
 
-        {/* Segmented control inside hero */}
         <View
           style={{
             flexDirection: 'row',
@@ -240,9 +238,17 @@ export default function EventsScreen({ navigation }: any) {
             </View>
           }
           renderItem={({ item }) => {
-            const eth = utcDateToEth(new Date(item.date));
+            // FIXED: Safely extract the Ethiopian date
+            let eth: EthDate = { year: 0, month: 1, day: 1 };
+            if (typeof item.date === 'object' && item.date !== null) {
+              eth = item.date as unknown as EthDate;
+            } else if (item.dateEthYear && item.dateEthMonth && item.dateEthDay) {
+              eth = { year: item.dateEthYear, month: item.dateEthMonth, day: item.dateEthDay };
+            }
+
             const dayNum = eth.day;
-            const monthShort = formatEthDate(eth, 'en').split(' ')[0];
+            const monthShort = eth.month ? formatEthDate(eth, 'en').split(' ')[0] : '';
+
             return (
               <Pressable
                 onPress={() => navigation.navigate('EventDetail', { id: item.id })}
@@ -338,7 +344,7 @@ export default function EventsScreen({ navigation }: any) {
                         style={[typography.bodySmall, { color: colors.textSecondary, flex: 1 }]}
                         numberOfLines={1}
                       >
-                        {new Date(item.date).toLocaleString()}
+                        {formatEthDate(eth, 'en')}
                       </Text>
                     </View>
                     {item.location && (

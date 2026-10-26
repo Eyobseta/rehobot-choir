@@ -257,38 +257,40 @@ export async function leaderDeleteCategory(id: string): Promise<void> {
   await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
 }
 
-// ---------- Zema Team & Submissions ----------
+// ---------- Zema Team (FIXED: matches backend /leaders/zema-members) ----------
 
 export async function leaderListZemaMembers(): Promise<ZemaMember[]> {
-  const res = await apiGet<{ items: ZemaMember[] }>('/leaders/songs/zema');
+  const res = await apiGet<{ items: ZemaMember[] }>('/leaders/zema-members');
   return res.items;
 }
 
 export async function leaderAddZemaMember(userId: string): Promise<{ ok: true }> {
-  const res = await apiPost<{ ok: true }>('/leaders/songs/zema', { userId });
+  const res = await apiPost<{ ok: true }>(`/leaders/zema-members/${userId}`, {});
   await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
-  return res; // <--- Fixed: removed .data
+  return res;
 }
 
 export async function leaderRemoveZemaMember(userId: string): Promise<{ ok: true }> {
-  const res = await apiDelete<{ ok: true }>(`/leaders/songs/zema/${userId}`);
+  const res = await apiDelete<{ ok: true }>(`/leaders/zema-members/${userId}`);
   await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
-  return res; // <--- Fixed: removed .data
+  return res;
 }
 
+// ---------- Song Submissions (FIXED: matches backend /leaders/song-submissions) ----------
+
 export async function leaderListPendingSubmissions(): Promise<PendingSubmission[]> {
-  const res = await apiGet<{ items: PendingSubmission[] }>('/leaders/songs/submissions');
+  const res = await apiGet<{ items: PendingSubmission[] }>('/leaders/song-submissions');
   return res.items;
 }
 
 export async function leaderApproveSubmission(submissionId: string): Promise<{ ok: true }> {
-  const res = await apiPost<{ ok: true }>(`/leaders/songs/submissions/${submissionId}/approve`, {});
+  const res = await apiPost<{ ok: true }>(`/leaders/song-submissions/${submissionId}/approve`, {});
   await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
-  return res; // <--- Fixed: removed .data
+  return res;
 }
 
 export async function leaderReturnSubmission(submissionId: string, reason: string): Promise<{ ok: true }> {
-  const res = await apiPost<{ ok: true }>(`/leaders/songs/submissions/${submissionId}/return`, { reason });
+  const res = await apiPost<{ ok: true }>(`/leaders/song-submissions/${submissionId}/return`, { reason });
   await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
-  return res; // <--- Fixed: removed .data
+  return res;
 }

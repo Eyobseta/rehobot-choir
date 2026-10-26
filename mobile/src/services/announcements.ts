@@ -19,7 +19,15 @@ export type AnnouncementSummary = {
 
 export type AnnouncementDetail = AnnouncementSummary & {
   songs: { id: string; songId: string; songTitle: string }[];
-  event: { id: string; title: string; date: string } | null;
+  // FIXED: The linked event now includes the Ethiopian date fields
+  event: {
+    id: string;
+    title: string;
+    date: string;
+    dateEthYear: number;
+    dateEthMonth: number;
+    dateEthDay: number;
+  } | null;
 };
 
 export type LeaderAnnouncementRow = {
@@ -86,7 +94,7 @@ export type CreateAnnouncementInput = {
   publish: boolean;
   eventId?: string | null;
   imageUri?: string | null;
-  songs?: { songId: string; songTitle: string }[]; // NEW
+  songs?: { songId: string; songTitle: string }[];
 };
 
 export async function leaderCreateAnnouncement(

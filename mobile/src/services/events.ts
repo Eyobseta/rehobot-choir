@@ -7,7 +7,8 @@ export type EventSummary = {
   title: string;
   description: string | null;
   location: string | null;
-  date: string;
+  // FIXED: Backend returns the Gregorian date string + Ethiopian integers
+  date: string; 
   dateEthYear?: number;
   dateEthMonth?: number;
   dateEthDay?: number;
@@ -33,6 +34,7 @@ export type EventDetail = {
   title: string;
   description: string | null;
   location: string | null;
+  // FIXED: Detail view returns the Ethiopian date as an object
   date: { year: number; month: number; day: number };
   dateGregorian: string;
   coverImageUrl: string | null;
@@ -44,7 +46,11 @@ export type EventDetail = {
 export type LeaderEventRow = {
   id: string;
   title: string;
-  date: string;
+  date: string; // ISO Gregorian string
+  // FIXED: Added the Ethiopian fields returned by the leader endpoint
+  dateEthYear: number;
+  dateEthMonth: number;
+  dateEthDay: number;
   location: string | null;
   status: 'DRAFT' | 'PUBLISHED' | 'DELETED';
   coverImageUrl: string | null;

@@ -19,6 +19,7 @@ import {
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { formatEthDate, EthDate } from '../../utils/ethiopianCalendar'; // NEW
 
 const AMBER = '#F59E0B';
 
@@ -96,7 +97,15 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
     );
   }
 
-  const evDate = item.event ? new Date(item.event.date) : null;
+  // FIXED: Safely build the Ethiopian date for the linked event
+  let evEth: EthDate | null = null;
+  if (item.event) {
+    evEth = {
+      year: item.event.dateEthYear,
+      month: item.event.dateEthMonth,
+      day: item.event.dateEthDay,
+    };
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -198,7 +207,7 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
             </Text>
           </View>
 
-          {item.event && evDate && (
+          {item.event && evEth && (
             <Pressable
               onPress={() => {
                 const parent = navigation.getParent();
@@ -249,7 +258,7 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
                   }}
                 >
                   <Text style={{ fontSize: 22, fontWeight: '800', color: BRAND.deep, lineHeight: 24 }}>
-                    {evDate.getDate()}
+                    {evEth.day}
                   </Text>
                   <Text
                     style={{
@@ -259,7 +268,7 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
                       textTransform: 'uppercase',
                     }}
                   >
-                    {evDate.toLocaleString(undefined, { month: 'short' })}
+                    {formatEthDate(evEth, 'en').split(' ')[0].slice(0, 3)}
                   </Text>
                 </View>
                 <View style={{ flex: 1 }}>
@@ -273,7 +282,7 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
                     style={[typography.caption, { color: 'rgba(255,255,255,0.85)', marginTop: 3 }]}
                     numberOfLines={1}
                   >
-                    {new Date(item.event.date).toLocaleString()}
+                    {formatEthDate(evEth, 'en')}
                   </Text>
                 </View>
                 <View

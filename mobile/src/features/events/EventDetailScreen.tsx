@@ -120,8 +120,9 @@ export default function EventDetailScreen({ route, navigation }: any) {
   const notGoing = event.rsvps.filter((r) => r.response === 'NOT_GOING').length;
   const total = event.rsvps.length;
 
-  // The date is already an Ethiopian date object from the backend
+  // FIXED: The date is already an Ethiopian date object from the backend
   const ethDate = event.date;
+  // Use the Gregorian date for the time string
   const timeStr = new Date(event.dateGregorian).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',

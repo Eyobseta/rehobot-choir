@@ -56,14 +56,31 @@ export default function EventEditorScreen({ route, navigation }: any) {
         setTitle(ev.title);
         setDescription(ev.description ?? '');
         setLocation(ev.location ?? '');
-        const d = new Date(ev.date);
-        setDateText(
-          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-            d.getDate(),
-          ).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(
-            d.getMinutes(),
-          ).padStart(2, '0')}`,
-        );
+        
+        // FIXED: Safely format the Ethiopian date object back to "YYYY-MM-DD HH:mm"
+        // The backend gives us { year, month, day } as Ethiopian dates.
+        // We convert it to Gregorian for the text input the user edits.
+        try {
+          const { ethToUtcDate } = await import('../../utils/ethiopianCalendar');
+          const greg = ethToUtcDate(ev.date);
+          setDateText(
+            `${greg.getUTCFullYear()}-${String(greg.getUTCMonth() + 1).padStart(2, '0')}-${String(
+              greg.getUTCDate(),
+            ).padStart(2, '0')} 10:00`, // Defaulting time to 10:00 since only date is stored
+          );
+        } catch {
+          // Fallback if the date is somehow an ISO string
+          const d = new Date(ev.date as any);
+          if (!isNaN(d.getTime())) {
+            setDateText(
+              `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+                d.getDate(),
+              ).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(
+                d.getMinutes(),
+              ).padStart(2, '0')}`,
+            );
+          }
+        }
         setCoverUri(ev.coverImageUrl);
       } catch (e) {
         const err = e as ApiError;

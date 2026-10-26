@@ -1,28 +1,43 @@
+// src/attendance/attendance.routes.ts
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, touchLastActive } from '../auth/middleware';
 import { getMyAttendanceHistory, getMyGridSummary } from './attendance.service';
 import { ApiError } from '../utils/ApiError';
 import { reqEthDate } from '../funding/funding.validation';
+import { ethTodayFromInstant } from '../utils/ethiopianCalendar';
 
 const router = Router();
 
 router.use(authenticate, touchLastActive);
 
 /**
- * GET /api/v1/attendance/grid/me?from=YYYY-MM-DD&to=YYYY-MM-DD
- * NOTE: In the mobile app, you should now pass from/to as E.C. objects,
- * e.g., ?from={"year":2016,"month":1,"day":1}
+ * GET /api/v1/attendance/grid/me?from={json}&to={json}
  */
 router.get('/grid/me', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.auth) throw ApiError.unauthorized();
-    
-    // Fallback to today's E.C. date if not passed
-    const today = new Date();
-    const defaultEth = { year: today.getFullYear() - 8, month: 1, day: 1 }; // Rough fallback
-    
-    const from = req.query.from ? reqEthDate(JSON.parse(String(req.query.from)), 'from') : defaultEth;
-    const to = req.query.to ? reqEthDate(JSON.parse(String(req.query.to)), 'to') : defaultEth;
+
+    const today = ethTodayFromInstant(new Date());
+    const threeMonthsAgo = { year: today.year, month: Math.max(1, today.month - 3), day: 1 };
+
+    let from = threeMonthsAgo;
+    let to = today;
+
+    // FIXED: Safe parsing with try/catch
+    if (req.query.from) {
+      try {
+        from = reqEthDate(JSON.parse(String(req.query.from)), 'from');
+      } catch {
+        // ignore, use default
+      }
+    }
+    if (req.query.to) {
+      try {
+        to = reqEthDate(JSON.parse(String(req.query.to)), 'to');
+      } catch {
+        // ignore, use default
+      }
+    }
 
     const data = await getMyGridSummary(req.auth.userId, from, to);
     res.json(data);

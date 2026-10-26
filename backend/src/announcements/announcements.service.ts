@@ -49,13 +49,38 @@ export async function getAnnouncementDetail(id: string) {
     where: { id },
     include: {
       songs: { select: { id: true, songId: true, songTitle: true } },
-      event: { select: { id: true, title: true, date: true } },
+      // FIXED: The Prisma Event model does not have a `date` field.
+      // It has `dateGregorian` + the Ethiopian integer columns.
+      event: {
+        select: {
+          id: true,
+          title: true,
+          dateGregorian: true,
+          dateEthYear: true,
+          dateEthMonth: true,
+          dateEthDay: true,
+        },
+      },
     },
   });
   if (!ann || ann.status !== AnnouncementStatus.PUBLISHED || ann.deletedAt) {
     throw ApiError.notFound('Announcement not found.');
   }
-  return ann;
+
+  // FIXED: Reshape the event to a format the mobile app expects
+  return {
+    ...ann,
+    event: ann.event
+      ? {
+          id: ann.event.id,
+          title: ann.event.title,
+          date: ann.event.dateGregorian.toISOString(),
+          dateEthYear: ann.event.dateEthYear,
+          dateEthMonth: ann.event.dateEthMonth,
+          dateEthDay: ann.event.dateEthDay,
+        }
+      : null,
+  };
 }
 
 export async function leaderListAnnouncements() {
