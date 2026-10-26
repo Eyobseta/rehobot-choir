@@ -213,7 +213,6 @@ export async function updateOwnProfile(
     }
 
     if (input.emergencyContactName !== undefined || input.emergencyContactPhone !== undefined) {
-      // FIX: Use upsert to create the profile if it's missing
       await tx.memberProfile.upsert({
         where: { userId },
         update: {
@@ -222,7 +221,7 @@ export async function updateOwnProfile(
         },
         create: {
           userId,
-          fullName: user.phone, // fallback name since we don't have one here
+          fullName: 'New Member', // FIXED: was user.phone, replaced with a cleaner placeholder
           gender: 'UNKNOWN',
           emergencyContactName: input.emergencyContactName?.trim() ?? '',
           emergencyContactPhone: input.emergencyContactPhone?.trim() ?? '',
@@ -231,7 +230,7 @@ export async function updateOwnProfile(
           dateOfBirthEthYear: 2000,
           dateOfBirthEthMonth: 1,
           dateOfBirthEthDay: 1,
-          dateOfBirthGregorian: new Date(),
+          dateOfBirthGregorian: new Date(Date.UTC(2008, 0, 1)), // FIXED: real Gregorian for 2000 E.C.
         },
       });
     }
@@ -244,7 +243,6 @@ export async function updateOwnProfilePhoto(userId: string, newUrl: string, newP
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw ApiError.unauthorized();
 
-  // FIX: Upsert instead of throwing an error if the profile row is missing
   await prisma.memberProfile.upsert({
     where: { userId },
     update: {
@@ -253,7 +251,7 @@ export async function updateOwnProfilePhoto(userId: string, newUrl: string, newP
     },
     create: {
       userId,
-      fullName: user.phone,
+      fullName: 'New Member', // FIXED: was user.phone
       gender: 'UNKNOWN',
       emergencyContactName: '',
       emergencyContactPhone: '',
@@ -262,7 +260,7 @@ export async function updateOwnProfilePhoto(userId: string, newUrl: string, newP
       dateOfBirthEthYear: 2000,
       dateOfBirthEthMonth: 1,
       dateOfBirthEthDay: 1,
-      dateOfBirthGregorian: new Date(),
+      dateOfBirthGregorian: new Date(Date.UTC(2008, 0, 1)), // FIXED: real Gregorian for 2000 E.C.
     },
   });
 
