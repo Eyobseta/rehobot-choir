@@ -40,7 +40,17 @@ export function optBool(v: unknown, field: string): boolean | undefined {
 }
 
 export function reqEthDate(v: unknown, field: string): EthDate {
-  const o = v as Partial<EthDate> | null;
+  // multipart/form-data sends body fields as strings, so try to parse first.
+  let parsed: unknown = v;
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      throw ApiError.badRequest(`${field} is required.`);
+    }
+  }
+
+  const o = parsed as Partial<EthDate> | null;
   if (!o || typeof o !== 'object') throw ApiError.badRequest(`${field} is required.`);
   const d = { year: Number(o.year), month: Number(o.month), day: Number(o.day) };
   if (!isValidEthDate(d)) {
