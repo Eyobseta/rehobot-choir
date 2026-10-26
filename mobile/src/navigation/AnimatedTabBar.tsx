@@ -7,21 +7,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { BRAND, withAlpha } from '../features/auth/Auth_UI';
 
-/**
- * Animated bottom tab bar.
- * Put this file next to RootTabs.tsx (src/navigation/AnimatedTabBar.tsx).
- *
- * - A gradient "pill" slides between tabs and changes colour per tab.
- * - Icons cross-fade (outline -> filled) and bounce when a tab becomes active.
- * - Badges pop in; every tab springs when pressed.
- */
-
 const PILL_W = 62;
 const PILL_H = 34;
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-// Each tab gets its own colour for the sliding pill.
 const TAB_COLORS: Record<string, string> = {
   Home: BRAND.violet,
   Songs: BRAND.magenta,
@@ -49,14 +39,14 @@ export default function AnimatedTabBar({ state, descriptors, navigation }: Botto
   const [width, setWidth] = useState(0);
   const itemW = width / count;
 
-  const slide = useRef(new Animated.Value(0)).current; // pill position (native driver)
-  const colorIdx = useRef(new Animated.Value(state.index)).current; // pill colour (JS driver)
+  const slide = useRef(new Animated.Value(0)).current; 
+  const colorIdx = useRef(new Animated.Value(state.index)).current; 
   const enter = useRef(new Animated.Value(0)).current;
   const first = useRef(true);
 
   // Bar slides up when it first appears.
   useEffect(() => {
-    Animated.spring(enter, { toValue: 1, friction: 8, tension: 60, useNativeDriver: true }).start();
+    Animated.spring(enter, { toValue: 1, friction: 8, tension: 60, useNativeDriver: false }).start(); // FIXED
   }, [enter]);
 
   // Slide the pill under the active tab.
@@ -67,7 +57,7 @@ export default function AnimatedTabBar({ state, descriptors, navigation }: Botto
       slide.setValue(target);
       first.current = false;
     } else {
-      Animated.spring(slide, { toValue: target, friction: 7, tension: 85, useNativeDriver: true }).start();
+      Animated.spring(slide, { toValue: target, friction: 7, tension: 85, useNativeDriver: false }).start(); // FIXED
     }
   }, [state.index, width, itemW, slide]);
 
@@ -76,7 +66,6 @@ export default function AnimatedTabBar({ state, descriptors, navigation }: Botto
     Animated.spring(colorIdx, { toValue: state.index, friction: 8, tension: 70, useNativeDriver: false }).start();
   }, [state.index, colorIdx]);
 
-  // Honour screens that hide the tab bar via tabBarStyle: { display: 'none' }.
   const focusedOptions = descriptors[state.routes[state.index].key]?.options;
   const flat = StyleSheet.flatten(focusedOptions?.tabBarStyle as any) as { display?: string } | undefined;
   if (flat?.display === 'none') return null;
@@ -107,7 +96,6 @@ export default function AnimatedTabBar({ state, descriptors, navigation }: Botto
       }}
     >
       <View style={{ borderTopLeftRadius: 26, borderTopRightRadius: 26, overflow: 'hidden' }}>
-        {/* thin brand-colour line along the top edge */}
         <LinearGradient
           colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
           start={{ x: 0, y: 0 }}
@@ -119,7 +107,6 @@ export default function AnimatedTabBar({ state, descriptors, navigation }: Botto
           onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
           style={[styles.row, { paddingBottom: Math.max(insets.bottom, 8) }]}
         >
-          {/* sliding pill (sits behind the icons) */}
           {width > 0 && (
             <Animated.View
               pointerEvents="none"
@@ -186,8 +173,6 @@ export default function AnimatedTabBar({ state, descriptors, navigation }: Botto
   );
 }
 
-// ---------- One tab (module scope so it never remounts) ----------
-
 function TabItem({
   label,
   focused,
@@ -210,7 +195,7 @@ function TabItem({
   const { theme } = useTheme();
   const { colors } = theme;
 
-  const focus = useRef(new Animated.Value(focused ? 1 : 0)).current; // 0 -> 1, native
+  const focus = useRef(new Animated.Value(focused ? 1 : 0)).current; 
   const bounce = useRef(new Animated.Value(1)).current;
   const press = useRef(new Animated.Value(1)).current;
 
@@ -219,16 +204,16 @@ function TabItem({
       toValue: focused ? 1 : 0,
       duration: 220,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: false, // FIXED
     }).start();
     if (focused) {
       bounce.setValue(0.7);
-      Animated.spring(bounce, { toValue: 1, friction: 4, tension: 160, useNativeDriver: true }).start();
+      Animated.spring(bounce, { toValue: 1, friction: 4, tension: 160, useNativeDriver: false }).start(); // FIXED
     }
   }, [focused, focus, bounce]);
 
   const pressTo = (v: number) =>
-    Animated.spring(press, { toValue: v, speed: 40, bounciness: 8, useNativeDriver: true }).start();
+    Animated.spring(press, { toValue: v, speed: 40, bounciness: 8, useNativeDriver: false }).start(); // FIXED
 
   const hasBadge = badge !== undefined && badge !== null && badge !== '' && badge !== 0;
   const badgeText = typeof badge === 'number' && badge > 99 ? '99+' : String(badge);
@@ -245,7 +230,6 @@ function TabItem({
       style={styles.item}
     >
       <Animated.View style={{ alignItems: 'center', transform: [{ scale: press }] }}>
-        {/* icon area: same size as the pill so the icon sits centred on it */}
         <View style={styles.iconBox}>
           <Animated.View style={[styles.iconLayer, { opacity: focus.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}>
             <Ionicons name={icons.off} size={23} color={colors.textSecondary} />
@@ -283,7 +267,6 @@ function TabItem({
           {label}
         </Animated.Text>
 
-        {/* small coloured dot under the active label */}
         <Animated.View
           style={[
             styles.dot,
@@ -304,9 +287,8 @@ function Badge({ text }: { text: string }) {
   const { colors } = theme;
   const pop = useRef(new Animated.Value(0)).current;
 
-  // `key={text}` in the parent remounts this, so it pops every time the count changes.
   useEffect(() => {
-    Animated.spring(pop, { toValue: 1, friction: 4, tension: 170, useNativeDriver: true }).start();
+    Animated.spring(pop, { toValue: 1, friction: 4, tension: 170, useNativeDriver: false }).start(); // FIXED
   }, [pop]);
 
   return (

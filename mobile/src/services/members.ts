@@ -92,7 +92,8 @@ export async function uploadOwnPhoto(photoUri: string): Promise<{ profilePhotoUr
       transformRequest: (data) => data,
     },
   );
-  return res.data;
+  // Return the extracted URL
+  return { profilePhotoUrl: res.data.profilePhotoUrl };
 }
 
 /**

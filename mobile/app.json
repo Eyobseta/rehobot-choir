@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#121212"
-    },
     "ios": {
       "supportsTablet": true
     },
@@ -22,7 +17,10 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.WAKE_LOCK",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ],
       "package": "com.eyobseta.rehobotchoir"
     },
@@ -31,6 +29,15 @@
     },
     "plugins": [
       "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#121212"
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -56,13 +63,20 @@
       "expo-sqlite",
       "expo-image",
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "expo-updates"
     ],
     "extra": {
       "eas": {
         "projectId": "d34d781c-a69a-4914-953b-c93507a53c35"
       }
     },
-    "owner": "eyobseta"
+    "owner": "eyobseta",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d34d781c-a69a-4914-953b-c93507a53c35"
+    }
   }
 }

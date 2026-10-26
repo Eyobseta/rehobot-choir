@@ -445,7 +445,7 @@ function ApplicationCard({
       duration: 420,
       delay: Math.min(index, 8) * 55,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: false, // <--- CHANGED TO FALSE
     });
     a.start();
     return () => a.stop();
