@@ -1,7 +1,7 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit'; // <-- NEW
+import rateLimit from 'express-rate-limit';
 
 import { env } from './config/env';
 import { requestLogger } from './middleware/requestLogger';
@@ -49,10 +49,11 @@ export function createApp(): Application {
 
   app.use(requestLogger);
 
-  // Rate limiter for Authentication Endpoints (Login, Register, Refresh)
+  // Rate limiter for Authentication Endpoints
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 30, // Limit each IP to 30 requests per window
+    max: 100, // Increased limit for mobile apps (mobile makes many requests on boot)
+    skipSuccessfulRequests: true, // CRITICAL FIX: Only count failed logins against the limit
     message: { status: 429, code: 'TOO_MANY_REQUESTS', message: 'Too many attempts, please try again later.' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -61,9 +62,11 @@ export function createApp(): Application {
   const api = express.Router();
   api.use('/health', healthRoutes);
   
-  // Apply limiter to auth
+  // FIXED: Apply limiter ONLY to specific route registrations, not the whole router
   api.use('/auth', authLimiter, authRoutes);
-  api.use('/auth', authLimiter, registrationRoutes);
+  
+  // Registration routes don't need the strict login limiter
+  api.use('/auth', registrationRoutes);
   
   api.use('/leaders/registrations', leaderRoutes);
   api.use('/leaders/members', leaderMemberRoutes);
