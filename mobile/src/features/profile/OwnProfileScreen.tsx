@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { getOwnProfile, OwnProfile } from '../../services/members';
 import { ApiError } from '../../services/api';
+import { formatEthDate, EthDate } from '../../utils/ethiopianCalendar'; // FIXED IMPORT
 import { AvatarRing, PrimaryButton, ErrorBanner, WaterDrops, BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 
@@ -28,6 +29,19 @@ const accents = {
 };
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+// FIXED: Safe formatter for Ethiopian Date objects
+function safeFmt(d: any): string {
+  if (!d) return '—';
+  try {
+    if (typeof d === 'object' && 'year' in d && 'month' in d && 'day' in d) {
+      return formatEthDate(d as EthDate, 'en');
+    }
+    return new Date(d).toISOString().slice(0, 10);
+  } catch {
+    return '—';
+  }
+}
 
 export default function OwnProfileScreen({ navigation }: any) {
   const { t } = useTranslation();
@@ -69,7 +83,6 @@ export default function OwnProfileScreen({ navigation }: any) {
     );
   }
 
-  const fmt = (d?: string | null) => (d ? new Date(d).toISOString().slice(0, 10) : '—');
   const gender = profile?.official.gender ?? '';
   const genderLabel = gender ? t(`register.${gender}`, { defaultValue: gender }) : '';
   const fadeUp = (i: number) => ({
@@ -95,7 +108,6 @@ export default function OwnProfileScreen({ navigation }: any) {
             <View pointerEvents="none" style={[styles.blob, { top: -50, left: -50, backgroundColor: withAlpha(BRAND.gold, 0.18) }]} />
             <View pointerEvents="none" style={[styles.blob, { bottom: -70, right: -50, backgroundColor: withAlpha(BRAND.water, 0.2) }]} />
 
-            {/* Back button row */}
             <View style={styles.heroTopRow}>
               <View style={{ flex: 1 }} />
               <GlassBackButton
@@ -125,8 +137,9 @@ export default function OwnProfileScreen({ navigation }: any) {
             <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <InfoRow icon="person" tint={accents.violet} soft={accents.violetSoft} label={t('register.fullName')} value={profile?.official.fullName ?? ''} />
               <InfoRow icon="male-female" tint={accents.pink} soft={accents.pinkSoft} label={t('register.gender')} value={genderLabel} />
-              <InfoRow icon="gift" tint={accents.gold} soft={accents.goldSoft} label={t('register.dateOfBirth')} value={fmt(profile?.official.dateOfBirth)} />
-              <InfoRow icon="calendar" tint={accents.cyan} soft={accents.cyanSoft} label={t('register.joiningDate')} value={fmt(profile?.official.joiningDate)} last />
+              {/* FIXED: Using safeFmt */}
+              <InfoRow icon="gift" tint={accents.gold} soft={accents.goldSoft} label={t('register.dateOfBirth')} value={safeFmt(profile?.official.dateOfBirth)} />
+              <InfoRow icon="calendar" tint={accents.cyan} soft={accents.cyanSoft} label={t('register.joiningDate')} value={safeFmt(profile?.official.joiningDate)} last />
             </View>
           </Animated.View>
 
@@ -180,7 +193,7 @@ function SectionTitle({ icon, color, title }: { icon: IconName; color: string; t
 function InfoRow({
   icon, tint, soft, label, value, last,
 }: {
-  icon: IconName; tint: string; soft: string; label: string; value: string; last?: boolean;
+  icon: IconName; tint: string; soft: string; label: string; value: string | null | undefined; last?: boolean;
 }) {
   const { theme } = useTheme();
   const { colors, typography } = theme;

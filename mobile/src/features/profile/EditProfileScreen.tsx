@@ -24,8 +24,8 @@ import {
   uploadOwnPhoto,
 } from '../../services/members';
 import { ApiError } from '../../services/api';
-import { cachedFetch, cacheInvalidatePrefix } from '../../services/cache'; // NEW
-import { CACHE_KEYS, CACHE_PREFIXES } from '../../services/cacheKeys'; // NEW
+import { cachedFetch, cacheInvalidatePrefix } from '../../services/cache';
+import { CACHE_KEYS, CACHE_PREFIXES } from '../../services/cacheKeys';
 import {
   KeyboardAwareScroll,
   AuthField,
@@ -64,12 +64,10 @@ export default function EditProfileScreen({ navigation }: any) {
   useEffect(() => {
     (async () => {
       try {
-        // NEW: Use cachedFetch to load instantly
         const p = await cachedFetch(
           CACHE_KEYS.meProfile,
           () => getOwnProfile(),
           (fresh) => {
-            // Update UI silently if fresh data arrives while screen is open
             setPhotoUrl(fresh.editable.profilePhotoUrl);
             setEmail(fresh.editable.email ?? '');
             setPhone(fresh.editable.phone);
@@ -138,7 +136,6 @@ export default function EditProfileScreen({ navigation }: any) {
       const { profilePhotoUrl } = await uploadOwnPhoto(out.uri);
       setPhotoUrl(profilePhotoUrl);
       
-      // NEW: Clear cache so other screens (like ProfileScreen) show the new photo instantly
       await cacheInvalidatePrefix(CACHE_PREFIXES.profile);
       
     } catch (e) {
@@ -167,7 +164,6 @@ export default function EditProfileScreen({ navigation }: any) {
         emergencyContactPhone: emgPhone.trim(),
       });
       
-      // NEW: Clear cache so ProfileScreen updates the name/phone instantly
       await cacheInvalidatePrefix(CACHE_PREFIXES.profile);
       
       setSaved(true);
