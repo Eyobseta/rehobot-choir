@@ -253,6 +253,13 @@ export async function leaderResetMemberPassword(
     data: { revokedAt: new Date() },
   });
 
+  // 🟢 NEW: CLEAR THE ACCOUNT LOCK SO THEY CAN LOG IN IMMEDIATELY
+  await prisma.accountLock.upsert({
+    where: { userId: targetUserId },
+    create: { userId: targetUserId, failedAttempts: 0 },
+    update: { failedAttempts: 0, lockedUntil: null, lastFailedAt: null },
+  });
+
   return { temporaryPassword: finalPassword };
 }
 
