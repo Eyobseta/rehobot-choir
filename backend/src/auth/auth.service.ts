@@ -200,15 +200,32 @@ export async function leaderResetMemberPassword(
     throw ApiError.badRequest('Use change-password to change your own password.');
   }
 
+  // 1. Fetch the person making the request (the Actor)
+  const actor = await prisma.user.findUnique({ where: { id: leaderUserId } });
+  if (!actor || actor.deletedAt || actor.status !== 'APPROVED') {
+    throw ApiError.unauthorized();
+  }
+
+  // 2. Fetch the target user
   const target = await prisma.user.findUnique({ where: { id: targetUserId } });
   if (!target || target.deletedAt) {
     throw ApiError.notFound('Member not found.');
   }
-  if (target.role === 'ADMIN') {
-    throw ApiError.forbidden('Cannot reset the admin password from here.');
-  }
-  if (target.role === 'LEADER') {
-    throw ApiError.forbidden('Only the System Administrator can reset a leader password.');
+
+  // 3. Permission checks
+  if (actor.role !== 'ADMIN') {
+    // If actor is just a LEADER, they cannot reset other LEADERs or ADMINs.
+    if (target.role === 'ADMIN') {
+      throw ApiError.forbidden('Cannot reset the admin password from here.');
+    }
+    if (target.role === 'LEADER') {
+      throw ApiError.forbidden('Only the System Administrator (ADMIN) can reset a leader password.');
+    }
+  } else {
+    // If actor is an ADMIN, they cannot reset other ADMINs (to prevent lockouts)
+    if (target.role === 'ADMIN') {
+      throw ApiError.forbidden('Admins cannot reset other Admins passwords.');
+    }
   }
 
   let finalPassword = newPassword?.trim();
