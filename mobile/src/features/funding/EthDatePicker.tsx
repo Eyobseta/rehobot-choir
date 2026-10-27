@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, View, Text, Pressable, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,9 @@ type Props = {
   minYear?: number; maxYear?: number;
 };
 
+const CHIP_WIDTH = 56; // Approx width of a chip + margin for scrolling
+const MONTH_CHIP_WIDTH = 90;
+
 /** Clearly-labelled Ethiopian calendar picker (SRS 10). Day auto-clamps for Pagume / leap years. */
 export default function EthDatePicker({ visible, title, value, onClose, onConfirm, minYear, maxYear }: Props) {
   const { t, i18n } = useTranslation();
@@ -24,12 +27,37 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
   const months = lang === 'am' ? ETH_MONTHS_AM : ETH_MONTHS_EN;
   const [d, setD] = useState<EthDate>(value);
 
+  const yearScrollRef = useRef<ScrollView>(null);
+  const monthScrollRef = useRef<ScrollView>(null);
+
+  // Reset local state when opened
   useEffect(() => { if (visible) setD(value); }, [visible, value]);
 
+  // Scroll to the selected year and month when opened
+  useEffect(() => {
+    if (visible) {
+      setTimeout(() => {
+        // Scroll Year: We want the selected year to be visible
+        const yearIndex = years.indexOf(d.year);
+        if (yearIndex !== -1) {
+          // Since years are descending (newest on left), just scroll based on index
+          yearScrollRef.current?.scrollTo({ x: Math.max(0, yearIndex * CHIP_WIDTH - 40), animated: false });
+        }
+
+        // Scroll Month
+        const monthIndex = d.month - 1;
+        monthScrollRef.current?.scrollTo({ x: Math.max(0, monthIndex * MONTH_CHIP_WIDTH - 40), animated: false });
+      }, 100);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
   const thisYear = ethTodayFromInstant(new Date()).year;
-  const lo = Math.min(minYear ?? thisYear - 1, value.year);
-  const hi = Math.max(maxYear ?? thisYear + 8, value.year);
-  const years = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+  const lo = Math.min(minYear ?? thisYear - 100, value.year); // Fixed to 100 years back if not provided
+  const hi = Math.max(maxYear ?? thisYear, value.year);
+  
+  // DESCENDING ORDER: 2019, 2018, 2017... so current is on the left
+  const years = Array.from({ length: hi - lo + 1 }, (_, i) => hi - i);
 
   const set = (p: Partial<EthDate>) =>
     setD((cur) => {
@@ -54,7 +82,14 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
 
           <ScrollView>
             <Text style={{ color: colors.textSecondary, fontWeight: '700', marginBottom: 8 }}>{t('funding.yearLabel')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+            
+            {/* Added ref to year ScrollView */}
+            <ScrollView 
+              ref={yearScrollRef} 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              style={{ marginBottom: 16 }}
+            >
               {years.map((y) => (
                 <Pressable key={y} onPress={() => set({ year: y })} style={chip(d.year === y)}>
                   <Text style={{ color: d.year === y ? '#FFF' : colors.text, fontWeight: '700' }}>{y}</Text>
@@ -63,7 +98,14 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
             </ScrollView>
 
             <Text style={{ color: colors.textSecondary, fontWeight: '700', marginBottom: 8 }}>{t('funding.monthLabel')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+            
+            {/* Added ref to month ScrollView */}
+            <ScrollView 
+              ref={monthScrollRef}
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              style={{ marginBottom: 16 }}
+            >
               {months.map((m, i) => (
                 <Pressable key={m} onPress={() => set({ month: i + 1 })} style={chip(d.month === i + 1)}>
                   <Text style={{ color: d.month === i + 1 ? '#FFF' : colors.text, fontWeight: '700' }}>{m}</Text>
