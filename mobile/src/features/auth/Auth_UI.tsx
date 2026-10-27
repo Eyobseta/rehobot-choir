@@ -28,6 +28,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
+import { changeLanguage } from '../../i18n';
 
 /**
  * Shared UI kit for the auth screens (Login / Register / Status).
@@ -265,6 +266,65 @@ function Logo({ size }: { size: number }) {
   );
 }
 
+/**
+ * Small EN | አማ pill shown in the top-right corner of the brand header.
+ * Persists the choice through changeLanguage() (AsyncStorage).
+ */
+export function LanguageToggle({ top }: { top: number }) {
+  const { t, i18n } = useTranslation();
+  const isAm = (i18n.language || 'en').startsWith('am');
+
+  const seg = (code: 'en' | 'am', label: string, active: boolean) => (
+    <Pressable
+      key={code}
+      onPress={() => {
+        if (!active) void changeLanguage(code);
+      }}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      style={{
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 14,
+        backgroundColor: active ? BRAND.gold : 'transparent',
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 12,
+          fontWeight: '800',
+          color: active ? BRAND.deep : 'rgba(255,255,255,0.85)',
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+
+  return (
+    <View
+      accessibilityLabel={t('language.title', { defaultValue: 'Language' })}
+      style={{
+        position: 'absolute',
+        top,
+        right: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 3,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.35)',
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        zIndex: 10,
+      }}
+    >
+      {seg('en', 'EN', !isAm)}
+      {seg('am', 'አማ', isAm)}
+    </View>
+  );
+}
+
 export function BrandHeader({
   subtitle,
   compact,
@@ -363,6 +423,8 @@ export function BrandHeader({
             ) : null}
           </>
         )}
+
+        <LanguageToggle top={insets.top + 8} />
       </View>
     </View>
   );
