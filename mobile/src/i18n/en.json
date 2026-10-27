@@ -99,7 +99,8 @@
     "invalidPhone": "Enter a valid phone number",
     "invalidEmail": "Enter a valid email address",
     "submitting": "Submitting…",
-    "submitSuccess": "Application submitted"
+    "submitSuccess": "Application submitted",
+    "invalidDate": "Please select a valid date."
   },
   "status": {
     "title": "Application status",

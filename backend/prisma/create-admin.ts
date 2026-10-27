@@ -32,6 +32,7 @@ async function main() {
     where: { phone: adminPhone },
     update: {
       passwordHash,
+      email: adminEmail,
       role: UserRole.ADMIN,
       status: UserStatus.APPROVED,
     },
@@ -41,6 +42,7 @@ async function main() {
       passwordHash,
       role: UserRole.ADMIN,
       status: UserStatus.APPROVED,
+      mustChangePassword: true,
     },
   });
 

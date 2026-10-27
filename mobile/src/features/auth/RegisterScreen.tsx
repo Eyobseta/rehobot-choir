@@ -9,8 +9,9 @@ import { useTheme } from '../../theme/ThemeContext';
 import { register, RegisterInput } from '../../services/registration';
 import { ApiError } from '../../services/api';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
-import { EthDate, formatEthDate, ethTodayFromInstant } from '../../utils/ethiopianCalendar';
+import { EthDate } from '../../utils/ethiopianCalendar';
 import EthDatePicker from '../funding/EthDatePicker';
+import { useRegistrationDates } from './useRegistrationDates';
 import {
   AuthScreen,
   AuthField,
@@ -54,6 +55,16 @@ export default function RegisterScreen({ navigation }: Props) {
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
 
+  // Registration-only date helpers (isolated from shared dateFormatter).
+  const {
+    today,
+    bounds,
+    defaultPickerValue,
+    format: formatDate,
+    isDobInRange,
+    isJoiningDateInRange,
+  } = useRegistrationDates();
+
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState<FormState>(INITIAL);
   const [busy, setBusy] = useState(false);
@@ -90,8 +101,18 @@ export default function RegisterScreen({ navigation }: Props) {
   const validateStep2 = (): string | null => {
     if (!form.gender) return t('register.fieldRequired');
     if (!form.dateOfBirth) return t('register.fieldRequired');
+    if (!isDobInRange(form.dateOfBirth)) {
+      return t('register.invalidDate', {
+        defaultValue: 'Please select a valid date of birth.',
+      });
+    }
     if (!form.emergencyContactName.trim()) return t('register.fieldRequired');
     if (!form.emergencyContactPhone.trim()) return t('register.fieldRequired');
+    if (form.joiningDate && !isJoiningDateInRange(form.joiningDate)) {
+      return t('register.invalidDate', {
+        defaultValue: 'Please select a valid joining date.',
+      });
+    }
     return null;
   };
 
@@ -185,11 +206,6 @@ export default function RegisterScreen({ navigation }: Props) {
       setBusy(false);
     }
   };
-
-  // ---- picker default values ----
-  const today = ethTodayFromInstant(new Date());
-  const dobDefault: EthDate = { year: 2000, month: 1, day: 1 };
-  const joiningDefault: EthDate = { year: today.year - 1, month: 1, day: 1 };
 
   return (
     <AuthScreen compact>
@@ -307,7 +323,7 @@ export default function RegisterScreen({ navigation }: Props) {
               })}
             </View>
 
-            {/* Date of Birth — E.C. picker */}
+            {/* Date of Birth — E.C. picker (opens on today when empty) */}
             <Text
               style={[
                 typography.bodySmall,
@@ -332,7 +348,9 @@ export default function RegisterScreen({ navigation }: Props) {
               }}
             >
               <Text style={{ color: form.dateOfBirth ? colors.text : colors.textSecondary }}>
-                {form.dateOfBirth ? formatEthDate(form.dateOfBirth) : t('funding.selectDateHint', { defaultValue: 'Tap to select date' })}
+                {form.dateOfBirth
+                  ? formatDate(form.dateOfBirth)
+                  : t('funding.selectDateHint', { defaultValue: 'Tap to select date' })}
               </Text>
               <Text style={{ fontSize: 16 }}>🎂</Text>
             </Pressable>
@@ -352,7 +370,7 @@ export default function RegisterScreen({ navigation }: Props) {
               keyboardType="phone-pad"
             />
 
-            {/* Joining Date — E.C. picker (optional) */}
+            {/* Joining Date — E.C. picker (optional, opens on today when empty) */}
             <Text
               style={[
                 typography.bodySmall,
@@ -376,7 +394,9 @@ export default function RegisterScreen({ navigation }: Props) {
               }}
             >
               <Text style={{ color: form.joiningDate ? colors.text : colors.textSecondary }}>
-                {form.joiningDate ? formatEthDate(form.joiningDate) : t('funding.selectDateHint', { defaultValue: 'Tap to select date' })}
+                {form.joiningDate
+                  ? formatDate(form.joiningDate)
+                  : t('funding.selectDateHint', { defaultValue: 'Tap to select date' })}
               </Text>
               <Text style={{ fontSize: 16 }}>📅</Text>
             </Pressable>
@@ -489,7 +509,7 @@ export default function RegisterScreen({ navigation }: Props) {
               />
               <Review
                 label={t('register.dateOfBirth')}
-                value={form.dateOfBirth ? formatEthDate(form.dateOfBirth) : ''}
+                value={form.dateOfBirth ? formatDate(form.dateOfBirth) : ''}
               />
               <Review
                 label={t('register.emergencyContactName')}
@@ -500,7 +520,10 @@ export default function RegisterScreen({ navigation }: Props) {
                 value={form.emergencyContactPhone}
               />
               {form.joiningDate ? (
-                <Review label={t('register.joiningDate')} value={formatEthDate(form.joiningDate)} />
+                <Review
+                  label={t('register.joiningDate')}
+                  value={formatDate(form.joiningDate)}
+                />
               ) : null}
             </View>
           </>
@@ -535,17 +558,30 @@ export default function RegisterScreen({ navigation }: Props) {
       </View>
 
       <EthDatePicker
+        // Remount on each open/field-switch so the picker re-initializes
+        // from the correct starting `value` (today, or the already-picked date).
+        key={
+          picker === 'dob'
+            ? `dob-${form.dateOfBirth ? `${form.dateOfBirth.year}-${form.dateOfBirth.month}-${form.dateOfBirth.day}` : 'today'}`
+            : picker === 'joining'
+            ? `joining-${form.joiningDate ? `${form.joiningDate.year}-${form.joiningDate.month}-${form.joiningDate.day}` : 'today'}`
+            : 'closed'
+        }
         visible={picker !== null}
         title={picker === 'dob' ? t('register.dateOfBirth') : t('register.joiningDate')}
-        value={picker === 'dob' ? (form.dateOfBirth ?? dobDefault) : (form.joiningDate ?? joiningDefault)}
+        value={
+          picker === 'dob'
+            ? (form.dateOfBirth ?? defaultPickerValue())
+            : (form.joiningDate ?? defaultPickerValue())
+        }
         onClose={() => setPicker(null)}
         onConfirm={(d) => {
           if (picker === 'dob') set('dateOfBirth', d);
           else if (picker === 'joining') set('joiningDate', d);
           setPicker(null);
         }}
-        minYear={1950}
-        maxYear={today.year}
+        minYear={bounds.minYear}
+        maxYear={bounds.maxYear}
       />
     </AuthScreen>
   );

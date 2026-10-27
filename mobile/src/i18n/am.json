@@ -99,7 +99,9 @@
     "invalidPhone": "ትክክለኛ ስልክ ቁጥር ያስገቡ",
     "invalidEmail": "ትክክለኛ ኢሜይል ያስገቡ",
     "submitting": "በመላክ ላይ…",
-    "submitSuccess": "ማመልከቻዎ ተልኳል"
+    "submitSuccess": "ማመልከቻዎ ተልኳል",
+    "invalid Date": "እባክዎ ትክክለኛ ቀን ይምረጡ።"
+
   },
   "status": {
     "title": "የማመልከቻ ሁኔታ",
