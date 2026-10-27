@@ -1,5 +1,5 @@
 import { apiGet, http } from './api';
-import { cachedFetch, cacheInvalidatePrefix } from './cache';
+import { cachedFetch, cacheInvalidatePrefix, cacheRead, cacheWrite } from './cache';
 import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
 
 export type DailyQuote = {
@@ -41,15 +41,17 @@ export async function getTodayQuote(): Promise<DailyQuote | null> {
 }
 
 export async function listRecentQuotes(days = 7): Promise<DailyQuote[]> {
-  const cached = await cachedFetch<DailyQuote[]>(
-    CACHE_KEYS.quotesRecent(days),
-    async () => {
-      const res = await apiGet<{ items: DailyQuote[] }>(`/quotes/recent?days=${days}`);
-      return res.items;
-    },
-    () => {},
-  );
-  return cached ?? [];
+  const key = CACHE_KEYS.quotesRecent(days);
+  
+  const cached = await cacheRead<DailyQuote[]>(key);
+  
+  const fetchFresh = async () => {
+    const res = await apiGet<{ items: DailyQuote[] }>(`/quotes/recent?days=${days}`);
+    await cacheWrite(key, res.items);
+    return res.items;
+  };
+
+  return cached ?? fetchFresh();
 }
 
 export async function getMyQuoteCount(): Promise<number> {

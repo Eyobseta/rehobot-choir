@@ -45,79 +45,120 @@ export default function NotificationsScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const load = useCallback(async () => {
     setError(null);
     try {
       const list = await listNotifications();
+      if (!mountedRef.current) return;
       setItems(list);
       setUnread(list.filter((n) => !n.readAt).length);
     } catch (e) {
       const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
+      if (mountedRef.current) setError(`${err.message} [${err.code}]`);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (mountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
+      if (items.length === 0) setLoading(true);
       void load();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]),
   );
 
   const onMarkAllRead = async () => {
     try {
       await markAllRead();
+      if (!mountedRef.current) return;
       setItems((prev) =>
         prev.map((x) => ({ ...x, readAt: x.readAt ?? new Date().toISOString() })),
       );
       setUnread(0);
     } catch (e) {
       const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
+      if (mountedRef.current) setError(`${err.message} [${err.code}]`);
     }
   };
+
+  /**
+   * Navigate to the right screen based on the notification's related entity.
+   * Handles both "already inside the tab" and "navigation.getParent() is null" cases.
+   */
+  const navigateToEntity = useCallback((item: NotificationItem) => {
+    const entityType = item.relatedEntityType;
+    const entityId = item.relatedEntityId;
+    if (!entityType) return;
+
+    const parent = navigation.getParent();
+    const root = parent ?? navigation;
+
+    switch (entityType) {
+      case 'Announcement':
+        if (entityId) {
+          // Push directly onto the current Home stack if we're inside it,
+          // otherwise route through the Home tab.
+          if (navigation.getState().routeNames.includes('AnnouncementDetail')) {
+            navigation.navigate('AnnouncementDetail', { id: entityId });
+          } else {
+            root.navigate('Home', { screen: 'AnnouncementDetail', params: { id: entityId } });
+          }
+        }
+        break;
+      case 'Song':
+        if (entityId) {
+          root.navigate('Songs', { screen: 'SongDetail', params: { id: entityId } });
+        }
+        break;
+      case 'Memory':
+        if (entityId) {
+          root.navigate('Memories', { screen: 'MemoryDetail', params: { id: entityId } });
+        }
+        break;
+      case 'Event':
+        if (entityId) {
+          if (navigation.getState().routeNames.includes('EventDetail')) {
+            navigation.navigate('EventDetail', { id: entityId });
+          } else {
+            root.navigate('Home', { screen: 'EventDetail', params: { id: entityId } });
+          }
+        }
+        break;
+      case 'DailyQuote':
+        root.navigate('Home', { screen: 'DailyQuoteHistory' });
+        break;
+      default:
+        break;
+    }
+  }, [navigation]);
 
   const onOpen = async (item: NotificationItem) => {
     if (!item.readAt) {
       try {
         await markRead(item.id);
+        if (!mountedRef.current) return;
         const updated = items.map((x) =>
           x.id === item.id ? { ...x, readAt: new Date().toISOString() } : x,
         );
         setItems(updated);
         setUnread(updated.filter((n) => !n.readAt).length);
       } catch {
-        // ignore
+        // ignore — best-effort read mark
       }
     }
-
-    const entityType = item.relatedEntityType;
-    const entityId = item.relatedEntityId;
-    if (!entityType || !entityId) return;
-
-    const parent = navigation.getParent();
-    switch (entityType) {
-      case 'Announcement':
-        parent?.navigate('Home', { screen: 'AnnouncementDetail', params: { id: entityId } });
-        break;
-      case 'Song':
-        parent?.navigate('Songs', { screen: 'SongDetail', params: { id: entityId } });
-        break;
-      case 'Memory':
-        parent?.navigate('Memories', { screen: 'MemoryDetail', params: { id: entityId } });
-        break;
-      case 'Event':
-        parent?.navigate('Home', { screen: 'EventDetail', params: { id: entityId } });
-        break;
-      case 'DailyQuote':
-        parent?.navigate('Home', { screen: 'DailyQuoteHistory' });
-        break;
-      default:
-        break;
-    }
+    navigateToEntity(item);
   };
 
   const onDelete = (item: NotificationItem) => {
@@ -129,12 +170,13 @@ export default function NotificationsScreen({ navigation }: Props) {
         onPress: async () => {
           try {
             await deleteNotification(item.id);
+            if (!mountedRef.current) return;
             const updated = items.filter((x) => x.id !== item.id);
             setItems(updated);
             setUnread(updated.filter((n) => !n.readAt).length);
           } catch (e) {
             const err = e as ApiError;
-            setError(`${err.message} [${err.code}]`);
+            if (mountedRef.current) setError(`${err.message} [${err.code}]`);
           }
         },
       },

@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
-import type { ChatStackParamList } from '../../../../src/navigation/ChatStack';
+import type { ChatStackParamList } from '../../navigation/ChatStack';
 import { searchMessagesApi } from './chatApi';
 import { useTr } from './chatStrings';
 import { dayLabel, formatClock } from './chatUtils';

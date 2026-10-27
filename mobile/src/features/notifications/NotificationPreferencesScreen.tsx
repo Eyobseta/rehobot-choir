@@ -36,18 +36,32 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
 
   const load = useCallback(async () => {
     try {
-      setPrefs(await getPreferences());
+      const data = await getPreferences();
+      if (!mountedRef.current) return;
+      setPrefs(data);
     } catch (e) {
+      if (!mountedRef.current) return;
       setError(String(e));
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
+  }, []);
+
+  // Guard against state updates after unmount
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
+      // Only show spinner on first focus. On re-focus, refresh silently.
+      if (!prefs) setLoading(true);
       void load();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [load]),
   );
 
@@ -62,12 +76,14 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
     setError(null);
     try {
       const updated = await updatePreferences({ [key]: value });
+      if (!mountedRef.current) return;
       setPrefs(updated);
     } catch (e) {
+      if (!mountedRef.current) return;
       setPrefs(previous);
       setError(String(e));
     } finally {
-      setBusy(false);
+      if (mountedRef.current) setBusy(false);
     }
   };
 

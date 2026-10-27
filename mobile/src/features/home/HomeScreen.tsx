@@ -77,47 +77,53 @@ export default function HomeScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // ---------- Data loading (unchanged logic) ----------
+  // Prevent state updates after unmount to avoid memory leaks
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+
+  // ---------- Data loading ----------
   const load = useCallback(async () => {
-    try {
-      const meResp = await me();
-      setMustChange(meResp.user.mustChangePassword);
-    } catch {
-      // ignore
+    // Use Promise.allSettled for parallel loading (fastest performance)
+    const [meRes, eventsRes, annRes, bdayRes, notifRes] = await Promise.allSettled([
+      me(),
+      listEvents('upcoming'),
+      listAnnouncements(),
+      listBirthdays(),
+      listNotifications(5),
+    ]);
+
+    if (!isMounted.current) return; // Component unmounted, stop here
+
+    if (meRes.status === 'fulfilled') {
+      setMustChange(meRes.value.user.mustChangePassword);
     }
-    try {
-      const list = await listEvents('upcoming');
-      setUpcoming(list[0] ?? null);
-    } catch {
-      // ignore
+    if (eventsRes.status === 'fulfilled') {
+      setUpcoming(eventsRes.value[0] ?? null);
     }
-    try {
-      const ann = await listAnnouncements();
-      setRecent(ann.slice(0, 3));
-    } catch {
-      // ignore
+    if (annRes.status === 'fulfilled') {
+      setRecent(annRes.value.slice(0, 3));
     }
-    try {
-      setBirthdays(await listBirthdays());
-    } catch {
-      // ignore
+    if (bdayRes.status === 'fulfilled') {
+      setBirthdays(bdayRes.value);
     }
-    try {
-      const notifs = await listNotifications(5);
-      setNotifications(notifs);
-      setUnread(notifs.filter((n) => !n.readAt).length);
-    } catch {
-      // ignore
+    if (notifRes.status === 'fulfilled') {
+      setNotifications(notifRes.value);
+      setUnread(notifRes.value.filter((n) => !n.readAt).length);
     }
+
     setLoading(false);
     setRefreshing(false);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
+      // Don't wipe the screen on refocus if we already have data
+      if (!upcoming && !recent.length) setLoading(true);
       void load();
-    }, [load]),
+    }, [load, upcoming, recent.length]),
   );
 
   // ---------- Motion: drifting blobs + scroll parallax ----------
@@ -160,7 +166,7 @@ export default function HomeScreen({ navigation }: any) {
     extrapolate: 'clamp',
   });
 
-  // ---------- Derived UI values (no new data) ----------
+  // ---------- Derived UI values ----------
   const unreadCount = notifications.filter((n) => !n.readAt).length;
   const goNotifications = () =>
     navigation.navigate('Profile', {

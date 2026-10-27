@@ -50,7 +50,6 @@ export default function DailyQuoteCard() {
         elevation: 10,
       }}
     >
-      {/* Tapping the card body opens the detail screen (inner buttons keep their own taps) */}
       <Pressable
         onPress={() => quote && navigation.navigate('DailyQuoteDetail', { quote })}
         disabled={!quote}
@@ -63,7 +62,6 @@ export default function DailyQuoteCard() {
           end={{ x: 1, y: 1 }}
           style={{ borderRadius: 28, padding: spacing.lg, overflow: 'hidden' }}
         >
-          {/* decorative giant quote mark */}
           <Text
             pointerEvents="none"
             style={{
@@ -79,7 +77,6 @@ export default function DailyQuoteCard() {
             “
           </Text>
 
-          {/* soft bottom-left glow */}
           <View
             pointerEvents="none"
             style={{
@@ -93,7 +90,6 @@ export default function DailyQuoteCard() {
             }}
           />
 
-          {/* top-right gold shimmer */}
           <View
             pointerEvents="none"
             style={{
@@ -107,7 +103,6 @@ export default function DailyQuoteCard() {
             }}
           />
 
-          {/* header */}
           <View
             style={{
               flexDirection: 'row',
@@ -159,7 +154,6 @@ export default function DailyQuoteCard() {
             </Pressable>
           </View>
 
-          {/* body */}
           {loading ? (
             <Text
               style={[
@@ -227,7 +221,6 @@ export default function DailyQuoteCard() {
             </View>
           )}
 
-          {/* action */}
           <Pressable
             onPress={() => navigation.navigate('DailyQuoteComposer')}
             disabled={published}

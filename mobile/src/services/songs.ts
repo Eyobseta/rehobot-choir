@@ -294,3 +294,87 @@ export async function leaderReturnSubmission(submissionId: string, reason: strin
   await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
   return res;
 }
+
+// ---------- Zema Team member (author-side) ----------
+// Backend: zema.routes.ts. ASSUMPTION: the router is mounted at `/zema`
+// (e.g. app.use('/zema', zemaRoutes)). Change ZEMA_BASE if yours differs.
+
+const ZEMA_BASE = '/zema';
+
+export type SubmissionStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'RETURNED';
+
+export type MySubmission = {
+  id: string;
+  status: SubmissionStatus;
+  returnReason: string | null;
+  song: {
+    id: string;
+    title: string;
+    lyrics: string | null;
+    youtubeUrl: string | null;
+    audioUrl: string | null;
+    category: SongCategory | null;
+  };
+};
+
+export type ZemaSaveDraftInput = {
+  submissionId?: string | null;
+  title: string;
+  lyrics?: string;
+  youtubeUrl?: string;
+  categoryId?: string | null;
+  audioUri?: string | null;
+  audioMime?: string | null;
+  audioName?: string | null;
+};
+
+export async function zemaListMySubmissions(): Promise<MySubmission[]> {
+  const res = await apiGet<{ items: MySubmission[] }>(`${ZEMA_BASE}/submissions/me`);
+  return res.items;
+}
+
+/**
+ * The backend has no dedicated "am I a member?" endpoint: every /zema route
+ * rejects non-members with 403. So we probe the lightest route and map a
+ * 403 to `false`. Any other failure (network, 500, ...) is rethrown.
+ */
+export async function zemaIsTeamMember(): Promise<boolean> {
+  try {
+    await apiGet<{ items: MySubmission[] }>(`${ZEMA_BASE}/submissions/me`);
+    return true;
+  } catch (e) {
+    const err = e as { status?: number; code?: string };
+    if (err.status === 403 || err.code === 'FORBIDDEN') return false;
+    throw e;
+  }
+}
+
+export async function zemaSaveDraft(input: ZemaSaveDraftInput): Promise<{ submissionId: string }> {
+  const form = new FormData();
+  if (input.submissionId) form.append('submissionId', input.submissionId);
+  form.append('title', input.title);
+  if (input.lyrics) form.append('lyrics', input.lyrics);
+  if (input.youtubeUrl) form.append('youtubeUrl', input.youtubeUrl);
+  if (input.categoryId) form.append('categoryId', input.categoryId);
+
+  if (input.audioUri) {
+    // @ts-expect-error — RN FormData
+    form.append('audio', {
+      uri: input.audioUri,
+      name: input.audioName ?? 'audio.m4a',
+      type: input.audioMime ?? 'audio/m4a',
+    });
+  }
+
+  const res = await http.post<{ submissionId: string }>(`${ZEMA_BASE}/submissions`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 90_000,
+    transformRequest: (d) => d,
+  });
+  return { submissionId: res.data.submissionId };
+}
+
+export async function zemaSubmitForReview(submissionId: string): Promise<void> {
+  await apiPost(`${ZEMA_BASE}/submissions/${submissionId}/submit`, {});
+  await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
+}

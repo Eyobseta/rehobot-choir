@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND } from '../auth/Auth_UI';
-import type { ChatStackParamList } from '../../../../src/navigation/ChatStack';
+import type { ChatStackParamList } from '../../navigation/ChatStack';
 import { useMe } from './chatSession';
 import { useTr } from './chatStrings';
 import { createGroupApi } from './chatApi';

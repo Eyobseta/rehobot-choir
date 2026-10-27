@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import {
@@ -32,11 +31,18 @@ export default function AnnouncementsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
 
   const [search, setSearch] = useState('');
+  const [debounced, setDebounced] = useState('');
   const [focused, setFocused] = useState(false);
   const [items, setItems] = useState<AnnouncementSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Debounce search input (300ms) so we don't hammer the API per keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const load = useCallback(async (q: string) => {
     setError(null);
@@ -51,12 +57,9 @@ export default function AnnouncementsScreen({ navigation }: any) {
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      void load(search);
-    }, [search, load]),
-  );
+  useEffect(() => {
+    void load(debounced);
+  }, [debounced, load]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

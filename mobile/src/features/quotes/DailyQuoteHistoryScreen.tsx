@@ -280,7 +280,6 @@ export default function DailyQuoteHistoryScreen({ navigation }: any) {
                     }}
                   >
                     <Ionicons name="calendar-outline" size={12} color={BROWN} />
-                    {/* FIXED: use formatEthDate with the Ethiopian date fields */}
                     <Text style={[typography.caption, { color: BROWN, fontWeight: '800' }]}>
                       {formatEthDate(
                         {

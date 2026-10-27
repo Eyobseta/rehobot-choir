@@ -35,16 +35,21 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     (async () => {
       try {
-        setItem(await getAnnouncement(id));
+        const data = await getAnnouncement(id);
+        if (isMounted) setItem(data);
       } catch (e) {
         const err = e as ApiError;
-        setError(`${err.message} [${err.code}]`);
+        if (isMounted) setError(`${err.message} [${err.code}]`);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     })();
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   if (loading) {

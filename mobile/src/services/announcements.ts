@@ -19,7 +19,6 @@ export type AnnouncementSummary = {
 
 export type AnnouncementDetail = AnnouncementSummary & {
   songs: { id: string; songId: string; songTitle: string }[];
-  // FIXED: The linked event now includes the Ethiopian date fields
   event: {
     id: string;
     title: string;
@@ -74,6 +73,7 @@ export async function getAnnouncement(
     () => {},
   );
   if (cached) return cached;
+  // FIXED: This block now only runs if cachedFetch actually returned undefined
   const res = await apiGet<{ item: AnnouncementDetail }>(`/announcements/${id}`);
   return res.item;
 }

@@ -3,7 +3,7 @@ import { View, Text, FlatList, Pressable, Alert, ActivityIndicator, Image } from
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
-import type { ChatStackParamList } from '../../../../src/navigation/ChatStack';
+import type { ChatStackParamList } from '../../navigation/ChatStack';
 import { useTr } from './chatStrings';
 import { fetchReports, resolveReportApi } from './chatApi';
 import { dayLabel, formatClock, messagePreview, thumbUrl } from './chatUtils';
