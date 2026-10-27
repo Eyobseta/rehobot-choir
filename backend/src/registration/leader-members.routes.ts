@@ -4,7 +4,7 @@ import {
   findMemberByPhone,
   leaderResetMemberPassword,
   leaderDeleteMember,
-  leaderAppointMember, // NEW
+  leaderAppointMember,
 } from '../auth/auth.service';
 import { ApiError } from '../utils/ApiError';
 
@@ -38,9 +38,14 @@ router.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.auth) throw ApiError.unauthorized();
+      
+      // Read the custom password from the body
+      const newPassword = req.body?.newPassword ? String(req.body.newPassword) : undefined;
+
       const result = await leaderResetMemberPassword(
         req.auth.userId,
         paramId(req),
+        newPassword, // Pass it in
       );
       res.json(result);
     } catch (err) {
@@ -49,7 +54,6 @@ router.post(
   },
 );
 
-// NEW — Appoint a member as choir leader (SRS 8.2)
 router.post(
   '/:id/appoint',
   async (req: Request, res: Response, next: NextFunction) => {

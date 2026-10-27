@@ -20,10 +20,11 @@ export async function lookupMember(phone: string): Promise<MemberLookup> {
 
 export async function resetMemberPassword(
   memberId: string,
+  newPassword: string, // ADDED
 ): Promise<{ temporaryPassword: string }> {
   return apiPost<{ temporaryPassword: string }>(
     `/leaders/members/${memberId}/reset-password`,
-    {},
+    { newPassword }, // SEND IN BODY
   );
 }
 
@@ -38,9 +39,6 @@ export async function deleteMember(
   return res.data;
 }
 
-/**
- * NEW: Appoint an approved member as a choir leader (SRS 8.2).
- */
 export async function appointMember(
   memberId: string,
 ): Promise<{ ok: true }> {

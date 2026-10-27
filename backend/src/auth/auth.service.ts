@@ -149,7 +149,6 @@ async function recordFailedAttempt(userId: string): Promise<void> {
   });
 }
 
-
 /**
  * Member changes own password (SRS 20.2, 17.1).
  * Requires the current password. Clears mustChangePassword.
@@ -185,19 +184,17 @@ export async function changeOwnPassword(
     data: { passwordHash, mustChangePassword: false },
   });
 
-  // Invalidate other sessions — the current one stays valid.
-  // (We do NOT revoke the current session because we want the user to remain logged in.)
   return { ok: true };
 }
 
 /**
- * Leader resets a member's password to a temporary one (SRS 6.7).
- * Sets mustChangePassword = true.
- * Returns the temporary password so the leader can share it manually.
+ * Leader resets a member's password (SRS 6.7).
+ * Accepts an optional custom password. Falls back to a generated one if not provided.
  */
 export async function leaderResetMemberPassword(
   leaderUserId: string,
   targetUserId: string,
+  newPassword?: string,
 ) {
   if (leaderUserId === targetUserId) {
     throw ApiError.badRequest('Use change-password to change your own password.');
@@ -214,9 +211,16 @@ export async function leaderResetMemberPassword(
     throw ApiError.forbidden('Only the System Administrator can reset a leader password.');
   }
 
-  // Generate a random 10-character temporary password.
-  const tempPassword = generateTempPassword(10);
-  const passwordHash = await hashPassword(tempPassword);
+  let finalPassword = newPassword?.trim();
+  if (finalPassword) {
+    if (finalPassword.length < 8) {
+      throw ApiError.badRequest('New password must be at least 8 characters.');
+    }
+  } else {
+    finalPassword = generateTempPassword(10);
+  }
+
+  const passwordHash = await hashPassword(finalPassword);
 
   await prisma.user.update({
     where: { id: targetUserId },
@@ -232,7 +236,7 @@ export async function leaderResetMemberPassword(
     data: { revokedAt: new Date() },
   });
 
-  return { temporaryPassword: tempPassword };
+  return { temporaryPassword: finalPassword };
 }
 
 function generateTempPassword(length: number): string {
@@ -246,7 +250,6 @@ function generateTempPassword(length: number): string {
 
 /**
  * Member self-deletes (SRS 7.1, 7.3).
- * Requires the member's own password.
  */
 export async function deleteOwnAccount(userId: string, password: string) {
   if (!password) throw ApiError.badRequest('Password is required.');
@@ -270,7 +273,6 @@ export async function deleteOwnAccount(userId: string, password: string) {
 
 /**
  * Leader deletes a member (SRS 7.2).
- * Requires the leader's own password as confirmation.
  */
 export async function leaderDeleteMember(
   leaderUserId: string,
@@ -306,36 +308,23 @@ export async function leaderDeleteMember(
   return { ok: true };
 }
 
-/**
- * Soft-delete implementation (SRS 7.3):
- * - Personal info removed (name, DOB, emergency, phone, email, password).
- * - Profile photo retained.
- * - Phone freed for reuse.
- * - Sessions revoked.
- * - Tombstone User remains so the directory shows "Deleted Member".
- */
 async function performSoftDelete(userId: string): Promise<void> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return;
 
-  // Deleted phone goes to a tombstone format so it can be reused.
-  // We do NOT store the old phone anywhere.
   const tombstonePhone = `deleted_${user.id}`;
   const tombstonePassword = await hashPassword(
     Math.random().toString(36).slice(2) + Date.now().toString(36),
   );
 
   await prisma.$transaction(async (tx) => {
-    // Delete the member profile (personal info).
     await tx.memberProfile.deleteMany({ where: { userId } });
 
-    // Revoke all sessions.
     await tx.session.updateMany({
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
 
-    // Clear personal fields on User.
     await tx.user.update({
       where: { id: userId },
       data: {
@@ -349,7 +338,6 @@ async function performSoftDelete(userId: string): Promise<void> {
     });
   });
 }
-
 
 export async function findMemberByPhone(phone: string) {
   const clean = phone.trim();
@@ -370,11 +358,6 @@ export async function findMemberByPhone(phone: string) {
           fullName: true,
           profilePhotoUrl: true,
           gender: true,
-          // FIXED: removed `dateOfBirth: true` — that field doesn't exist on MemberProfile.
-          // If you ever need the DOB here, use:
-          //   dateOfBirthEthYear: true,
-          //   dateOfBirthEthMonth: true,
-          //   dateOfBirthEthDay: true,
         },
       },
     },
@@ -396,12 +379,6 @@ export async function findMemberByPhone(phone: string) {
   };
 }
 
-
-/**
- * Rotate a refresh token.
- * Validates the token, revokes the current session, creates a new session,
- * and issues a fresh pair of tokens.
- */
 export async function refreshSession(
   refreshToken: string,
   deviceLabel?: string,
@@ -434,22 +411,15 @@ export async function refreshSession(
     throw ApiError.unauthorized('Session is no longer valid.', 'SESSION_REVOKED');
   }
 
-  // Verify the presented refresh token matches the stored hash.
   const matches = await verifyPassword(session.refreshTokenHash, refreshToken);
   if (!matches) {
-    // Someone is trying to reuse an old (already rotated) refresh token.
-    // Revoke the whole session — this is a classic token-reuse attack.
     await prisma.session.update({
       where: { id: session.id },
       data: { revokedAt: new Date() },
     });
-    throw ApiError.unauthorized(
-      'Refresh token is no longer valid.',
-      'SESSION_REVOKED',
-    );
+    throw ApiError.unauthorized('Refresh token is no longer valid.', 'SESSION_REVOKED');
   }
 
-  // Fetch the user (still needs to be APPROVED and not deleted).
   const user = await prisma.user.findUnique({ where: { id: session.userId } });
   if (!user || user.deletedAt || user.status !== 'APPROVED') {
     await prisma.session.update({
@@ -459,7 +429,6 @@ export async function refreshSession(
     throw ApiError.unauthorized('Account is not active.', 'ACCOUNT_INACTIVE');
   }
 
-  // Rotate: revoke the current session, create a new one.
   await prisma.session.update({
     where: { id: session.id },
     data: { revokedAt: new Date() },
@@ -502,9 +471,6 @@ export async function refreshSession(
   };
 }
 
-/**
- * NEW: Appoint an approved member as a choir leader (SRS 8.2).
- */
 export async function leaderAppointMember(
   leaderUserId: string,
   targetUserId: string,
@@ -538,7 +504,6 @@ export async function leaderAppointMember(
       data: { role: 'LEADER' },
     });
 
-    // Notify the new leader and all current leaders (SRS 8.2)
     const otherLeaders = await tx.user.findMany({
       where: {
         role: 'LEADER',
