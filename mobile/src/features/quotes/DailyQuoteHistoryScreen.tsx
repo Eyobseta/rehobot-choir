@@ -6,6 +6,7 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -235,9 +236,11 @@ export default function DailyQuoteHistoryScreen({ navigation }: any) {
                   )}
                 </View>
 
-                {/* card */}
-                <View
-                  style={{
+                {/* card (tap to open detail) */}
+                <Pressable
+                  onPress={() => navigation.navigate('DailyQuoteDetail', { quote: item })}
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({
                     flex: 1,
                     padding: spacing.md + 2,
                     marginBottom: spacing.md,
@@ -246,7 +249,8 @@ export default function DailyQuoteHistoryScreen({ navigation }: any) {
                     borderColor: isLatest ? withAlpha(BROWN, 0.55) : colors.border,
                     backgroundColor: colors.surface,
                     overflow: 'hidden',
-                  }}
+                    opacity: pressed ? 0.88 : 1,
+                  })}
                 >
                   <Text
                     pointerEvents="none"
@@ -367,7 +371,7 @@ export default function DailyQuoteHistoryScreen({ navigation }: any) {
                       })}
                     </Text>
                   </View>
-                </View>
+                </Pressable>
               </View>
             );
           }}
