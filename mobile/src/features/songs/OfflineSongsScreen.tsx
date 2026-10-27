@@ -74,18 +74,9 @@ export default function OfflineSongsScreen({ navigation }: any) {
     await playTrack({ key: entry.songId, uri: entry.fileUri, title: entry.title });
   };
 
-  const openPlayer = async (entry: OfflineEntry) => {
-    if (getCurrentKey() !== entry.songId) {
-      await playTrack({
-        key: entry.songId,
-        uri: entry.fileUri,
-        title: entry.title,
-      });
-    }
-    navigation.navigate('Player', {
-      title: entry.title,
-      subtitle: t('songs.offline'),
-    });
+  // FIXED: Navigate to SongDetail instead of Player
+  const openSong = (entry: OfflineEntry) => {
+    navigation.navigate('SongDetail', { id: entry.songId });
   };
 
   const onRemove = (songId: string) => {
@@ -246,7 +237,7 @@ export default function OfflineSongsScreen({ navigation }: any) {
                 item={item}
                 index={index}
                 isPlaying={isPlaying}
-                onPress={() => openPlayer(item)}
+                onPress={() => openSong(item)}
                 onToggle={() => onToggle(item)}
                 onRemove={() => onRemove(item.songId)}
               />

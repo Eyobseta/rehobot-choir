@@ -41,6 +41,8 @@ import {
 } from '../../services/audioPlayer';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { cacheRead, cacheWrite } from '../../services/cache';
+import { CACHE_KEYS } from '../../services/cacheKeys';
 
 const HEART = '#E0245E';
 const YT = '#FF0000';
@@ -95,20 +97,30 @@ export default function SongDetailScreen({ route, navigation }: any) {
 
   const load = useCallback(async () => {
     setError(null);
+    
+    // 1. FAST LOAD: Try to read the song details from cache immediately
+    const cachedSong = await cacheRead<SongDetail>(CACHE_KEYS.songDetail(id));
+    if (cachedSong) {
+      setItem(cachedSong);
+      setLoading(false); // Hide spinner instantly!
+    }
+
     try {
+      // 2. BACKGROUND LOAD: Fetch fresh data (or fetch if no cache exists)
       const [song, favs, offline, offlineList] = await Promise.all([
         getSong(id),
         listMyFavorites(),
         isOffline(id),
         listOffline(),
       ]);
+      
       setItem(song);
       setIsFav(favs.some((f) => f.song.id === id));
       setSavedOffline(offline);
       setOfflineUri(offlineList.find((x) => x.songId === id)?.fileUri ?? null);
     } catch (e) {
       const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
+      if (!cachedSong) setError(`${err.message} [${err.code}]`); // Only show error if we had nothing in cache
     } finally {
       setLoading(false);
     }
@@ -171,6 +183,10 @@ export default function SongDetailScreen({ route, navigation }: any) {
       );
       setSavedOffline(true);
       setOfflineUri(entry.fileUri);
+      
+      // NEW: Ensure the lyrics/details are cached when saved offline!
+      await cacheWrite(CACHE_KEYS.songDetail(item.id), item);
+      
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
@@ -203,7 +219,8 @@ export default function SongDetailScreen({ route, navigation }: any) {
     await playTrack({ key: item.id, uri, title: item.title });
   };
 
-  if (loading) {
+  // ONLY show full screen spinner if we have NO item at all (not even cached)
+  if (loading && !item) {
     return (
       <View
         style={{
