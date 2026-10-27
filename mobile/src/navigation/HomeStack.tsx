@@ -12,7 +12,10 @@ import AnnouncementsScreen from '../features/announcements/AnnouncementsScreen';
 import AnnouncementDetailScreen from '../features/announcements/AnnouncementDetailScreen';
 import DailyQuoteComposerScreen from '../features/quotes/DailyQuoteComposerScreen';
 import DailyQuoteHistoryScreen from '../features/quotes/DailyQuoteHistoryScreen';
+import DailyQuoteDetailScreen from '../features/quotes/Dailyquotedetailscreen ';
+import SongVideoScreen from '../features/songs/SongVideoScreen';
 import BirthdayDetailScreen from '../features/birthdays/BirthdayDetailScreen';
+import type { DailyQuote } from '../services/quotes';
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -24,6 +27,8 @@ export type HomeStackParamList = {
   AnnouncementDetail: { id: string };
   DailyQuoteComposer: undefined;
   DailyQuoteHistory: undefined;
+  DailyQuoteDetail: { quote: DailyQuote };
+  SongVideo: { youtubeUrl: string; title?: string };
   BirthdayDetail: { postId: string };
 };
 
@@ -76,6 +81,16 @@ export default function HomeStack() {
       <Stack.Screen
         name="DailyQuoteHistory"
         component={DailyQuoteHistoryScreen}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="DailyQuoteDetail"
+        component={DailyQuoteDetailScreen}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      />
+      <Stack.Screen
+        name="SongVideo"
+        component={SongVideoScreen}
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
 
