@@ -14,10 +14,9 @@ type Props = {
   minYear?: number; maxYear?: number;
 };
 
-const CHIP_WIDTH = 56; // Approx width of a chip + margin for scrolling
-const MONTH_CHIP_WIDTH = 90;
+const CHIP_WIDTH = 64; // Adjusted slightly to fit text better
+const MONTH_CHIP_WIDTH = 100;
 
-/** Clearly-labelled Ethiopian calendar picker (SRS 10). Day auto-clamps for Pagume / leap years. */
 export default function EthDatePicker({ visible, title, value, onClose, onConfirm, minYear, maxYear }: Props) {
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
@@ -33,27 +32,8 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
   // Reset local state when opened
   useEffect(() => { if (visible) setD(value); }, [visible, value]);
 
-  // Scroll to the selected year and month when opened
-  useEffect(() => {
-    if (visible) {
-      setTimeout(() => {
-        // Scroll Year: We want the selected year to be visible
-        const yearIndex = years.indexOf(d.year);
-        if (yearIndex !== -1) {
-          // Since years are descending (newest on left), just scroll based on index
-          yearScrollRef.current?.scrollTo({ x: Math.max(0, yearIndex * CHIP_WIDTH - 40), animated: false });
-        }
-
-        // Scroll Month
-        const monthIndex = d.month - 1;
-        monthScrollRef.current?.scrollTo({ x: Math.max(0, monthIndex * MONTH_CHIP_WIDTH - 40), animated: false });
-      }, 100);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
-
   const thisYear = ethTodayFromInstant(new Date()).year;
-  const lo = Math.min(minYear ?? thisYear - 100, value.year); // Fixed to 100 years back if not provided
+  const lo = Math.min(minYear ?? thisYear - 100, value.year);
   const hi = Math.max(maxYear ?? thisYear, value.year);
   
   // DESCENDING ORDER: 2019, 2018, 2017... so current is on the left
@@ -69,7 +49,25 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
   const chip = (on: boolean) => ({
     paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, marginRight: 8,
     backgroundColor: on ? BRAND.violet : colors.background,
+    minWidth: 50,
+    alignItems: 'center' as const,
   });
+
+  // Helper to scroll year list exactly when it finishes rendering
+  const handleYearLayout = () => {
+    const yearIndex = years.indexOf(d.year);
+    if (yearIndex !== -1 && yearScrollRef.current) {
+      yearScrollRef.current.scrollTo({ x: Math.max(0, yearIndex * CHIP_WIDTH - 40), animated: false });
+    }
+  };
+
+  // Helper to scroll month list exactly when it finishes rendering
+  const handleMonthLayout = () => {
+    const monthIndex = d.month - 1;
+    if (monthIndex !== -1 && monthScrollRef.current) {
+      monthScrollRef.current.scrollTo({ x: Math.max(0, monthIndex * MONTH_CHIP_WIDTH - 40), animated: false });
+    }
+  };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -83,12 +81,12 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
           <ScrollView>
             <Text style={{ color: colors.textSecondary, fontWeight: '700', marginBottom: 8 }}>{t('funding.yearLabel')}</Text>
             
-            {/* Added ref to year ScrollView */}
             <ScrollView 
               ref={yearScrollRef} 
               horizontal 
               showsHorizontalScrollIndicator={false} 
               style={{ marginBottom: 16 }}
+              onContentSizeChange={handleYearLayout} // TRIGGERS SCROLL WHEN RENDERED
             >
               {years.map((y) => (
                 <Pressable key={y} onPress={() => set({ year: y })} style={chip(d.year === y)}>
@@ -99,12 +97,12 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
 
             <Text style={{ color: colors.textSecondary, fontWeight: '700', marginBottom: 8 }}>{t('funding.monthLabel')}</Text>
             
-            {/* Added ref to month ScrollView */}
             <ScrollView 
               ref={monthScrollRef}
               horizontal 
               showsHorizontalScrollIndicator={false} 
               style={{ marginBottom: 16 }}
+              onContentSizeChange={handleMonthLayout} // TRIGGERS SCROLL WHEN RENDERED
             >
               {months.map((m, i) => (
                 <Pressable key={m} onPress={() => set({ month: i + 1 })} style={chip(d.month === i + 1)}>

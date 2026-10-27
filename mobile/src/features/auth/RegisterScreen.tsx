@@ -557,16 +557,11 @@ export default function RegisterScreen({ navigation }: Props) {
         )}
       </View>
 
+      {/* 
+        REMOVED THE BUGGY `key` PROP HERE.
+        The EthDatePicker now cleanly handles its own state and scrolling logic.
+      */}
       <EthDatePicker
-        // Remount on each open/field-switch so the picker re-initializes
-        // from the correct starting `value` (today, or the already-picked date).
-        key={
-          picker === 'dob'
-            ? `dob-${form.dateOfBirth ? `${form.dateOfBirth.year}-${form.dateOfBirth.month}-${form.dateOfBirth.day}` : 'today'}`
-            : picker === 'joining'
-            ? `joining-${form.joiningDate ? `${form.joiningDate.year}-${form.joiningDate.month}-${form.joiningDate.day}` : 'today'}`
-            : 'closed'
-        }
         visible={picker !== null}
         title={picker === 'dob' ? t('register.dateOfBirth') : t('register.joiningDate')}
         value={
