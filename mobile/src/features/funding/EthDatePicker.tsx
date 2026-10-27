@@ -14,8 +14,13 @@ type Props = {
   minYear?: number; maxYear?: number;
 };
 
-const CHIP_WIDTH = 64; // Adjusted slightly to fit text better
-const MONTH_CHIP_WIDTH = 100;
+// Fixed chip widths + gaps make every chip's x-position deterministic:
+// chip i starts at exactly i * STRIDE, so no measuring is needed.
+const GAP = 8; // must equal marginRight in `chip`
+const YEAR_W = 64;
+const YEAR_STRIDE = YEAR_W + GAP;
+const MONTH_W = 100;
+const MONTH_STRIDE = MONTH_W + GAP;
 
 export default function EthDatePicker({ visible, title, value, onClose, onConfirm, minYear, maxYear }: Props) {
   const { t, i18n } = useTranslation();
@@ -29,15 +34,36 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
   const yearScrollRef = useRef<ScrollView>(null);
   const monthScrollRef = useRef<ScrollView>(null);
 
-  // Reset local state when opened
-  useEffect(() => { if (visible) setD(value); }, [visible, value]);
-
   const thisYear = ethTodayFromInstant(new Date()).year;
   const lo = Math.min(minYear ?? thisYear - 100, value.year);
   const hi = Math.max(maxYear ?? thisYear, value.year);
-  
+
   // DESCENDING ORDER: 2019, 2018, 2017... so current is on the left
   const years = Array.from({ length: hi - lo + 1 }, (_, i) => hi - i);
+
+  // Jump both horizontal lists to the INITIAL value (the prop, not local state,
+  // so we never scroll against a stale selection).
+  const scrollToSelected = () => {
+    const yi = years.indexOf(value.year);
+    if (yi >= 0) {
+      yearScrollRef.current?.scrollTo({ x: yi * YEAR_STRIDE, animated: false });
+    }
+    monthScrollRef.current?.scrollTo({
+      x: Math.max(0, (value.month - 1) * MONTH_STRIDE - MONTH_STRIDE), // peek previous month
+      animated: false,
+    });
+  };
+
+  // Reset local state when opened + fallback scroll.
+  // Some Android builds drop a scrollTo fired during the first layout pass
+  // while the Modal is still sliding in, so we retry shortly after.
+  useEffect(() => {
+    if (!visible) return;
+    setD(value);
+    const id = setTimeout(scrollToSelected, 50);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, value]);
 
   const set = (p: Partial<EthDate>) =>
     setD((cur) => {
@@ -46,28 +72,14 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
       return n;
     });
 
-  const chip = (on: boolean) => ({
-    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, marginRight: 8,
+  const chip = (on: boolean, width: number) => ({
+    width,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginRight: GAP,
     backgroundColor: on ? BRAND.violet : colors.background,
-    minWidth: 50,
     alignItems: 'center' as const,
   });
-
-  // Helper to scroll year list exactly when it finishes rendering
-  const handleYearLayout = () => {
-    const yearIndex = years.indexOf(d.year);
-    if (yearIndex !== -1 && yearScrollRef.current) {
-      yearScrollRef.current.scrollTo({ x: Math.max(0, yearIndex * CHIP_WIDTH - 40), animated: false });
-    }
-  };
-
-  // Helper to scroll month list exactly when it finishes rendering
-  const handleMonthLayout = () => {
-    const monthIndex = d.month - 1;
-    if (monthIndex !== -1 && monthScrollRef.current) {
-      monthScrollRef.current.scrollTo({ x: Math.max(0, monthIndex * MONTH_CHIP_WIDTH - 40), animated: false });
-    }
-  };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -80,32 +92,32 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
 
           <ScrollView>
             <Text style={{ color: colors.textSecondary, fontWeight: '700', marginBottom: 8 }}>{t('funding.yearLabel')}</Text>
-            
-            <ScrollView 
-              ref={yearScrollRef} 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
+
+            <ScrollView
+              ref={yearScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
               style={{ marginBottom: 16 }}
-              onContentSizeChange={handleYearLayout} // TRIGGERS SCROLL WHEN RENDERED
+              onContentSizeChange={scrollToSelected}
             >
               {years.map((y) => (
-                <Pressable key={y} onPress={() => set({ year: y })} style={chip(d.year === y)}>
+                <Pressable key={y} onPress={() => set({ year: y })} style={chip(d.year === y, YEAR_W)}>
                   <Text style={{ color: d.year === y ? '#FFF' : colors.text, fontWeight: '700' }}>{y}</Text>
                 </Pressable>
               ))}
             </ScrollView>
 
             <Text style={{ color: colors.textSecondary, fontWeight: '700', marginBottom: 8 }}>{t('funding.monthLabel')}</Text>
-            
-            <ScrollView 
+
+            <ScrollView
               ref={monthScrollRef}
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
+              horizontal
+              showsHorizontalScrollIndicator={false}
               style={{ marginBottom: 16 }}
-              onContentSizeChange={handleMonthLayout} // TRIGGERS SCROLL WHEN RENDERED
+              onContentSizeChange={scrollToSelected}
             >
               {months.map((m, i) => (
-                <Pressable key={m} onPress={() => set({ month: i + 1 })} style={chip(d.month === i + 1)}>
+                <Pressable key={m} onPress={() => set({ month: i + 1 })} style={chip(d.month === i + 1, MONTH_W)}>
                   <Text style={{ color: d.month === i + 1 ? '#FFF' : colors.text, fontWeight: '700' }}>{m}</Text>
                 </Pressable>
               ))}
