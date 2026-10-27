@@ -224,7 +224,8 @@
     "activitySection": "እንቅስቃሴዎ",
     "preferencesSection": "እንደ ምርጫዎ ያድርጉት",
     "accountSection": "መለያ እና ደህንነት",
-    "logout": "ውጣ"
+    "logout": "ውጣ",
+    "aboutSection": "ስለ መተግበሪያው"
   },
   "events": {
     "title": "ዝግጅቶች",
@@ -757,5 +758,31 @@
   "editProfile": {
     "phoneTaken": "ይህ ስልክ ቁጥር አስቀድሞ ጥቅም ላይ ውሏል።",
     "emailTaken": "ይህ ኢሜይል አስቀድሞ ጥቅም ላይ ውሏል።"
-  }
+  },
+  "about": {
+  "title": "ስለ መተግበሪያው",
+  "tagline": "አብረን እንዘምራለን፣ አብረን እናድጋለን",
+  "developerSection": "የተሰራው በ",
+  "developer": "ገንቢ",
+  "developerEmail": "የገንቢ ኢሜይል",
+  "buildSection": "ግንባታ",
+  "updateChannel": "የማሻሻያ ሰሌዳ",
+  "updateId": "የማሻሻያ መለያ",
+  "updateDate": "የታተመበት ጊዜ",
+  "runtimeVersion": "የስራ ጊዜ ቅርጸት",
+  "sdkVersion": "Expo SDK",
+  "embedded": "በመጀመሪያ ግንባታ ላይ",
+  "deviceSection": "መሣሪያ (ለመሪዎች ብቻ)",
+  "deviceName": "መሣሪያ",
+  "deviceModel": "ሞዴል",
+  "deviceOs": "ኦፐሬቲንግ ሲስተም",
+  "contactSection": "ያግኙን",
+  "email": "ኢሜይል",
+  "legalSection": "ህጋዊ",
+  "privacy": "የግላዊነት መመሪያ",
+  "privacyBody": "ይህ መተግበሪያ ሁሉንም መረጃ በርሆቦት መዘምራን ውስጥ ብቻ ያስቀምጣል። ለመረጃ ጥያቄዎች የመዘምራኑን አመራር ያግኙ።",
+  "terms": "የአገልግሎት ደንቦች",
+  "termsBody": "ይህን መተግበሪያ በመጠቀም የመዘምራን አባላትን ማክበር፣ መረጃቸውን ሚስጥራዊ ማድረግ እና የማጋራት መብት ያለዎትን ይዘት ብቻ ለመለጠፍ ተስማምተዋል።",
+  "footer": "በፍቅር የተሰራ በ{{nick}} ({{name}})\n© {{year}} ርሆቦት መዘምራን"
+}
 }

@@ -89,7 +89,7 @@ export default function ProfileScreen({ navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* ---------- Hero ---------- */}
+        {/* Hero */}
         <View style={{ backgroundColor: BRAND.deep, marginTop: -1000, paddingTop: 1000 }}>
           <LinearGradient
             colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
@@ -155,7 +155,6 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
 
         <View style={styles.body}>
-          {/* ---------- Personal information card ---------- */}
           <Animated.View style={[{ marginTop: -32 }, fadeUp(1)]}>
             <ProfileActionCard
               icon="person-outline"
@@ -180,10 +179,10 @@ export default function ProfileScreen({ navigation }: any) {
           <Animated.View style={fadeUp(3)}>
             <SectionLabel color={BRAND.violet} text={t('profile.activitySection', { defaultValue: 'Your activity' })} />
             <View style={[styles.group, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-  <Row label={t('notifications.title')} icon="notifications-outline" tint={accents.violet} soft={accents.violetSoft} onPress={() => navigation.navigate('Notifications')} />
-  <Row label={t('attendance.history')} icon="calendar-outline" tint={accents.cyan} soft={accents.cyanSoft} onPress={() => navigation.navigate('MyAttendance')} />
-  <Row label={t('funding.title')} icon="wallet-outline" tint={accents.gold} soft={accents.goldSoft} onPress={() => navigation.navigate('Funding')} last />
-</View>
+              <Row label={t('notifications.title')} icon="notifications-outline" tint={accents.violet} soft={accents.violetSoft} onPress={() => navigation.navigate('Notifications')} />
+              <Row label={t('attendance.history')} icon="calendar-outline" tint={accents.cyan} soft={accents.cyanSoft} onPress={() => navigation.navigate('MyAttendance')} />
+              <Row label={t('funding.title')} icon="wallet-outline" tint={accents.gold} soft={accents.goldSoft} onPress={() => navigation.navigate('Funding')} last />
+            </View>
           </Animated.View>
 
           <Animated.View style={fadeUp(4)}>
@@ -199,6 +198,14 @@ export default function ProfileScreen({ navigation }: any) {
             <SectionLabel color={BRAND.gold} text={t('profile.accountSection', { defaultValue: 'Account & security' })} />
             <View style={[styles.group, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Row label={t('password.changeTitle')} icon="lock-closed-outline" tint={accents.gold} soft={accents.goldSoft} onPress={() => navigation.navigate('ChangePassword')} />
+              {/* NEW: About row */}
+              <Row
+                label={t('profile.aboutSection', { defaultValue: 'About this app' })}
+                icon="information-circle-outline"
+                tint={accents.cyan}
+                soft={accents.cyanSoft}
+                onPress={() => navigation.navigate('About')}
+              />
               <Row label={t('deleteAccount.title')} icon="trash-outline" tint={colors.error} soft={withAlpha(colors.error, 0.14)} onPress={() => navigation.navigate('DeleteAccount')} danger last />
             </View>
 
@@ -228,7 +235,7 @@ export default function ProfileScreen({ navigation }: any) {
   );
 }
 
-// ---------- ProfileActionCard: branded gradient-bordered button ----------
+// ---------- ProfileActionCard ----------
 
 function ProfileActionCard({
   icon,

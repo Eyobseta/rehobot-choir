@@ -8,6 +8,7 @@ import OwnProfileScreen from '../features/profile/OwnProfileScreen';
 import EditProfileScreen from '../features/profile/EditProfileScreen';
 import AppearanceScreen from '../features/profile/AppearanceScreen';
 import LanguageScreen from '../features/profile/LanguageScreen';
+import AboutScreen from '../features/profile/AboutScreen';               // NEW
 import MyAttendanceScreen from '../features/attendance/MyAttendanceScreen';
 import NotificationsScreen from '../features/notifications/NotificationsScreen';
 import NotificationPreferencesScreen from '../features/notifications/NotificationPreferencesScreen';
@@ -27,15 +28,14 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
   Appearance: undefined;
   Language: undefined;
+  About: undefined;                                                      // NEW
   MyAttendance: undefined;
   Notifications: undefined;
   NotificationPreferences: undefined;
   Funding: undefined;
-  /** `id` present = edit that campaign (draft, or published with limits). */
   CreateCampaign: { id?: string } | undefined;
   CampaignDetail: { id: string };
   AnnualDetail: undefined;
-  /** Pay Now: How to pay -> Confirm -> Submitted, all in one screen. */
   PayFlow: PayFlowParams;
   AdminFundingSetup: undefined;
   ManageInstructions: undefined;
@@ -63,6 +63,7 @@ export default function ProfileStack() {
       <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
       <Stack.Screen name="Appearance" component={AppearanceScreen} />
       <Stack.Screen name="Language" component={LanguageScreen} />
+      <Stack.Screen name="About" component={AboutScreen} />              {/* NEW */}
       <Stack.Screen name="MyAttendance" component={MyAttendanceScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />

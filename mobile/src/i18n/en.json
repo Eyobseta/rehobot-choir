@@ -52,7 +52,8 @@
     "songs": "Songs",
     "memories": "Memories",
     "chat": "Chat",
-    "profile": "Profile"
+    "profile": "Profile",
+     "aboutSection": "About" 
   },
   "auth": {
     "loginTitle": "Log in",
@@ -756,5 +757,31 @@
   "editProfile": {
     "phoneTaken": "This phone number is already in use.",
     "emailTaken": "This email is already in use."
-  }
+  },
+  "about": {
+  "title": "About",
+  "tagline": "Sing together, grow together",
+  "developerSection": "Built by",
+  "developer": "Developer",
+  "developerEmail": "Developer email",
+  "buildSection": "Build",
+  "updateChannel": "Update channel",
+  "updateId": "Update ID",
+  "updateDate": "Update published",
+  "runtimeVersion": "Runtime version",
+  "sdkVersion": "Expo SDK",
+  "embedded": "Embedded (original build)",
+  "deviceSection": "Device (leaders only)",
+  "deviceName": "Device",
+  "deviceModel": "Model",
+  "deviceOs": "OS",
+  "contactSection": "Contact",
+  "email": "Email",
+  "legalSection": "Legal",
+  "privacy": "Privacy Policy",
+  "privacyBody": "This app keeps all data inside the Rehobot Choir. Contact the choir leadership for data requests.",
+  "terms": "Terms of Service",
+  "termsBody": "By using this app you agree to respect choir members, keep their information private, and only post content you have the right to share.",
+  "footer": "Made with ♥ by {{nick}} ({{name}})\n© {{year}} Rehobot Choir"
+}
 }
