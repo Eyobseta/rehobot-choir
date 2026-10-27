@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,7 +22,7 @@ import {
   PendingApplication,
 } from '../../services/leaders';
 import { ApiError } from '../../services/api';
-import { cachedFetch } from '../../services/cache';
+import { cacheRead, cacheWrite, cacheInvalidate } from '../../services/cache';
 import { CACHE_KEYS } from '../../services/cacheKeys';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
@@ -60,18 +60,17 @@ export default function ApprovalsListScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<PendingApplication[]>([]);
-  const [loading, setLoading] = useState(false); // FIXED: No spinner flash
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  // Force fetch from server, bypassing cache
+  const fetchFresh = useCallback(async () => {
     setError(null);
     try {
-      await cachedFetch(
-        CACHE_KEYS.leaderApprovals,
-        () => listPendingApplications(),
-        (freshData) => setItems(freshData)
-      );
+      const data = await listPendingApplications();
+      setItems(data);
+      await cacheWrite(CACHE_KEYS.leaderApprovals, data);
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
@@ -81,13 +80,24 @@ export default function ApprovalsListScreen({ navigation }: Props) {
     }
   }, []);
 
+  // On mount, try cache first for fast load
+  useEffect(() => {
+    (async () => {
+      const cached = await cacheRead<PendingApplication[]>(CACHE_KEYS.leaderApprovals);
+      if (cached) {
+        setItems(cached);
+        setLoading(false);
+      }
+      // Always fetch fresh in background
+      void fetchFresh();
+    })();
+  }, [fetchFresh]);
+
+  // When screen comes into focus (e.g. returning from approve/reject), ALWAYS fetch fresh
   useFocusEffect(
     useCallback(() => {
-      if (items.length === 0) {
-        setLoading(true);
-      }
-      void load();
-    }, [load, items.length]),
+      void fetchFresh();
+    }, [fetchFresh])
   );
 
   if (loading && items.length === 0) {
@@ -117,7 +127,7 @@ export default function ApprovalsListScreen({ navigation }: Props) {
             refreshing={refreshing}
             onRefresh={() => {
               setRefreshing(true);
-              void load();
+              void fetchFresh();
             }}
             tintColor={BRAND.violet}
             colors={[BRAND.violet]}

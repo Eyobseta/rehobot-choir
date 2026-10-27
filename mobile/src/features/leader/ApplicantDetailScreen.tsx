@@ -11,7 +11,6 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,7 +28,7 @@ import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import type { LeaderStackParamList } from '../../navigation/LeaderStack';
-import { formatEthDate, EthDate } from '../../utils/ethiopianCalendar';
+import { formatEthDate } from '../../utils/ethiopianCalendar';
 
 type Props = NativeStackScreenProps<LeaderStackParamList, 'ApplicantDetail'>;
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -46,7 +45,7 @@ const accents = {
 function getSafeEthDate(year?: number | null, month?: number | null, day?: number | null): string {
   if (!year || !month || !day) return '—';
   try {
-    return formatEthDate({ year, month, day } as EthDate, 'en');
+    return formatEthDate({ year, month, day }, 'en');
   } catch {
     return '—';
   }
@@ -243,7 +242,6 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
             }}
           />
 
-          {/* Back — top-right of hero */}
           <View
             pointerEvents="box-none"
             style={{ alignSelf: 'flex-end', marginBottom: 8 }}
@@ -255,7 +253,6 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
             />
           </View>
 
-          {/* Avatar with gradient ring */}
           <LinearGradient
             colors={[BRAND.gold, BRAND.magenta, BRAND.violet, BRAND.water, BRAND.gold]}
             start={{ x: 0, y: 0 }}
@@ -293,7 +290,6 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
             {item.fullName}
           </Text>
 
-          {/* Pending chip */}
           <View
             style={{
               flexDirection: 'row',
