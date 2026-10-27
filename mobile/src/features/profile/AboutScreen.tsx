@@ -21,11 +21,9 @@ import { me } from '../../services/auth';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
-// ---------- About info (hardcoded here, editable anytime) ----------
+// ---------- App Info ----------
 const APP_INFO = {
-  version: '1.0.0',
   tagline: 'Sing together, grow together',
-  contactPhone: '+251 900 000 000',
   contactEmail: 'eyobseta50@gmail.com',
   developerName: 'Eyob Seta',
   developerNickname: 'JOSE',
@@ -51,24 +49,49 @@ export default function AboutScreen({ navigation }: any) {
     })();
   }, []);
 
-  const appVersion = Constants.expoConfig?.version ?? APP_INFO.version;
-  const buildNumber =
-    Platform.OS === 'ios'
-      ? Constants.expoConfig?.ios?.buildNumber ?? '—'
-      : Constants.expoConfig?.android?.versionCode ?? '—';
-  const runtimeVersion = Constants.expoConfig?.runtimeVersion ?? '—';
-  const sdkVersion = Constants.expoConfig?.sdkVersion ?? '—';
+  // --- CRASH-PROOF VERSION INFO ---
+  let appVersion: string = '1.0.0';
+  let buildNumber: string | number = '—';
+  let runtimeVersion: string = '—';
+  let sdkVersion: string = '—';
 
-  const updateId = Updates.updateId ?? null;
-  const updateChannel = Updates.channel ?? '—';
-  const updateCreatedAt = Updates.createdAt
-    ? new Date(Updates.createdAt).toLocaleString()
-    : '—';
-  const isEmbedded = Updates.isEmbeddedLaunch;
+  try {
+    const cfg = Constants.expoConfig;
+    if (cfg) {
+      appVersion = cfg.version ?? appVersion;
+      buildNumber =
+        Platform.OS === 'ios'
+          ? cfg.ios?.buildNumber ?? '—'
+          : cfg.android?.versionCode ?? '—';
+      runtimeVersion = String(cfg.runtimeVersion ?? '—');
+      sdkVersion = String(cfg.sdkVersion ?? '—');
+    }
+  } catch (e) {}
 
-  const deviceName = Device.deviceName ?? 'Unknown device';
-  const deviceModel = Device.modelName ?? '—';
-  const deviceOS = `${Device.osName ?? Platform.OS} ${Device.osVersion ?? ''}`.trim();
+  let updateId: string | null = null;
+  let updateChannel: string | number = '—';
+  let updateCreatedAt = '—';
+  let isEmbedded = true;
+
+  try {
+    updateId = Updates.updateId ?? null;
+    updateChannel = Updates.channel ?? '—';
+    updateCreatedAt = Updates.createdAt
+      ? new Date(Updates.createdAt).toLocaleString()
+      : '—';
+    isEmbedded = Updates.isEmbeddedLaunch ?? true;
+  } catch (e) {}
+
+  let deviceName = 'Unknown device';
+  let deviceModel = '—';
+  let deviceOS: string = Platform.OS;
+
+  try {
+    deviceName = Device.deviceName ?? 'Unknown device';
+    deviceModel = Device.modelName ?? '—';
+    deviceOS = String(`${Device.osName ?? Platform.OS} ${Device.osVersion ?? ''}`).trim();
+  } catch (e) {}
+  // --------------------------------
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -87,7 +110,7 @@ export default function AboutScreen({ navigation }: any) {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Brand card */}
+        {/* Brand Card */}
         <View
           style={[
             styles.brandCard,
@@ -108,7 +131,12 @@ export default function AboutScreen({ navigation }: any) {
           >
             {APP_INFO.tagline}
           </Text>
-          <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 10 }]}>
+          <Text
+            style={[
+              typography.caption,
+              { color: colors.textSecondary, marginTop: 10 },
+            ]}
+          >
             v{appVersion} ({buildNumber})
           </Text>
         </View>
@@ -117,7 +145,12 @@ export default function AboutScreen({ navigation }: any) {
         <SectionLabel color="#E0409A">
           {t('about.developerSection', { defaultValue: 'Built by' })}
         </SectionLabel>
-        <View style={[styles.group, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.group,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
           <InfoRow
             icon="code-slash"
             tint="#E0409A"
@@ -139,13 +172,18 @@ export default function AboutScreen({ navigation }: any) {
         <SectionLabel color={BRAND.violet}>
           {t('about.buildSection', { defaultValue: 'Build' })}
         </SectionLabel>
-        <View style={[styles.group, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.group,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
           <InfoRow
             icon="cloud-download"
             tint="#B6A0FF"
             soft={withAlpha('#B6A0FF', 0.14)}
             label={t('about.updateChannel', { defaultValue: 'Update channel' })}
-            value={updateChannel}
+            value={String(updateChannel)}
           />
           <InfoRow
             icon="git-commit"
@@ -188,7 +226,12 @@ export default function AboutScreen({ navigation }: any) {
             <SectionLabel color={BRAND.magenta}>
               {t('about.deviceSection', { defaultValue: 'Device (leaders only)' })}
             </SectionLabel>
-            <View style={[styles.group, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View
+              style={[
+                styles.group,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <InfoRow
                 icon="phone-portrait"
                 tint="#B6A0FF"
@@ -219,14 +262,21 @@ export default function AboutScreen({ navigation }: any) {
         <SectionLabel color="#0EA5E9">
           {t('about.contactSection', { defaultValue: 'Contact' })}
         </SectionLabel>
-        <View style={[styles.group, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.group,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
           <ActionRow
             icon="mail"
             tint="#EE9BBD"
             soft={withAlpha('#EE9BBD', 0.14)}
             label={t('about.email', { defaultValue: 'Email' })}
             value={APP_INFO.contactEmail}
-            onPress={() => Linking.openURL(`mailto:${APP_INFO.contactEmail}`).catch(() => {})}
+            onPress={() =>
+              Linking.openURL(`mailto:${APP_INFO.contactEmail}`).catch(() => {})
+            }
             last
           />
         </View>
@@ -235,7 +285,12 @@ export default function AboutScreen({ navigation }: any) {
         <SectionLabel color="#F59E0B">
           {t('about.legalSection', { defaultValue: 'Legal' })}
         </SectionLabel>
-        <View style={[styles.group, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View
+          style={[
+            styles.group,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
           <LegalRow
             icon="shield-checkmark"
             tint="#B6A0FF"
@@ -243,11 +298,8 @@ export default function AboutScreen({ navigation }: any) {
             label={t('about.privacy', { defaultValue: 'Privacy Policy' })}
             onPress={() =>
               Alert.alert(
-                t('about.privacy', { defaultValue: 'Privacy Policy' }),
-                t('about.privacyBody', {
-                  defaultValue:
-                    'This app keeps all data inside the Rehobot Choir. Contact the choir leadership for data requests.',
-                }),
+                'Privacy Policy',
+                'This app keeps all data inside the Rehobot Choir. Contact the choir leadership for data requests.'
               )
             }
           />
@@ -258,11 +310,8 @@ export default function AboutScreen({ navigation }: any) {
             label={t('about.terms', { defaultValue: 'Terms of Service' })}
             onPress={() =>
               Alert.alert(
-                t('about.terms', { defaultValue: 'Terms of Service' }),
-                t('about.termsBody', {
-                  defaultValue:
-                    'By using this app you agree to respect choir members, keep their information private, and only post content you have the right to share.',
-                }),
+                'Terms of Service',
+                'By using this app you agree to respect choir members, keep their information private, and only post content you have the right to share.'
               )
             }
             last
@@ -280,12 +329,8 @@ export default function AboutScreen({ navigation }: any) {
             },
           ]}
         >
-          {t('about.footer', {
-            defaultValue: 'Made with ♥ by {{nick}} ({{name}})\n© {{year}} Rehobot Choir',
-            nick: APP_INFO.developerNickname,
-            name: APP_INFO.developerName,
-            year: APP_INFO.year,
-          })}
+          Made with ♥ by {APP_INFO.developerNickname} ({APP_INFO.developerName}){'\n'}
+          © {APP_INFO.year} Rehobot Choir
         </Text>
       </ScrollView>
     </View>
@@ -294,7 +339,13 @@ export default function AboutScreen({ navigation }: any) {
 
 // ---------- Helpers ----------
 
-function SectionLabel({ color, children }: { color: string; children: React.ReactNode }) {
+function SectionLabel({
+  color,
+  children,
+}: {
+  color: string;
+  children: React.ReactNode;
+}) {
   const { theme } = useTheme();
   const { colors } = theme;
   return (
@@ -328,16 +379,24 @@ function InfoRow({
     <View
       style={[
         styles.infoRow,
-        !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+        !last && {
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: colors.border,
+        },
       ]}
     >
       <View style={[styles.iconTile, { backgroundColor: soft }]}>
         <Ionicons name={icon} size={18} color={tint} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[typography.caption, { color: colors.textSecondary }]}>{label}</Text>
+        <Text style={[typography.caption, { color: colors.textSecondary }]}>
+          {label}
+        </Text>
         <Text
-          style={[typography.bodySmall, { color: colors.text, fontWeight: '600', marginTop: 2 }]}
+          style={[
+            typography.bodySmall,
+            { color: colors.text, fontWeight: '600', marginTop: 2 },
+          ]}
           numberOfLines={3}
           selectable
         >
@@ -372,7 +431,10 @@ function ActionRow({
       onPress={onPress}
       style={({ pressed }) => [
         styles.infoRow,
-        !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+        !last && {
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: colors.border,
+        },
         pressed && { backgroundColor: withAlpha(BRAND.violet, 0.06) },
       ]}
     >
@@ -380,8 +442,15 @@ function ActionRow({
         <Ionicons name={icon} size={18} color={tint} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={[typography.caption, { color: colors.textSecondary }]}>{label}</Text>
-        <Text style={[typography.bodySmall, { color: colors.text, fontWeight: '600', marginTop: 2 }]}>
+        <Text style={[typography.caption, { color: colors.textSecondary }]}>
+          {label}
+        </Text>
+        <Text
+          style={[
+            typography.bodySmall,
+            { color: colors.text, fontWeight: '600', marginTop: 2 },
+          ]}
+        >
           {value}
         </Text>
       </View>
@@ -412,14 +481,22 @@ function LegalRow({
       onPress={onPress}
       style={({ pressed }) => [
         styles.infoRow,
-        !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+        !last && {
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: colors.border,
+        },
         pressed && { backgroundColor: withAlpha(BRAND.violet, 0.06) },
       ]}
     >
       <View style={[styles.iconTile, { backgroundColor: soft }]}>
         <Ionicons name={icon} size={18} color={tint} />
       </View>
-      <Text style={[typography.body, { color: colors.text, fontWeight: '600', flex: 1 }]}>
+      <Text
+        style={[
+          typography.body,
+          { color: colors.text, fontWeight: '600', flex: 1 },
+        ]}
+      >
         {label}
       </Text>
       <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />

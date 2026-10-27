@@ -8,7 +8,7 @@ import OwnProfileScreen from '../features/profile/OwnProfileScreen';
 import EditProfileScreen from '../features/profile/EditProfileScreen';
 import AppearanceScreen from '../features/profile/AppearanceScreen';
 import LanguageScreen from '../features/profile/LanguageScreen';
-import AboutScreen from '../features/profile/AboutScreen';               // NEW
+import AboutScreen from '../features/profile/AboutScreen'; // <--- CHECK THIS
 import MyAttendanceScreen from '../features/attendance/MyAttendanceScreen';
 import NotificationsScreen from '../features/notifications/NotificationsScreen';
 import NotificationPreferencesScreen from '../features/notifications/NotificationPreferencesScreen';
@@ -28,7 +28,7 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
   Appearance: undefined;
   Language: undefined;
-  About: undefined;                                                      // NEW
+  About: undefined; // <--- CHECK THIS
   MyAttendance: undefined;
   Notifications: undefined;
   NotificationPreferences: undefined;
@@ -63,7 +63,10 @@ export default function ProfileStack() {
       <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
       <Stack.Screen name="Appearance" component={AppearanceScreen} />
       <Stack.Screen name="Language" component={LanguageScreen} />
-      <Stack.Screen name="About" component={AboutScreen} />              {/* NEW */}
+      
+      {/* CHECK THIS LINE: */}
+      <Stack.Screen name="About" component={AboutScreen} /> 
+
       <Stack.Screen name="MyAttendance" component={MyAttendanceScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
