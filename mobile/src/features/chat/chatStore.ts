@@ -125,7 +125,6 @@ export function markLocalRead(conversationId: string): void {
   patch({ conversations: next, unreadTotal: sum(next) });
 }
 
-// ADD THIS NEW FUNCTION:
 export function clearUnreadForConversation(conversationId: string): void {
   const next = state.conversations.map((c) =>
     c.id === conversationId && c.unreadCount > 0 ? { ...c, unreadCount: 0 } : c,
@@ -142,14 +141,24 @@ export function resetChatStore(): void {
   activeConversationId = null;
   state = { conversations: [], loaded: false, unreadTotal: 0, presence: {}, connected: false };
   membersCache = null;
+  lastRefreshAt = 0;
   emit();
 }
 
 // ---------- Fetch helpers ----------
 
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+let lastRefreshAt = 0;
+const REFRESH_FLOOR_MS = 5_000;
 
-export async function refreshConversations(): Promise<void> {
+/**
+ * Fetch the conversation list. Throttled to at most once every 5s unless
+ * `force` is true. Screens call this on every focus; without the floor a
+ * fast tab-switcher could fire many requests per second.
+ */
+export async function refreshConversations(force = false): Promise<void> {
+  if (!force && Date.now() - lastRefreshAt < REFRESH_FLOOR_MS) return;
+  lastRefreshAt = Date.now();
   try {
     setConversations(await fetchConversations());
   } catch {
@@ -161,7 +170,7 @@ export function refreshConversationsSoon(): void {
   if (refreshTimer) clearTimeout(refreshTimer);
   refreshTimer = setTimeout(() => {
     refreshTimer = null;
-    refreshConversations();
+    void refreshConversations(true);
   }, 400);
 }
 

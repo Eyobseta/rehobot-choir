@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from '../../services/api';
-import { cachedFetch, cacheInvalidatePrefix } from '../../services/cache';
+import { cacheInvalidatePrefix } from '../../services/cache';
 import { CACHE_PREFIXES } from '../../services/cacheKeys';
 import type {
   ChangesPage,
@@ -21,17 +21,15 @@ function appendFile(form: FormData, field: string, file: LocalPhoto): void {
 
 // ---------------- Conversations ----------------
 
+// Chat has its own on-device SQLite store (chatCache.ts + chatSync.ts +
+// chatStore.ts). `cachedFetch` on top of that would be a second, redundant
+// cache that can disagree with SQLite. So these two functions go straight
+// to the network; the caller (ChatListScreen / ConversationScreen) is
+// responsible for painting from SQLite first, then calling these.
+
 export async function fetchConversations(): Promise<ConversationListItem[]> {
-  const key = 'chats:list';
-  const cached = await cachedFetch<ConversationListItem[]>(
-    key,
-    async () => {
-      const res = await apiGet<{ items: ConversationListItem[] }>('/chats');
-      return res.items;
-    },
-    () => {},
-  );
-  return cached ?? [];
+  const res = await apiGet<{ items: ConversationListItem[] }>('/chats');
+  return res.items;
 }
 
 export async function fetchUnread(): Promise<{
@@ -42,16 +40,6 @@ export async function fetchUnread(): Promise<{
 }
 
 export async function fetchDetail(id: string): Promise<ConversationDetail> {
-  const key = `chats:detail:${id}`;
-  const cached = await cachedFetch<ConversationDetail>(
-    key,
-    async () => {
-      const res = await apiGet<{ conversation: ConversationDetail }>(`/chats/${id}`);
-      return res.conversation;
-    },
-    () => {},
-  );
-  if (cached) return cached;
   const res = await apiGet<{ conversation: ConversationDetail }>(`/chats/${id}`);
   return res.conversation;
 }
@@ -99,7 +87,8 @@ export async function sendMessageApi(
       `/chats/${conversationId}/messages`,
       { text: draft.text, replyToId: draft.replyToId, clientId },
     );
-    await cacheInvalidatePrefix(CACHE_PREFIXES.chats || 'chats:');
+    // Sending changes the list's lastMessage + unreadCount → invalidate.
+    await cacheInvalidatePrefix(CACHE_PREFIXES.chats);
     return res.message;
   }
 
@@ -117,23 +106,28 @@ export async function sendMessageApi(
     form,
     { headers: { 'Content-Type': 'multipart/form-data' }, timeout: UPLOAD_TIMEOUT_MS },
   );
-  await cacheInvalidatePrefix(CACHE_PREFIXES.chats || 'chats:');
+  await cacheInvalidatePrefix(CACHE_PREFIXES.chats);
   return res.message;
 }
 
 export async function editMessageApi(id: string, text: string): Promise<ChatMessage> {
   const res = await apiPatch<{ message: ChatMessage }>(`/chats/messages/${id}`, { text });
+  // The list preview may show the edited text → invalidate.
+  await cacheInvalidatePrefix(CACHE_PREFIXES.chats);
   return res.message;
 }
 
 export async function deleteMessageApi(id: string): Promise<void> {
   await apiDelete(`/chats/messages/${id}`);
+  // The list preview may show "message deleted" → invalidate.
+  await cacheInvalidatePrefix(CACHE_PREFIXES.chats);
 }
 
 export async function reactApi(id: string, emoji: string): Promise<Reaction[]> {
   const res = await apiPost<{ reactions: Reaction[] }>(`/chats/messages/${id}/reactions`, {
     emoji,
   });
+  // Reactions don't change list previews; SSE handles the live update.
   return res.reactions;
 }
 
@@ -174,10 +168,12 @@ export async function createGroupApi(input: {
   form.append('name', input.name);
   form.append('memberIds', JSON.stringify(input.memberIds));
   if (input.photo) appendFile(form, 'photo', input.photo);
-  return apiPost('/chats/groups', form, {
+  const res = await apiPost<{ id: string }>('/chats/groups', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: UPLOAD_TIMEOUT_MS,
   });
+  await cacheInvalidatePrefix(CACHE_PREFIXES.chats);
+  return res;
 }
 
 export async function updateGroupApi(
@@ -198,18 +194,22 @@ export async function updateGroupApi(
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: UPLOAD_TIMEOUT_MS,
   });
+  await cacheInvalidatePrefix(CACHE_PREFIXES.chats);
 }
 
 export async function deleteGroupApi(conversationId: string): Promise<void> {
   await apiDelete(`/chats/groups/${conversationId}`);
+  await cacheInvalidatePrefix(CACHE_PREFIXES.chats);
 }
 
 export async function addMembersApi(conversationId: string, memberIds: string[]): Promise<void> {
   await apiPost(`/chats/groups/${conversationId}/members`, { memberIds });
+  await cacheInvalidatePrefix(CACHE_PREFIXES.chats);
 }
 
 export async function removeMemberApi(conversationId: string, userId: string): Promise<void> {
   await apiDelete(`/chats/groups/${conversationId}/members/${userId}`);
+  await cacheInvalidatePrefix(CACHE_PREFIXES.chats);
 }
 
 // ---------------- Moderation ----------------
@@ -224,4 +224,5 @@ export async function resolveReportApi(
   resolution: 'KEPT' | 'DELETED' | 'DISMISSED',
 ): Promise<void> {
   await apiPost(`/chats/reports/${messageId}/resolve`, { resolution });
+  await cacheInvalidatePrefix(CACHE_PREFIXES.chats);
 }
