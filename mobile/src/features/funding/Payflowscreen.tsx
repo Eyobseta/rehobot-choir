@@ -11,7 +11,7 @@ import {
   PaymentInstruction, PaymentMethod, getPaymentInstructions, declareAnnualPayment, declareCampaignPayment, makeClientId,
 } from '../../services/funding';
 import { parseEtbToMinor, formatEtb } from '../../utils/money';
-import { Card, DetailHeader, Notice, ErrorState, errorText, minorToInput, ProgressBar } from './fundingKit';
+import { Card, DetailHeader, Notice, ErrorState, errorText, minorToInput } from './fundingKit';
 
 export type PayFlowParams = {
   kind: 'annual' | 'campaign';
@@ -198,31 +198,42 @@ export default function PayFlowScreen() {
                 </View>
               )}
 
-              <AuthField
-                label={`${t('funding.amountLabel')}`}
-                iconNode={<Ionicons name="cash-outline" size={18} color={BRAND.violet} />}
-                value={amount}
-                onChangeText={(v: string) => { setAmount(v); touch(); }}
-                keyboardType="phone-pad"
-              />
-              {p.showReference !== false && (
-                <View style={{ marginTop: spacing.md }}>
+              {method ? (
+                <>
                   <AuthField
-                    label={t('funding.referenceLabel')}
-                    iconNode={<Ionicons name="receipt-outline" size={18} color={BRAND.violet} />}
-                    value={reference}
-                    onChangeText={(v: string) => { setReference(v.slice(0, 64)); touch(); }}
-                    autoCapitalize="none"
+                    label={`${t('funding.amountLabel')}`}
+                    iconNode={<Ionicons name="cash-outline" size={18} color={BRAND.violet} />}
+                    value={amount}
+                    onChangeText={(v: string) => { setAmount(v); touch(); }}
+                    keyboardType="phone-pad"
                   />
+                  {p.showReference !== false && (
+                    <View style={{ marginTop: spacing.md }}>
+                      <AuthField
+                        label={t('funding.referenceLabel')}
+                        iconNode={<Ionicons name="receipt-outline" size={18} color={BRAND.violet} />}
+                        value={reference}
+                        onChangeText={(v: string) => { setReference(v.slice(0, 64)); touch(); }}
+                        autoCapitalize="none"
+                      />
+                    </View>
+                  )}
+
+                  <Notice tone="info" text={t('funding.notPaidYet')} />
+                  {error && <View style={{ marginTop: spacing.md }}><ErrorBanner message={error} /></View>}
+
+                  <View style={{ marginTop: spacing.lg }}>
+                    <PrimaryButton label={t('funding.confirmBtn')} onPress={submit} busy={busy} />
+                  </View>
+                </>
+              ) : (
+                <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                  <ActivityIndicator color={BRAND.violet} />
+                  <Text style={{ color: colors.textSecondary, marginTop: 12 }}>
+                    {t('common.loading', { defaultValue: 'Loading…' })}
+                  </Text>
                 </View>
               )}
-
-              <Notice tone="info" text={t('funding.notPaidYet')} />
-              {error && <View style={{ marginTop: spacing.md }}><ErrorBanner message={error} /></View>}
-
-              <View style={{ marginTop: spacing.lg }}>
-                <PrimaryButton label={t('funding.confirmBtn')} onPress={submit} busy={busy} />
-              </View>
             </>
           )}
 

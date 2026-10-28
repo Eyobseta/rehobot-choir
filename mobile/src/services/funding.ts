@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch } from './api'; // assumes apiPatch has the same signature as apiPost
+import { apiGet, apiPost, apiPatch } from './api';
 import { cachedFetch, cacheInvalidatePrefix } from './cache';
 import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
 
@@ -63,7 +63,7 @@ export type AnnualRecord = {
   deadline: DateDto;
   deadlinePassed: boolean;
   canDeclare: boolean;
-    /** v2.1: sum of declarations currently pending. */
+  /** v2.1: sum of declarations currently pending. */
   pendingCount: number;
 };
 
@@ -91,7 +91,7 @@ export type MemberCampaign = {
     pendingAmount: Money | null;
     rejectionReason: string | null;
     canDeclare: boolean;
-        pendingCount: number;
+    pendingCount: number;
   };
 };
 
@@ -112,7 +112,7 @@ export type MyFunding = {
 };
 
 export type LeaderCampaignPayment = {
-  id: string; // SpecialDonationPayment id -> approve/reject
+  id: string;
   participantName: string;
   photoUrl: string | null;
   status: FundingStatus;
@@ -146,7 +146,7 @@ export type LeaderRow = {
   verifiedAt: string | null;
   rejectionReason: string | null;
   latestDeclaration: Declaration | null;
-    pendingCount: number;
+  pendingCount: number;
   pendingTotal: Money | null;
 };
 
@@ -158,7 +158,7 @@ export type LeaderList = {
 };
 
 export type LeaderDonationRow = {
-  id: string; // SpecialDonationPayment id
+  id: string;
   type: 'DONATION';
   campaign: { id: string; title: string };
   participant: { id: string; fullName: string; photoUrl: string | null };
@@ -166,7 +166,7 @@ export type LeaderDonationRow = {
   progress: Progress;
   latestDeclaration: Declaration | null;
   updatedAt: string;
-    pendingCount: number;
+  pendingCount: number;
   pendingTotal: Money | null;
 };
 
@@ -202,23 +202,23 @@ export const makeClientId = () => `${Date.now().toString(36)}-${Math.random().to
 export type DeclareInput = { clientId: string; amountMinor: number; paymentMethod: PaymentMethod; reference?: string };
 
 export const getMyFunding = async () => {
-  const cached = await cachedFetch<MyFunding>(
+  // Use cachedFetch as the single source of truth: it returns cached instantly
+  // and, on a miss, returns the fresh value without a second network call.
+  const result = await cachedFetch<MyFunding>(
     CACHE_KEYS.myFunding,
     async () => apiGet<MyFunding>('/funding/me'),
     () => {},
   );
-  if (cached) return cached;
-  return apiGet<MyFunding>('/funding/me');
+  return result as MyFunding;
 };
 
 export const getPaymentInstructions = async () => {
-  const cached = await cachedFetch<{ items: PaymentInstruction[] }>(
+  const result = await cachedFetch<{ items: PaymentInstruction[] }>(
     CACHE_KEYS.paymentInstructions,
     async () => apiGet<{ items: PaymentInstruction[] }>('/funding/payment-instructions'),
     () => {},
   );
-  if (cached) return cached;
-  return apiGet<{ items: PaymentInstruction[] }>('/funding/payment-instructions');
+  return result as { items: PaymentInstruction[] };
 };
 
 export const declareAnnualPayment = async (recordId: string, body: DeclareInput) => {
@@ -232,13 +232,12 @@ export const declareAnnualPayment = async (recordId: string, body: DeclareInput)
 
 export const getCampaignDetail = async (id: string) => {
   const key = CACHE_KEYS.campaignDetail(id);
-  const cached = await cachedFetch<{ item: CampaignDetail }>(
+  const result = await cachedFetch<{ item: CampaignDetail }>(
     key,
     async () => apiGet<{ item: CampaignDetail }>(`/funding/campaigns/${id}`),
     () => {},
   );
-  if (cached) return cached;
-  return apiGet<{ item: CampaignDetail }>(`/funding/campaigns/${id}`);
+  return result as { item: CampaignDetail };
 };
 
 export const declareCampaignPayment = async (campaignId: string, body: DeclareInput) => {
@@ -315,13 +314,12 @@ export type CampaignInput = {
 export type CampaignPatch = Partial<CampaignInput> & { reason?: string };
 
 export const leaderListCampaigns = async () => {
-  const cached = await cachedFetch<{ items: LeaderCampaign[] }>(
+  const result = await cachedFetch<{ items: LeaderCampaign[] }>(
     CACHE_KEYS.leaderCampaigns,
     async () => apiGet<{ items: LeaderCampaign[] }>('/funding/leader/campaigns'),
     () => {},
   );
-  if (cached) return cached;
-  return apiGet<{ items: LeaderCampaign[] }>('/funding/leader/campaigns');
+  return result as { items: LeaderCampaign[] };
 };
 
 export const leaderCreateCampaign = async (body: CampaignInput) => {

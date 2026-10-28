@@ -3,11 +3,12 @@ import { View, Text, ScrollView, Pressable, Alert, ActivityIndicator } from 'rea
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { CommonActions, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
 import { Card, DetailHeader, Notice, ErrorState, errorText } from './fundingKit';
 import { BRAND, withAlpha, PrimaryButton } from '../auth/Auth_UI';
 import { PaymentInstruction, getPaymentInstructions } from '../../services/funding';
+import type { PayFlowParams } from './Payflowscreen';
 
 export default function PaymentInstructionsScreen() {
   const { t } = useTranslation();
@@ -27,7 +28,10 @@ export default function PaymentInstructionsScreen() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { if (items.length === 0) void load(); else void load().catch(() => {}); /* refresh silently */ // eslint-disable-next-line
+  useEffect(() => {
+    if (items.length === 0) void load();
+    else void load().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const copy = async (val: string) => {
@@ -35,12 +39,26 @@ export default function PaymentInstructionsScreen() {
     Alert.alert(t('funding.copied'), t('funding.account'));
   };
 
-  /** Hand control back to the detail screen already in the stack and ask it to open the confirm form. */
+  /**
+   * Hand control back to the pay flow with the details we just showed.
+   * The screen previously dispatched `setParams({ openPayModal: true })`
+   * to the previous screen, but no detail screen reads that param, so
+   * tapping "I've Transferred" did nothing. Route directly to PayFlow
+   * instead, passing the same params AnnualDetail / CampaignDetail use.
+   */
   const proceed = () => {
-    const routes = navigation.getState().routes;
-    const prev = routes[routes.length - 2];
-    if (prev) navigation.dispatch({ ...CommonActions.setParams({ openPayModal: true }), source: prev.key });
-    navigation.goBack();
+    const params = route.params ?? {};
+    const payParams: PayFlowParams = {
+      kind: params.kind === 'campaign' ? 'campaign' : 'annual',
+      targetId: String(params.targetId ?? ''),
+      title: String(params.title ?? ''),
+      instructions: items,
+      defaultAmountMinor: params.defaultAmountMinor,
+      maxAmountMinor: params.maxAmountMinor,
+      showReference: params.showReference,
+      resubmit: params.resubmit,
+    };
+    navigation.replace('PayFlow', payParams);
   };
 
   return (

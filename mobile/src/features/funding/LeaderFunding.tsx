@@ -131,7 +131,7 @@ function AnnualPanel({ tools, navigation, tab, setTab }: any) {
 
   return (
     <LedgerPanel
-      key="annual" // Force remount when switching tabs
+      key="annual"
       load={load}
       onApprove={approveRecord}
       onReject={rejectRecord}
@@ -294,7 +294,7 @@ function CampaignsPanel({ tools, navigation, tab, setTab }: any) {
 
   return (
     <LedgerPanel
-      key={campaignId ? `campaign_${campaignId}` : 'campaign_none'} // Force remount when switching campaigns
+      key={campaignId ? `campaign_${campaignId}` : 'campaign_none'}
       load={load}
       onApprove={approveDonation}
       onReject={rejectDonation}
@@ -368,9 +368,14 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
     void fetchPage(1, status, q, true);
   }, [fetchPage, status, q]));
 
-  const reload = () => {
+  const reload = async () => {
     setLoading(true);
-    void fetchPage(1, status, q, true);
+    try {
+      await fetchPage(1, status, q, true);
+    } finally {
+      // Never leave the spinner on if the refresh failed.
+      setBusyId(null);
+    }
   };
 
   const act = async (id: string, fn: () => Promise<unknown>) => {
@@ -378,7 +383,6 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
     setBusyId(id); setActionError(null);
     try { await fn(); } catch (e) { setActionError(errorText(e)); }
     await reload();
-    setBusyId(null);
   };
 
   const loadTable = async () => {
@@ -452,7 +456,14 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
           return (
             <Pressable
               key={s} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={`${m.label}, ${countOf(s)}`}
-              onPress={() => { setStatus(s); setRows([]); }}
+              onPress={() => {
+                if (s === status) return;
+                setStatus(s);
+                setRows([]);
+                // Show the loading state immediately so the empty-state
+                // does not flash before the request resolves.
+                setLoading(true);
+              }}
               style={{ flex: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 4, borderRadius: 16, borderWidth: 1.5, borderColor: on ? m.color : colors.border, backgroundColor: on ? withAlpha(m.color, 0.14) : colors.surface, minHeight: 78 }}
             >
               <Ionicons name={m.icon} size={16} color={m.color} />
