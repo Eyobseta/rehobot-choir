@@ -97,52 +97,128 @@ export default function NotificationsScreen({ navigation }: Props) {
    * Navigate to the right screen based on the notification's related entity.
    * Handles both "already inside the tab" and "navigation.getParent() is null" cases.
    */
-  const navigateToEntity = useCallback((item: NotificationItem) => {
-    const entityType = item.relatedEntityType;
-    const entityId = item.relatedEntityId;
-    if (!entityType) return;
+  const navigateToEntity = useCallback(
+    (item: NotificationItem | { type?: string; entityType?: string | null; entityId?: string | null }) => {
+      const entityType =
+        'relatedEntityType' in item ? item.relatedEntityType : item.entityType;
+      const entityId =
+        'relatedEntityId' in item ? item.relatedEntityId : item.entityId;
+      if (!entityType) return;
 
-    const parent = navigation.getParent();
-    const root = parent ?? navigation;
+      const parent = navigation.getParent();
+      const root = parent ?? navigation;
 
-    switch (entityType) {
-      case 'Announcement':
-        if (entityId) {
-          // Push directly onto the current Home stack if we're inside it,
-          // otherwise route through the Home tab.
-          if (navigation.getState().routeNames.includes('AnnouncementDetail')) {
-            navigation.navigate('AnnouncementDetail', { id: entityId });
-          } else {
-            root.navigate('Home', { screen: 'AnnouncementDetail', params: { id: entityId } });
+      switch (entityType) {
+        case 'Announcement':
+          if (entityId) {
+            if (navigation.getState().routeNames.includes('AnnouncementDetail')) {
+              navigation.navigate('AnnouncementDetail', { id: entityId });
+            } else {
+              root.navigate('Home', { screen: 'AnnouncementDetail', params: { id: entityId } });
+            }
           }
-        }
-        break;
-      case 'Song':
-        if (entityId) {
-          root.navigate('Songs', { screen: 'SongDetail', params: { id: entityId } });
-        }
-        break;
-      case 'Memory':
-        if (entityId) {
-          root.navigate('Memories', { screen: 'MemoryDetail', params: { id: entityId } });
-        }
-        break;
-      case 'Event':
-        if (entityId) {
-          if (navigation.getState().routeNames.includes('EventDetail')) {
-            navigation.navigate('EventDetail', { id: entityId });
-          } else {
-            root.navigate('Home', { screen: 'EventDetail', params: { id: entityId } });
+          break;
+
+        case 'Song':
+          if (entityId) {
+            if (navigation.getState().routeNames.includes('SongDetail')) {
+              navigation.navigate('SongDetail', { id: entityId });
+            } else {
+              root.navigate('Songs', { screen: 'SongDetail', params: { id: entityId } });
+            }
           }
-        }
-        break;
-      case 'DailyQuote':
-        root.navigate('Home', { screen: 'DailyQuoteHistory' });
-        break;
-      default:
-        break;
-    }
-  }, [navigation]);
+          break;
+
+        case 'Memory':
+          if (entityId) {
+            if (navigation.getState().routeNames.includes('MemoryDetail')) {
+              navigation.navigate('MemoryDetail', { id: entityId });
+            } else {
+              root.navigate('Memories', { screen: 'MemoryDetail', params: { id: entityId } });
+            }
+          }
+          break;
+
+        case 'Event':
+          if (entityId) {
+            if (navigation.getState().routeNames.includes('EventDetail')) {
+              navigation.navigate('EventDetail', { id: entityId });
+            } else {
+              root.navigate('Home', { screen: 'EventDetail', params: { id: entityId } });
+            }
+          }
+          break;
+
+        case 'DailyQuote':
+          root.navigate('Home', { screen: 'DailyQuoteHistory' });
+          break;
+
+        // NEW: chat conversations. Chat is its own tab; Conversation lives inside it.
+        case 'ChatConversation':
+          if (entityId) {
+            root.navigate('Chat', {
+              screen: 'Conversation',
+              params: { conversationId: entityId },
+            });
+          }
+          break;
+
+        // NEW: funding entities — jump to the Funding screen.
+        case 'AnnualContributionRecord':
+        case 'SpecialDonationPayment':
+        case 'SpecialDonationCampaign':
+          root.navigate('Profile', { screen: 'Funding' });
+          break;
+
+        // BIRTHDAY has no relatedEntityId by design; the notification is
+        // informational only. LEADERSHIP_CHANGE has no dedicated screen.
+        case 'BirthdayPost':
+        case 'LeadershipHistory':
+          break;
+
+        default:
+          break;
+      }
+    },
+    [navigation],
+  );
+
+  // ---------- Push tap handler ----------
+  // A tap on a phone notification carries the same { entityType, entityId }
+  // payload that fanOut stored in the DB, so we can reuse navigateToEntity.
+  // Guarded so it works in Expo Go on Android too.
+  useEffect(() => {
+    let sub: { remove: () => void } | null = null;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const Notifications = await import('expo-notifications');
+        if (cancelled) return;
+        sub = Notifications.addNotificationResponseReceivedListener((response) => {
+          const data = response?.notification?.request?.content?.data as
+            | { entityType?: string | null; entityId?: string | null }
+            | undefined;
+          if (!data) return;
+          // Defer one tick so the navigation tree is mounted.
+          setTimeout(() => {
+            try {
+              navigateToEntity(data);
+            } catch {
+              /* ignore — navigation not ready */
+            }
+          }, 0);
+        });
+      } catch {
+        // expo-notifications unavailable (Expo Go Android); ignore.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      sub?.remove();
+    };
+  }, [navigateToEntity]);
 
   const onOpen = async (item: NotificationItem) => {
     if (!item.readAt) {

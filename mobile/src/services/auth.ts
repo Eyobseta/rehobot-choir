@@ -1,7 +1,8 @@
 import { apiPost, apiGet, http } from './api';
 import { saveTokens, clearTokens, getAccessToken } from './secureStorage';
 import { setCacheScope, cacheClearAll } from './cache';
-import { bumpSessionVersion, setSessionState } from './session'; // NEW
+import { bumpSessionVersion, setSessionState } from './session';
+import { registerDeviceWithBackend } from './pushTokens'; // NEW
 
 export type LoginInput = {
   phone: string;
@@ -37,12 +38,17 @@ export type MeResponse = {
 export async function login(input: LoginInput): Promise<LoginResponse> {
   // NEW: Lock the session BEFORE saving tokens
   bumpSessionVersion();
-  
+
   const res = await apiPost<LoginResponse>('/auth/login', input);
   await saveTokens(res.accessToken, res.refreshToken);
   // Set cache scope so the app never leaks data across accounts
   setCacheScope(res.user.id);
   setSessionState('authenticated');
+
+  // NEW: register this device for push after the tokens are saved.
+  // Fire-and-forget: a push registration failure must never block login.
+  void registerDeviceWithBackend();
+
   return res;
 }
 
