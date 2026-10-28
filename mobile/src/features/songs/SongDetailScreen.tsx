@@ -97,8 +97,10 @@ export default function SongDetailScreen({ route, navigation }: any) {
 
   const load = useCallback(async () => {
     setError(null);
-    
-    // 1. FAST LOAD: Try to read the song details from cache immediately
+
+    // 1. FAST LOAD: Try to read the song details from cache immediately.
+    //    This is what makes lyrics available offline for every song the
+    //    member has ever opened while online.
     const cachedSong = await cacheRead<SongDetail>(CACHE_KEYS.songDetail(id));
     if (cachedSong) {
       setItem(cachedSong);
@@ -106,18 +108,23 @@ export default function SongDetailScreen({ route, navigation }: any) {
     }
 
     try {
-      // 2. BACKGROUND LOAD: Fetch fresh data (or fetch if no cache exists)
+      // 2. BACKGROUND LOAD: Fetch fresh data (or fetch if no cache exists).
       const [song, favs, offline, offlineList] = await Promise.all([
         getSong(id),
         listMyFavorites(),
         isOffline(id),
         listOffline(),
       ]);
-      
+
       setItem(song);
       setIsFav(favs.some((f) => f.song.id === id));
       setSavedOffline(offline);
       setOfflineUri(offlineList.find((x) => x.songId === id)?.fileUri ?? null);
+
+      // NEW: Cache the detail (including lyrics) as soon as it loads online.
+      // This is independent of audio download, so lyrics become available
+      // offline for *every* song the member has opened at least once online.
+      await cacheWrite(CACHE_KEYS.songDetail(id), song);
     } catch (e) {
       const err = e as ApiError;
       if (!cachedSong) setError(`${err.message} [${err.code}]`); // Only show error if we had nothing in cache
@@ -183,10 +190,10 @@ export default function SongDetailScreen({ route, navigation }: any) {
       );
       setSavedOffline(true);
       setOfflineUri(entry.fileUri);
-      
-      // NEW: Ensure the lyrics/details are cached when saved offline!
+
+      // Keep this too: guarantees the detail is cached the moment audio is
+      // downloaded, even if the online-view write above somehow missed.
       await cacheWrite(CACHE_KEYS.songDetail(item.id), item);
-      
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
