@@ -1,12 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PREFIX = '@rehobot/cache/';
-const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
+// Cache policy: entries never expire by time. They persist until the user
+// clears app data, uninstalls the app, or logs out (logout calls
+// cacheClearAll()). Old entries that carry a `ttlMs` field from a previous
+// build are still readable; the field is ignored.
 type Entry<T> = {
   data: T;
   savedAt: number;
-  ttlMs: number;
+  ttlMs?: number; // legacy, unused
 };
 
 // In-memory layer: makes reads synchronous after first load.
@@ -30,31 +33,25 @@ function fullKey(key: string): string {
 }
 
 /**
- * Read from cache. Returns undefined if missing or expired (expired items are dropped).
+ * Read from cache. Returns undefined only if the key has never been written
+ * or has been explicitly removed. Cached data does not expire by age.
+ *
+ * `opts` is accepted for backwards compatibility and ignored.
  */
 export async function cacheRead<T>(
   key: string,
-  opts: { allowExpired?: boolean } = {},
+  _opts: { allowExpired?: boolean } = {},
 ): Promise<T | undefined> {
   const fk = fullKey(key);
 
   const mem = memory.get(fk) as Entry<T> | undefined;
-  if (mem) {
-    if (opts.allowExpired || Date.now() - mem.savedAt < mem.ttlMs) {
-      return mem.data;
-    }
-    memory.delete(fk);
-  }
+  if (mem) return mem.data;
 
   try {
     const raw = await AsyncStorage.getItem(fk);
     if (!raw) return undefined;
     const entry = JSON.parse(raw) as Entry<T>;
-    if (!opts.allowExpired && Date.now() - entry.savedAt >= entry.ttlMs) {
-      await AsyncStorage.removeItem(fk);
-      return undefined;
-    }
-    memory.set(fk, entry);
+    memory.set(fk, entry as Entry<unknown>);
     return entry.data;
   } catch {
     return undefined;
@@ -62,15 +59,18 @@ export async function cacheRead<T>(
 }
 
 /**
- * Write to cache. TTL defaults to 24h.
+ * Write to cache. Cached data never expires by age.
+ *
+ * The third `_ttlMs` parameter is accepted for backwards compatibility and
+ * ignored. New code should call `cacheWrite(key, data)`.
  */
 export async function cacheWrite<T>(
   key: string,
   data: T,
-  ttlMs = DEFAULT_TTL_MS,
+  _ttlMs?: number,
 ): Promise<void> {
   const fk = fullKey(key);
-  const entry: Entry<T> = { data, savedAt: Date.now(), ttlMs };
+  const entry: Entry<T> = { data, savedAt: Date.now() };
   memory.set(fk, entry as Entry<unknown>);
   try {
     await AsyncStorage.setItem(fk, JSON.stringify(entry));
@@ -136,11 +136,10 @@ export async function cachedFetch<T>(
   key: string,
   fetcher: () => Promise<T>,
   onFresh: (data: T) => void,
-  opts: { ttlMs?: number } = {},
 ): Promise<T | undefined> {
   const cached = await cacheRead<T>(key);
   const fresh = fetcher().then(async (data) => {
-    await cacheWrite(key, data, opts.ttlMs);
+    await cacheWrite(key, data);
     onFresh(data);
     return data;
   });

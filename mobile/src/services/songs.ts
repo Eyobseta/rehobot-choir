@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiDelete, http } from './api';
-import { cachedFetch, cacheInvalidatePrefix } from './cache';
+import { cachedFetch, cacheInvalidatePrefix, cacheRead } from './cache';
 import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
 
 export type SongCategory = {
@@ -96,6 +96,76 @@ export async function listMyFavorites(): Promise<FavoriteRow[]> {
     () => {},
   );
   return cached ?? [];
+}
+
+// ---------- Lyrics warm-up (one-time per app session) ----------
+
+// Guard so the warm-up runs at most once per app process. Resets on cold
+// start (module re-evaluated) and on logout (cache cleared + flag reset).
+let warmedSongLyricsThisSession = false;
+
+/**
+ * Test/diagnostic reset — exposed so you can force a re-warm without a full
+ * app reload (e.g. after adding many songs on the backend).
+ */
+export function resetSongLyricsWarmGuard(): void {
+  warmedSongLyricsThisSession = false;
+}
+
+/**
+ * Prefetch the full detail (including lyrics) of every song into the cache,
+ * so lyrics are available offline for the entire library — not only for
+ * songs the member has opened while online.
+ *
+ * Behavior:
+ *  - Runs at most once per app session.
+ *  - Skips songs whose detail is already cached (cheap `cacheRead`).
+ *  - Fetches with a concurrency cap of 3 and a small pause between batches,
+ *    to be gentle on low-end Android and on slow connections.
+ *  - Never throws: failures are swallowed so a flaky network cannot break
+ *    the Songs screen. Cached lyrics from previous runs remain valid.
+ *
+ * Call it from SongsScreen when the tab gains focus and the app is online.
+ */
+export async function warmSongDetailCache(): Promise<void> {
+  if (warmedSongLyricsThisSession) return;
+  warmedSongLyricsThisSession = true;
+
+  try {
+    // Use the cached list (it is populated by listSongs when the tab opens).
+    const summaries = await listSongs();
+    if (summaries.length === 0) return;
+
+    // Which ids still need their detail fetched?
+    const missing: string[] = [];
+    for (const s of summaries) {
+      const cached = await cacheRead<SongDetail>(CACHE_KEYS.songDetail(s.id));
+      if (!cached) missing.push(s.id);
+    }
+    if (missing.length === 0) return;
+
+    // Throttled prefetch: 3 concurrent, pause between batches.
+    const CONCURRENCY = 3;
+    const BATCH_PAUSE_MS = 200;
+
+    for (let i = 0; i < missing.length; i += CONCURRENCY) {
+      const batch = missing.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        batch.map(async (id) => {
+          try {
+            await getSong(id); // getSong writes to cache on success
+          } catch {
+            // Skip this song; try again next session.
+          }
+        }),
+      );
+      if (i + CONCURRENCY < missing.length) {
+        await new Promise((r) => setTimeout(r, BATCH_PAUSE_MS));
+      }
+    }
+  } catch {
+    // Never let warm-up break the UI.
+  }
 }
 
 // ---------- Leader-side helpers ----------
@@ -296,8 +366,7 @@ export async function leaderReturnSubmission(submissionId: string, reason: strin
 }
 
 // ---------- Zema Team member (author-side) ----------
-// Backend: zema.routes.ts. ASSUMPTION: the router is mounted at `/zema`
-// (e.g. app.use('/zema', zemaRoutes)). Change ZEMA_BASE if yours differs.
+// Backend: zema.routes.ts. Mounted at `/zema`.
 
 const ZEMA_BASE = '/zema';
 

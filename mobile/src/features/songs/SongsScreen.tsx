@@ -23,6 +23,7 @@ import {
   SongSummary,
   SongCategory,
   zemaIsTeamMember,
+  warmSongDetailCache,
 } from '../../services/songs';
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
@@ -69,6 +70,9 @@ export default function SongsScreen({ navigation }: any) {
         try { setCategories(await listCategories()); } catch {}
         try { setIsZema(await zemaIsTeamMember()); } catch { setIsZema(false); }
         await load(search);
+        // Fire-and-forget: prefetch every song's detail (lyrics) into cache
+        // once per app session. Failures are swallowed inside the helper.
+        void warmSongDetailCache();
       })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]),
