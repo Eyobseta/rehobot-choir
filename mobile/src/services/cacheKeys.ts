@@ -28,6 +28,7 @@ export const CACHE_KEYS = {
   birthdayPost: (id: string) => `birthday:post:${id}`,
   quoteToday: 'quote:today',
   quotesRecent: (days: number) => `quotes:recent:${days}`,
+  quoteDetail: (id: string) => `quote:detail:${id}`,
 
   // Notifications
   notificationsList: 'notifications:list',
