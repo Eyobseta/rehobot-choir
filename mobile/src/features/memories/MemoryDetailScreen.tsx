@@ -16,6 +16,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import {
   getMemory,
   getMyMemory,
+  getCachedMemoryById,
   MemoryDetail,
   MemoryMediaItem,
 } from '../../services/memories';
@@ -64,8 +65,14 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
         const data = mineOnly ? await getMyMemory(id) : await getMemory(id);
         setItem(data);
       } catch (e) {
-        const err = e as ApiError;
-        setError(`${err.message} [${err.code}]`);
+        // Fall back to the per-memory cache if the network fails.
+        const cached = await getCachedMemoryById(id);
+        if (cached) {
+          setItem(cached);
+        } else {
+          const err = e as ApiError;
+          setError(`${err.message} [${err.code}]`);
+        }
       } finally {
         setLoading(false);
       }

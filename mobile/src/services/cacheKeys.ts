@@ -22,6 +22,7 @@ export const CACHE_KEYS = {
   memoriesList: (search: string) => `memories:${search || '_all'}`,
   memoryYears: 'memories:years',
   memoryDetail: (id: string) => `memory:${id}`,
+  myMemories: 'memories:mine',
 
   // Birthdays & quotes
   birthdays: 'birthdays:list',

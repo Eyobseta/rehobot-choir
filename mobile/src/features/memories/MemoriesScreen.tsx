@@ -23,6 +23,7 @@ import {
   listMemoryYears,
   MemorySummary,
   MemoryYear,
+  warmMemoryDetailCache,
 } from '../../services/memories';
 import { ApiError } from '../../services/api';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
@@ -74,6 +75,9 @@ export default function MemoriesScreen({ navigation }: any) {
           // ignore
         }
         await load(search);
+        // Fire-and-forget: prefetch every memory's detail into cache once
+        // per app session. Failures are swallowed inside the helper.
+        void warmMemoryDetailCache();
       })();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]),
