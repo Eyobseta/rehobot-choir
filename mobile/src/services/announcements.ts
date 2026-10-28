@@ -1,5 +1,5 @@
 import { apiGet, apiDelete, http } from './api';
-import { cachedFetch, cacheInvalidatePrefix } from './cache';
+import { cachedFetch, cacheInvalidatePrefix, cacheRead, cacheWrite } from './cache';
 import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
 
 export type AnnouncementStatus =
@@ -73,9 +73,71 @@ export async function getAnnouncement(
     () => {},
   );
   if (cached) return cached;
-  // FIXED: This block now only runs if cachedFetch actually returned undefined
-  const res = await apiGet<{ item: AnnouncementDetail }>(`/announcements/${id}`);
-  return res.item;
+  // Fall back to the raw cache entry (helps when `cachedFetch` resolved but
+  // the write race lost; harmless if the entry does not exist).
+  const fallback = await cacheRead<AnnouncementDetail>(key);
+  if (fallback) return fallback;
+  throw new Error('Announcement not available.');
+}
+
+// ---------- Announcement detail warm-up (once per app session) ----------
+
+let warmedAnnouncementDetailThisSession = false;
+
+/** Test/diagnostic reset — force a re-warm without a full app reload. */
+export function resetAnnouncementWarmGuard(): void {
+  warmedAnnouncementDetailThisSession = false;
+}
+
+/**
+ * Prefetch the full detail of every announcement into the cache, so
+ * announcements are available offline for the whole list — not only for
+ * ones the member has opened while online.
+ *
+ * Behavior:
+ *  - Runs at most once per app session.
+ *  - Skips announcements whose detail is already cached.
+ *  - Fetches with a concurrency cap of 3 and a small pause between batches.
+ *  - Never throws: failures are swallowed.
+ */
+export async function warmAnnouncementDetailCache(): Promise<void> {
+  if (warmedAnnouncementDetailThisSession) return;
+  warmedAnnouncementDetailThisSession = true;
+
+  try {
+    const summaries = await listAnnouncements();
+    if (summaries.length === 0) return;
+
+    const missing: string[] = [];
+    for (const s of summaries) {
+      const cached = await cacheRead<AnnouncementDetail>(
+        CACHE_KEYS.announcementDetail(s.id),
+      );
+      if (!cached) missing.push(s.id);
+    }
+    if (missing.length === 0) return;
+
+    const CONCURRENCY = 3;
+    const BATCH_PAUSE_MS = 200;
+
+    for (let i = 0; i < missing.length; i += CONCURRENCY) {
+      const batch = missing.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        batch.map(async (id) => {
+          try {
+            await getAnnouncement(id);
+          } catch {
+            // skip, try next session
+          }
+        }),
+      );
+      if (i + CONCURRENCY < missing.length) {
+        await new Promise((r) => setTimeout(r, BATCH_PAUSE_MS));
+      }
+    }
+  } catch {
+    /* never break the UI */
+  }
 }
 
 export async function leaderListAnnouncements(): Promise<

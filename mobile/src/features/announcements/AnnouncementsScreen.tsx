@@ -17,6 +17,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import {
   listAnnouncements,
   AnnouncementSummary,
+  warmAnnouncementDetailCache,
 } from '../../services/announcements';
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
@@ -59,6 +60,9 @@ export default function AnnouncementsScreen({ navigation }: any) {
 
   useEffect(() => {
     void load(debounced);
+    // Fire-and-forget: prefetch every announcement's detail into cache once
+    // per app session. Failures are swallowed inside the helper.
+    void warmAnnouncementDetailCache();
   }, [debounced, load]);
 
   return (
