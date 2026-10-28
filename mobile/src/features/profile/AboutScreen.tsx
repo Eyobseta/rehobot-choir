@@ -22,8 +22,9 @@ import { me } from '../../services/auth';
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 // ---------- App Info ----------
+// Only non-translatable constants live here; every user-facing string
+// is read from i18n at render time.
 const APP_INFO = {
-  tagline: 'Sing together, grow together',
   contactEmail: 'eyobseta50@gmail.com',
   developerName: 'Eyob Seta',
   developerNickname: 'JOSE',
@@ -129,7 +130,7 @@ export default function AboutScreen({ navigation }: any) {
               { color: colors.textSecondary, marginTop: 4, textAlign: 'center' },
             ]}
           >
-            {APP_INFO.tagline}
+            {t('about.tagline', { defaultValue: 'Sing together, grow together' })}
           </Text>
           <Text
             style={[
@@ -298,8 +299,11 @@ export default function AboutScreen({ navigation }: any) {
             label={t('about.privacy', { defaultValue: 'Privacy Policy' })}
             onPress={() =>
               Alert.alert(
-                'Privacy Policy',
-                'This app keeps all data inside the Rehobot Choir. Contact the choir leadership for data requests.'
+                t('about.privacy', { defaultValue: 'Privacy Policy' }),
+                t('about.privacyBody', {
+                  defaultValue:
+                    'This app keeps all data inside the Rehobot Choir. Contact the choir leadership for data requests.',
+                }),
               )
             }
           />
@@ -310,8 +314,11 @@ export default function AboutScreen({ navigation }: any) {
             label={t('about.terms', { defaultValue: 'Terms of Service' })}
             onPress={() =>
               Alert.alert(
-                'Terms of Service',
-                'By using this app you agree to respect choir members, keep their information private, and only post content you have the right to share.'
+                t('about.terms', { defaultValue: 'Terms of Service' }),
+                t('about.termsBody', {
+                  defaultValue:
+                    'By using this app you agree to respect choir members, keep their information private, and only post content you have the right to share.',
+                }),
               )
             }
             last
@@ -329,8 +336,13 @@ export default function AboutScreen({ navigation }: any) {
             },
           ]}
         >
-          Made with ♥ by {APP_INFO.developerNickname} ({APP_INFO.developerName}){'\n'}
-          © {APP_INFO.year} Rehobot Choir
+          {t('about.footer', {
+            nick: APP_INFO.developerNickname,
+            name: APP_INFO.developerName,
+            year: APP_INFO.year,
+            defaultValue:
+              'Made with ♥ by {{nick}} ({{name}})\n© {{year}} Rehobot Choir',
+          })}
         </Text>
       </ScrollView>
     </View>

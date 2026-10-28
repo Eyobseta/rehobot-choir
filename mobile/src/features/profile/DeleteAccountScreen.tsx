@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 import { deleteOwnAccount } from '../../services/auth';
+import { unregisterDeviceFromBackend } from '../../services/pushTokens';
 import { ApiError } from '../../services/api';
 import { setSessionState } from '../../services/session';
 import { setRole } from '../../services/role';
@@ -37,15 +38,25 @@ export default function DeleteAccountScreen({ navigation }: any) {
     if (!password) return setError(t('register.fieldRequired'));
     setBusy(true);
     try {
-      // 1) Delete on backend (soft delete, revokes sessions)
+      // 1) Unregister this device from push BEFORE revoking the session,
+      //    so the backend can still authenticate the request and delete
+      //    the PushToken row. Best-effort: if it fails, deletion still
+      //    proceeds (the backend soft-delete cascades over push_tokens).
+      try {
+        await unregisterDeviceFromBackend();
+      } catch {
+        // ignore — never block account deletion on a push cleanup failure
+      }
+
+      // 2) Delete on backend (soft delete, revokes sessions)
       await deleteOwnAccount(password);
-      
-      // 2) Clear all local caches and files
+
+      // 3) Clear all local caches and files
       await clearChatCache();
       await clearAllOffline();
       await cacheClearAll();
-      
-      // 3) Reset local session state
+
+      // 4) Reset local session state
       setRole(null);
       setSessionState('unauthenticated');
     } catch (e) {
