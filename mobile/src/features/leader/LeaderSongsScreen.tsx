@@ -38,18 +38,19 @@ export default function LeaderSongsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<LeaderSongRow[]>([]);
-  const [loading, setLoading] = useState(false); // FIXED
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      await cachedFetch(
+      const data = await cachedFetch(
         CACHE_KEYS.leaderSongs,
         () => leaderListSongs(),
-        (freshData) => setItems(freshData)
+        (freshData) => setItems(freshData),
       );
+      if (data) setItems(data);
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);

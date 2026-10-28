@@ -40,7 +40,7 @@ export default function SongReviewScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<PendingSubmission[]>([]);
-  const [loading, setLoading] = useState(false); // FIXED
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,11 +70,12 @@ export default function SongReviewScreen({ navigation }: any) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      await cachedFetch(
+      const data = await cachedFetch(
         CACHE_KEYS.leaderSubmissions,
         () => leaderListPendingSubmissions(),
-        (freshData) => setItems(freshData)
+        (freshData) => setItems(freshData),
       );
+      if (data) setItems(data);
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);

@@ -27,7 +27,7 @@ export default function SongCategoriesScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<SongCategory[]>([]);
-  const [loading, setLoading] = useState(false); // FIXED
+  const [loading, setLoading] = useState(false);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,11 +36,12 @@ export default function SongCategoriesScreen({ navigation }: any) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      await cachedFetch(
+      const data = await cachedFetch(
         CACHE_KEYS.leaderCategories,
         () => listCategories(),
-        (freshData) => setItems(freshData)
+        (freshData) => setItems(freshData),
       );
+      if (data) setItems(data);
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
@@ -49,9 +50,9 @@ export default function SongCategoriesScreen({ navigation }: any) {
     }
   }, []);
 
-  useFocusEffect(useCallback(() => { 
+  useFocusEffect(useCallback(() => {
     if (items.length === 0) setLoading(true);
-    void load(); 
+    void load();
   }, [load, items.length]));
 
   const onAdd = async () => {

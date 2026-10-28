@@ -28,7 +28,7 @@ export default function ZemaTeamScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<ZemaMember[]>([]);
-  const [loading, setLoading] = useState(false); // FIXED
+  const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -37,16 +37,17 @@ export default function ZemaTeamScreen({ navigation }: any) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      await cachedFetch(
+      const data = await cachedFetch(
         CACHE_KEYS.leaderZema,
         () => leaderListZemaMembers(),
-        (freshData) => setItems(freshData)
+        (freshData) => setItems(freshData),
       );
-    } catch (e) { 
-      const err = e as ApiError; 
-      setError(`${err.message} [${err.code}]`); 
-    } finally { 
-      setLoading(false); 
+      if (data) setItems(data);
+    } catch (e) {
+      const err = e as ApiError;
+      setError(`${err.message} [${err.code}]`);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -54,10 +55,10 @@ export default function ZemaTeamScreen({ navigation }: any) {
     try { setDirectory(await listMembers('')); } catch {}
   }, []);
 
-  useFocusEffect(useCallback(() => { 
+  useFocusEffect(useCallback(() => {
     if (items.length === 0) setLoading(true);
-    void load(); 
-    void loadDirectory(); 
+    void load();
+    void loadDirectory();
   }, [load, loadDirectory, items.length]));
 
   const onAdd = async (userId: string) => {
