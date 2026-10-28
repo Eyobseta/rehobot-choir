@@ -1,7 +1,37 @@
 import { prisma } from '../db/prisma';
 import { fanOut } from '../notifications/notifications.service';
 import { NotificationType, UserRole } from '@prisma/client';
-import { todayEthiopian, addEthDays } from '../utils/ethiopianCalendar';
+import { todayEthiopian, addEthDays, EthDate } from '../utils/ethiopianCalendar';
+import { ethFields } from '../utils/eth-fields';
+
+/**
+ * Ensure a BirthdayPost row exists for this user/year/day, returning its id.
+ * Mirrors `ensureBirthdayPostFor` in members.service — kept here as a small
+ * duplicate so the job does not depend on the members module.
+ */
+async function ensureBirthdayPost(
+  userId: string,
+  year: number,
+  month: number,
+  day: number,
+): Promise<string> {
+  const existing = await prisma.birthdayPost.findUnique({
+    where: { userId_year: { userId, year } },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const bday: EthDate = { year, month, day };
+  const created = await prisma.birthdayPost.create({
+    data: {
+      userId,
+      year,
+      ...(ethFields(bday, 'birthday') as any),
+    },
+    select: { id: true },
+  });
+  return created.id;
+}
 
 export async function runBirthdayJob(): Promise<{ today: number; tomorrow: number }> {
   const today = todayEthiopian();
@@ -31,26 +61,38 @@ export async function runBirthdayJob(): Promise<{ today: number; tomorrow: numbe
   const allRecipientIds = allRecipients.map((r) => r.id);
 
   for (const p of bdayToday) {
+    const postId = await ensureBirthdayPost(
+      p.userId,
+      today.year,
+      p.dateOfBirthEthMonth,
+      p.dateOfBirthEthDay,
+    );
     const recipients = allRecipientIds.filter((id) => id !== p.userId);
     await fanOut({
       recipients,
       type: NotificationType.BIRTHDAY,
       title: `${p.fullName}'s birthday is today!`,
       body: 'Send them a birthday wish.',
-      relatedEntityType: null,
-      relatedEntityId: null,
+      relatedEntityType: 'BirthdayPost',
+      relatedEntityId: postId,
     });
   }
 
   for (const p of bdayTomorrow) {
+    const postId = await ensureBirthdayPost(
+      p.userId,
+      tomorrow.year,
+      p.dateOfBirthEthMonth,
+      p.dateOfBirthEthDay,
+    );
     const recipients = allRecipientIds.filter((id) => id !== p.userId);
     await fanOut({
       recipients,
       type: NotificationType.BIRTHDAY,
       title: `${p.fullName}'s birthday is tomorrow`,
       body: 'Plan ahead — send them a birthday wish.',
-      relatedEntityType: null,
-      relatedEntityId: null,
+      relatedEntityType: 'BirthdayPost',
+      relatedEntityId: postId,
     });
   }
 

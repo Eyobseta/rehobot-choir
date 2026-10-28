@@ -153,7 +153,7 @@ export default function NotificationsScreen({ navigation }: Props) {
           root.navigate('Home', { screen: 'DailyQuoteHistory' });
           break;
 
-        // NEW: chat conversations. Chat is its own tab; Conversation lives inside it.
+        // Chat conversations. Chat is its own tab; Conversation lives inside it.
         case 'ChatConversation':
           if (entityId) {
             root.navigate('Chat', {
@@ -163,16 +163,29 @@ export default function NotificationsScreen({ navigation }: Props) {
           }
           break;
 
-        // NEW: funding entities — jump to the Funding screen.
+        // Funding entities — jump to the Funding screen.
         case 'AnnualContributionRecord':
         case 'SpecialDonationPayment':
         case 'SpecialDonationCampaign':
           root.navigate('Profile', { screen: 'Funding' });
           break;
 
-        // BIRTHDAY has no relatedEntityId by design; the notification is
-        // informational only. LEADERSHIP_CHANGE has no dedicated screen.
+        // Birthday notifications point at the BirthdayPost row now; open the
+        // detail screen so the member can react / comment.
         case 'BirthdayPost':
+          if (entityId) {
+            if (navigation.getState().routeNames.includes('BirthdayDetail')) {
+              navigation.navigate('BirthdayDetail', { postId: entityId });
+            } else {
+              root.navigate('Home', {
+                screen: 'BirthdayDetail',
+                params: { postId: entityId },
+              });
+            }
+          }
+          break;
+
+        // No dedicated screen for leadership changes; informational only.
         case 'LeadershipHistory':
           break;
 
