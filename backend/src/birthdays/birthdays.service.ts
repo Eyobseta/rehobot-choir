@@ -1,5 +1,6 @@
 import { prisma } from '../db/prisma';
 import { ApiError } from '../utils/ApiError';
+import { todayEthiopian, compareEth } from '../utils/ethiopianCalendar';
 
 const ALLOWED_EMOJIS = new Set([
   '❤️',
@@ -87,6 +88,24 @@ export async function getBirthdayPostDetail(postId: string, viewerId: string) {
   });
 
   if (!post) throw ApiError.notFound('Birthday post not found.');
+
+  // RULE: a member must not open their own birthday post before the birthday
+  // day. Others can open it whenever the Home list shows it to them. The
+  // owner gets access once the Ethiopian date is today or in the past.
+  if (post.userId === viewerId) {
+    const today = todayEthiopian();
+    const postDay = {
+      year: post.birthdayEthYear,
+      month: post.birthdayEthMonth,
+      day: post.birthdayEthDay,
+    };
+    if (compareEth(postDay, today) > 0) {
+      throw ApiError.forbidden(
+        'Your birthday post will be visible on your birthday.',
+        'BIRTHDAY_NOT_YET_VISIBLE',
+      );
+    }
+  }
 
   const myReaction =
     post.reactions.find((r) => r.userId === viewerId)?.emoji ?? null;

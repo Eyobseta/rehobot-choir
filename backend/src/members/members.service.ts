@@ -221,7 +221,7 @@ export async function updateOwnProfile(
         },
         create: {
           userId,
-          fullName: 'New Member', // FIXED: was user.phone, replaced with a cleaner placeholder
+          fullName: 'New Member',
           gender: 'UNKNOWN',
           emergencyContactName: input.emergencyContactName?.trim() ?? '',
           emergencyContactPhone: input.emergencyContactPhone?.trim() ?? '',
@@ -230,7 +230,7 @@ export async function updateOwnProfile(
           dateOfBirthEthYear: 2000,
           dateOfBirthEthMonth: 1,
           dateOfBirthEthDay: 1,
-          dateOfBirthGregorian: new Date(Date.UTC(2008, 0, 1)), // FIXED: real Gregorian for 2000 E.C.
+          dateOfBirthGregorian: new Date(Date.UTC(2008, 0, 1)),
         },
       });
     }
@@ -251,7 +251,7 @@ export async function updateOwnProfilePhoto(userId: string, newUrl: string, newP
     },
     create: {
       userId,
-      fullName: 'New Member', // FIXED: was user.phone
+      fullName: 'New Member',
       gender: 'UNKNOWN',
       emergencyContactName: '',
       emergencyContactPhone: '',
@@ -260,7 +260,7 @@ export async function updateOwnProfilePhoto(userId: string, newUrl: string, newP
       dateOfBirthEthYear: 2000,
       dateOfBirthEthMonth: 1,
       dateOfBirthEthDay: 1,
-      dateOfBirthGregorian: new Date(Date.UTC(2008, 0, 1)), // FIXED: real Gregorian for 2000 E.C.
+      dateOfBirthGregorian: new Date(Date.UTC(2008, 0, 1)),
     },
   });
 
@@ -287,8 +287,18 @@ export async function listBirthdaysWithPosts(viewerId: string) {
     },
   });
 
-  const todayList = profiles.filter((p) => p.dateOfBirthEthMonth === today.month && p.dateOfBirthEthDay === today.day);
-  const tomorrowList = profiles.filter((p) => p.dateOfBirthEthMonth === tomorrow.month && p.dateOfBirthEthDay === tomorrow.day);
+  const todayList = profiles.filter(
+    (p) => p.dateOfBirthEthMonth === today.month && p.dateOfBirthEthDay === today.day,
+  );
+  // RULE: a member must never see their own "tomorrow" bubble. Everyone else
+  // (including the birthday person on their actual birthday, via `todayList`)
+  // is unaffected.
+  const tomorrowList = profiles.filter(
+    (p) =>
+      p.dateOfBirthEthMonth === tomorrow.month &&
+      p.dateOfBirthEthDay === tomorrow.day &&
+      p.userId !== viewerId,
+  );
 
   const shapeWithPost = async (arr: typeof profiles) => {
     const out: {
@@ -317,7 +327,7 @@ export async function listBirthdaysWithPosts(viewerId: string) {
 
 async function ensureBirthdayPostFor(userId: string, dobEthMonth: number, dobEthDay: number) {
   const today = todayEthiopian();
-  
+
   const bday: EthDate = { year: today.year, month: dobEthMonth, day: dobEthDay };
 
   const existing = await prisma.birthdayPost.findUnique({
