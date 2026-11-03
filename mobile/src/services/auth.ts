@@ -1,8 +1,10 @@
 import { apiPost, apiGet, http } from './api';
 import { saveTokens, clearTokens, getAccessToken } from './secureStorage';
-import { setCacheScope, cacheClearAll } from './cache';
+import { setCacheScope } from './cache';
+import { setPersisterScope } from './queryPersister';
+import { clearAllCaches } from './cacheWipe';
 import { bumpSessionVersion, setSessionState } from './session';
-import { registerDeviceWithBackend } from './pushTokens'; // NEW
+import { registerDeviceWithBackend } from './pushTokens';
 
 export type LoginInput = {
   phone: string;
@@ -36,16 +38,19 @@ export type MeResponse = {
 };
 
 export async function login(input: LoginInput): Promise<LoginResponse> {
-  // NEW: Lock the session BEFORE saving tokens
+  // Lock the session BEFORE saving tokens
   bumpSessionVersion();
 
   const res = await apiPost<LoginResponse>('/auth/login', input);
   await saveTokens(res.accessToken, res.refreshToken);
-  // Set cache scope so the app never leaks data across accounts
+
+  // Cache scope: keep the hand-rolled cache and the TanStack persister
+  // in lockstep. Both are wiped together on logout via clearAllCaches().
   setCacheScope(res.user.id);
+  setPersisterScope(res.user.id);
+
   setSessionState('authenticated');
 
-  // NEW: register this device for push after the tokens are saved.
   // Fire-and-forget: a push registration failure must never block login.
   void registerDeviceWithBackend();
 
@@ -53,7 +58,7 @@ export async function login(input: LoginInput): Promise<LoginResponse> {
 }
 
 export async function logout(): Promise<void> {
-  // NEW: Lock the session immediately
+  // Lock the session immediately
   bumpSessionVersion();
   setSessionState('unauthenticated');
 
@@ -71,7 +76,9 @@ export async function logout(): Promise<void> {
   } finally {
     await clearTokens();
     setCacheScope(null);
-    await cacheClearAll();
+    setPersisterScope(null);
+    // Single wipe path: TanStack + cache.ts.
+    await clearAllCaches();
   }
 }
 
@@ -97,7 +104,7 @@ export async function changePassword(
 export async function deleteOwnAccount(
   password: string,
 ): Promise<{ ok: true }> {
-  // NEW: Lock the session
+  // Lock the session
   bumpSessionVersion();
 
   const res = await http.delete<{ ok: true }>('/auth/me', {
@@ -106,7 +113,8 @@ export async function deleteOwnAccount(
   // Session just ended; clear everything.
   await clearTokens();
   setCacheScope(null);
-  await cacheClearAll();
+  setPersisterScope(null);
+  await clearAllCaches();
   setSessionState('unauthenticated');
   return res.data;
 }

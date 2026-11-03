@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,28 +14,20 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { me } from '../../services/auth';
-import { listEvents, EventSummary } from '../../services/events';
-import {
-  listAnnouncements,
-  AnnouncementSummary,
-} from '../../services/announcements';
-import {
-  listBirthdays,
-  BirthdayPerson,
-  BirthdaysResponse,
-} from '../../services/members';
+import type { BirthdayPerson } from '../../services/birthdays';
 import DailyQuoteCard from '../quotes/DailyQuoteCard';
-import {
-  listNotifications,
-  NotificationItem,
-} from '../../services/notifications';
-import { setUnread } from '../../services/unreadStore';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import { utcDateToEth, formatEthDate } from '../../utils/ethiopianCalendar';
+import {
+  useBirthdaysQuery,
+  useMeQuery,
+  useNotificationsPreviewQuery,
+  useRecentAnnouncementsQuery,
+  useUpcomingEventQuery,
+} from './useHomeData';
+import { useHomeUnreadSync } from './useHomeUnreadSync';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -66,67 +58,57 @@ export default function HomeScreen({ navigation }: any) {
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
 
-  const [mustChange, setMustChange] = useState(false);
-  const [upcoming, setUpcoming] = useState<EventSummary | null>(null);
-  const [recent, setRecent] = useState<AnnouncementSummary[]>([]);
-  const [birthdays, setBirthdays] = useState<BirthdaysResponse>({
-    today: [],
-    tomorrow: [],
-  });
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  // ---------------- Data (cached-first, always revalidating) ----------------
+  const meQ = useMeQuery();
+  const evQ = useUpcomingEventQuery();
+  const annQ = useRecentAnnouncementsQuery();
+  const bdayQ = useBirthdaysQuery();
+  const notifQ = useNotificationsPreviewQuery(5);
 
-  // Prevent state updates after unmount to avoid memory leaks
-  const isMounted = useRef(true);
-  useEffect(() => {
-    isMounted.current = true;
-    return () => { isMounted.current = false; };
-  }, []);
+  // Shared unread badge — one source of truth across Home + Notifications.
+  useHomeUnreadSync(notifQ.data);
 
-  // ---------- Data loading ----------
-  const load = useCallback(async () => {
-    // Use Promise.allSettled for parallel loading (fastest performance)
-    const [meRes, eventsRes, annRes, bdayRes, notifRes] = await Promise.allSettled([
-      me(),
-      listEvents('upcoming'),
-      listAnnouncements(),
-      listBirthdays(),
-      listNotifications(5),
+  // Per-section values (fallbacks identical to pre-refactor defaults).
+  const mustChange = meQ.data?.user.mustChangePassword ?? false;
+  const upcoming = evQ.data ?? null;
+  const recent = annQ.data ?? [];
+  const birthdays = bdayQ.data ?? { today: [], tomorrow: [] };
+  const notifications = notifQ.data ?? [];
+
+  // True first load = nothing in cache yet AND a fetch is in flight.
+  const firstLoad =
+    meQ.isPending &&
+    evQ.isPending &&
+    annQ.isPending &&
+    bdayQ.isPending &&
+    notifQ.isPending;
+
+  // Any background refresh happening (does NOT block UI).
+  const refreshing =
+    meQ.isFetching ||
+    evQ.isFetching ||
+    annQ.isFetching ||
+    bdayQ.isFetching ||
+    notifQ.isFetching;
+
+  // Any query has good cache but the last refresh failed -> "showing saved data".
+  const showingSavedData =
+    (evQ.isError && evQ.data !== undefined) ||
+    (annQ.isError && annQ.data !== undefined) ||
+    (bdayQ.isError && bdayQ.data !== undefined) ||
+    (notifQ.isError && notifQ.data !== undefined);
+
+  const refetchAll = async () => {
+    await Promise.all([
+      meQ.refetch(),
+      evQ.refetch(),
+      annQ.refetch(),
+      bdayQ.refetch(),
+      notifQ.refetch(),
     ]);
+  };
 
-    if (!isMounted.current) return; // Component unmounted, stop here
-
-    if (meRes.status === 'fulfilled') {
-      setMustChange(meRes.value.user.mustChangePassword);
-    }
-    if (eventsRes.status === 'fulfilled') {
-      setUpcoming(eventsRes.value[0] ?? null);
-    }
-    if (annRes.status === 'fulfilled') {
-      setRecent(annRes.value.slice(0, 3));
-    }
-    if (bdayRes.status === 'fulfilled') {
-      setBirthdays(bdayRes.value);
-    }
-    if (notifRes.status === 'fulfilled') {
-      setNotifications(notifRes.value);
-      setUnread(notifRes.value.filter((n) => !n.readAt).length);
-    }
-
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      // Don't wipe the screen on refocus if we already have data
-      if (!upcoming && !recent.length) setLoading(true);
-      void load();
-    }, [load, upcoming, recent.length]),
-  );
-
-  // ---------- Motion: drifting blobs + scroll parallax ----------
+  // ---------------- Motion: drifting blobs + scroll parallax ----------------
   const scrollY = useRef(new Animated.Value(0)).current;
   const drift = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -166,12 +148,10 @@ export default function HomeScreen({ navigation }: any) {
     extrapolate: 'clamp',
   });
 
-  // ---------- Derived UI values ----------
+  // ---------------- Derived UI values ----------------
   const unreadCount = notifications.filter((n) => !n.readAt).length;
   const goNotifications = () =>
-    navigation.navigate('Profile', {
-      screen: 'Notifications',
-    });
+    navigation.navigate('Profile', { screen: 'Notifications' });
   const openBirthday = (b: BirthdayPerson) =>
     navigation.navigate('BirthdayDetail', { postId: b.postId });
 
@@ -227,11 +207,8 @@ export default function HomeScreen({ navigation }: any) {
         contentContainerStyle={{ flexGrow: 1, paddingBottom: spacing.xl * 2 }}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              void load();
-            }}
+            refreshing={refreshing && !firstLoad}
+            onRefresh={refetchAll}
             tintColor={BRAND.violet}
             colors={[BRAND.violet]}
             progressViewOffset={insets.top}
@@ -378,6 +355,32 @@ export default function HomeScreen({ navigation }: any) {
         </LinearGradient>
 
         <View style={{ paddingHorizontal: spacing.lg }}>
+          {/* =============== SAVED-DATA NOTICE =============== */}
+          {showingSavedData && (
+            <View
+              accessibilityRole="text"
+              style={{
+                marginTop: 12,
+                marginBottom: 4,
+                alignSelf: 'flex-start',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: withAlpha(AMBER, 0.14),
+                borderWidth: 1,
+                borderColor: withAlpha(AMBER, 0.4),
+              }}
+            >
+              <Ionicons name="cloud-offline" size={13} color={AMBER} />
+              <Text style={[typography.caption, { color: AMBER, fontWeight: '800' }]}>
+                {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+              </Text>
+            </View>
+          )}
+
           {/* =============== DAILY QUOTE (overlaps hero) =============== */}
           <Reveal index={0}>
             <View style={{ marginTop: -30 }}>
@@ -514,40 +517,40 @@ export default function HomeScreen({ navigation }: any) {
                 title={t('home.explore', { defaultValue: 'Explore' })}
                 accent={SKY}
               />
-            <View style={styles.bento}>
-              <View style={styles.bentoRow}>
-                <QuickTile
-                  flex={1.35}
-                  icon="musical-notes"
-                  label={t('tabs.songs')}
-                  tint={BRAND.violet}
-                  onPress={() => navigation.getParent()?.navigate('Songs')}
-                />
-                <QuickTile
-                  flex={1}
-                  icon="images"
-                  label={t('tabs.memories')}
-                  tint={SKY}
-                  onPress={() => navigation.getParent()?.navigate('Memories')}
-                />
+              <View style={styles.bento}>
+                <View style={styles.bentoRow}>
+                  <QuickTile
+                    flex={1.35}
+                    icon="musical-notes"
+                    label={t('tabs.songs')}
+                    tint={BRAND.violet}
+                    onPress={() => navigation.getParent()?.navigate('Songs')}
+                  />
+                  <QuickTile
+                    flex={1}
+                    icon="images"
+                    label={t('tabs.memories')}
+                    tint={SKY}
+                    onPress={() => navigation.getParent()?.navigate('Memories')}
+                  />
+                </View>
+                <View style={styles.bentoRow}>
+                  <QuickTile
+                    flex={1}
+                    icon="calendar"
+                    label={t('events.title')}
+                    tint={AMBER}
+                    onPress={() => navigation.navigate('EventsList')}
+                  />
+                  <QuickTile
+                    flex={1.35}
+                    icon="people"
+                    label={t('directory.title')}
+                    tint={TEAL}
+                    onPress={() => navigation.navigate('Directory')}
+                  />
+                </View>
               </View>
-              <View style={styles.bentoRow}>
-                <QuickTile
-                  flex={1}
-                  icon="calendar"
-                  label={t('events.title')}
-                  tint={AMBER}
-                  onPress={() => navigation.navigate('EventsList')}
-                />
-                <QuickTile
-                  flex={1.35}
-                  icon="people"
-                  label={t('directory.title')}
-                  tint={TEAL}
-                  onPress={() => navigation.navigate('Directory')}
-                />
-              </View>
-            </View>
             </View>
           </Reveal>
 
@@ -860,7 +863,8 @@ export default function HomeScreen({ navigation }: any) {
             </LinearGradient>
           </Reveal>
 
-          {loading && !refreshing && (
+          {/* First-load spinner (only when nothing is cached) */}
+          {firstLoad && (
             <ActivityIndicator
               style={{ marginTop: spacing.lg }}
               color={BRAND.violet}

@@ -1,11 +1,11 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
-import { getTodayQuote, DailyQuote } from '../../services/quotes';
+import { useTodayQuoteQuery } from '../home/useHomeData';
 
 const CREAM = '#FFF4E0';
 const SAND = '#F3DDB8';
@@ -16,28 +16,14 @@ export default function DailyQuoteCard() {
   const { spacing, radius, typography } = theme;
   const navigation = useNavigation<any>();
 
-  const [quote, setQuote] = useState<DailyQuote | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Cached-first: renders cached quote immediately, revalidates in background.
+  const { data: quote, isPending, isError } = useTodayQuoteQuery();
 
-  const load = useCallback(async () => {
-    try {
-      setQuote(await getTodayQuote());
-    } catch {
-      setQuote(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      void load();
-    }, [load]),
-  );
-
+  // Only show the "loading" ellipsis when there is genuinely no cache.
+  const loading = isPending && quote === undefined;
   const published = !!quote;
 
+  // Same UI as before, driven by cached data.
   return (
     <View
       style={{
@@ -62,6 +48,7 @@ export default function DailyQuoteCard() {
           end={{ x: 1, y: 1 }}
           style={{ borderRadius: 28, padding: spacing.lg, overflow: 'hidden' }}
         >
+          {/* ... unchanged decorative elements ... */}
           <Text
             pointerEvents="none"
             style={{
@@ -89,7 +76,6 @@ export default function DailyQuoteCard() {
               backgroundColor: 'rgba(255,232,180,0.16)',
             }}
           />
-
           <View
             pointerEvents="none"
             style={{

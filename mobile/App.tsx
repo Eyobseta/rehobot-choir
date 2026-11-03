@@ -6,6 +6,8 @@ import {
   DarkTheme,
 } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { useIsRestoring } from '@tanstack/react-query';
 
 import { initI18n } from './src/i18n';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
@@ -21,7 +23,13 @@ import { configureForegroundNotifications } from './src/services/pushTokens';
 import AppLoading from './src/components/AppLoading';
 import ChangePasswordScreen from './src/features/profile/ChangePasswordScreen';
 
+import { queryClient } from './src/services/queryClient';
+import { makePersistOptions } from './src/services/queryPersister';
+import { clearAllCaches } from './src/services/cacheWipe';
+
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+const PERSIST_OPTIONS = makePersistOptions();
 
 type BootState = {
   i18nReady: boolean;
@@ -31,6 +39,11 @@ type BootState = {
 
 function AppShell() {
   const { theme, ready: themeReady } = useTheme();
+
+  // True while the persisted TanStack cache is being hydrated. We wait for
+  // this before rendering any screen, so Home shows cached data on cold start
+  // instead of flashing an empty spinner.
+  const isRestoring = useIsRestoring();
 
   const [boot, setBoot] = useState<BootState>({
     i18nReady: false,
@@ -62,7 +75,6 @@ function AppShell() {
 
   // --- Phase 3: session + role + cache + mustChangePassword ---
   useEffect(() => {
-    // Wait for i18n before we do anything else
     if (!boot.i18nReady) return;
 
     (async () => {
@@ -78,10 +90,12 @@ function AppShell() {
 
           const { me } = await import('./src/services/auth');
           const { setCacheScope } = await import('./src/services/cache');
+          const { setPersisterScope } = await import('./src/services/queryPersister');
 
           try {
             const res = await me();
             setCacheScope(res.user.id);
+            setPersisterScope(res.user.id);
             setMustChangePassword(res.user.mustChangePassword);
           } catch {
             // Offline — fall back to token scope via role
@@ -101,10 +115,16 @@ function AppShell() {
       }
     })();
 
+    // FIXED: forced logout also wipes every cache (TanStack + cache.ts).
     setOnUnauthorized(async () => {
       const { setRole } = await import('./src/services/role');
       setRole(null);
       setAuthenticated(false);
+      try {
+        await clearAllCaches();
+      } catch {
+        // non-fatal
+      }
     });
 
     const unsubscribe = subscribeSession((s) => {
@@ -139,8 +159,9 @@ function AppShell() {
     return () => sub.remove();
   }, [authenticated]);
 
-  // --- Show loading until ALL phases are done ---
-  const allReady = boot.i18nReady && boot.themeReady && boot.sessionReady;
+  // --- Wait for ALL phases + cache hydration before rendering ---
+  const allReady =
+    boot.i18nReady && boot.themeReady && boot.sessionReady && !isRestoring;
 
   if (!allReady) {
     return <AppLoading />;
@@ -185,7 +206,12 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppShell />
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={PERSIST_OPTIONS}
+        >
+          <AppShell />
+        </PersistQueryClientProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

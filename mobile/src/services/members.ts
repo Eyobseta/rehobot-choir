@@ -15,8 +15,8 @@ export type MemberDetail = {
   phone?: string;
   email?: string | null;
   gender?: string | null;
-  dateOfBirth?: EthDate | null;   // FIXED: was string
-  joiningDate?: EthDate | null;   // FIXED: was string
+  dateOfBirth?: EthDate | null;
+  joiningDate?: EthDate | null;
   lastActiveAt?: string | null;
   deleted: boolean;
 };
@@ -35,8 +35,8 @@ export type OwnProfile = {
   official: {
     fullName: string;
     gender: string;
-    dateOfBirth: EthDate | null;   // FIXED: was string
-    joiningDate: EthDate | null;   // FIXED: was string
+    dateOfBirth: EthDate | null;
+    joiningDate: EthDate | null;
   };
 };
 
@@ -132,6 +132,11 @@ export type BirthdaysResponse = {
   tomorrow: BirthdayPerson[];
 };
 
+/**
+ * @deprecated Use `listBirthdays` from `services/birthdays.ts` (cached via
+ * `cachedFetch`) or the `useBirthdaysQuery` hook. This function is not cached
+ * and diverges from the shared cache used by Home and the birthday screens.
+ */
 export async function listBirthdays(): Promise<BirthdaysResponse> {
   return apiGet<BirthdaysResponse>('/members/birthdays');
 }
