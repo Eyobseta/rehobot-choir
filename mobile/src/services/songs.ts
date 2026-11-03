@@ -1,6 +1,6 @@
 import { apiGet, apiPost, apiDelete, http } from './api';
-import { cachedFetch, cacheInvalidatePrefix, cacheRead } from './cache';
-import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
+import { cacheInvalidatePrefix } from './cache';
+import { CACHE_PREFIXES } from './cacheKeys';
 
 export type SongCategory = {
   id: string;
@@ -33,45 +33,20 @@ export type FavoriteRow = {
   };
 };
 
-// ---------- Member (cached) ----------
+// ---------- Member (TanStack Query manages the cache now) ----------
 
 export async function listSongs(search?: string): Promise<SongSummary[]> {
-  const key = CACHE_KEYS.songsList(search ?? '');
-  const cached = await cachedFetch<SongSummary[]>(
-    key,
-    async () => {
-      const q = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
-      const res = await apiGet<{ items: SongSummary[] }>(`/songs${q}`);
-      return res.items;
-    },
-    () => {},
-  );
-  return cached ?? [];
+  const q = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
+  const res = await apiGet<{ items: SongSummary[] }>(`/songs${q}`);
+  return res.items;
 }
 
 export async function listCategories(): Promise<SongCategory[]> {
-  const cached = await cachedFetch<SongCategory[]>(
-    CACHE_KEYS.songCategories,
-    async () => {
-      const res = await apiGet<{ items: SongCategory[] }>('/songs/categories');
-      return res.items;
-    },
-    () => {},
-  );
-  return cached ?? [];
+  const res = await apiGet<{ items: SongCategory[] }>('/songs/categories');
+  return res.items;
 }
 
 export async function getSong(id: string): Promise<SongDetail> {
-  const key = CACHE_KEYS.songDetail(id);
-  const cached = await cachedFetch<SongDetail>(
-    key,
-    async () => {
-      const res = await apiGet<{ item: SongDetail }>(`/songs/${id}`);
-      return res.item;
-    },
-    () => {},
-  );
-  if (cached) return cached;
   const res = await apiGet<{ item: SongDetail }>(`/songs/${id}`);
   return res.item;
 }
@@ -87,88 +62,11 @@ export async function unfavoriteSong(id: string): Promise<void> {
 }
 
 export async function listMyFavorites(): Promise<FavoriteRow[]> {
-  const cached = await cachedFetch<FavoriteRow[]>(
-    CACHE_KEYS.songFavorites,
-    async () => {
-      const res = await apiGet<{ items: FavoriteRow[] }>('/songs/favorites/me');
-      return res.items;
-    },
-    () => {},
-  );
-  return cached ?? [];
+  const res = await apiGet<{ items: FavoriteRow[] }>('/songs/favorites/me');
+  return res.items;
 }
 
-// ---------- Lyrics warm-up (one-time per app session) ----------
-
-// Guard so the warm-up runs at most once per app process. Resets on cold
-// start (module re-evaluated) and on logout (cache cleared + flag reset).
-let warmedSongLyricsThisSession = false;
-
-/**
- * Test/diagnostic reset — exposed so you can force a re-warm without a full
- * app reload (e.g. after adding many songs on the backend).
- */
-export function resetSongLyricsWarmGuard(): void {
-  warmedSongLyricsThisSession = false;
-}
-
-/**
- * Prefetch the full detail (including lyrics) of every song into the cache,
- * so lyrics are available offline for the entire library — not only for
- * songs the member has opened while online.
- *
- * Behavior:
- *  - Runs at most once per app session.
- *  - Skips songs whose detail is already cached (cheap `cacheRead`).
- *  - Fetches with a concurrency cap of 3 and a small pause between batches,
- *    to be gentle on low-end Android and on slow connections.
- *  - Never throws: failures are swallowed so a flaky network cannot break
- *    the Songs screen. Cached lyrics from previous runs remain valid.
- *
- * Call it from SongsScreen when the tab gains focus and the app is online.
- */
-export async function warmSongDetailCache(): Promise<void> {
-  if (warmedSongLyricsThisSession) return;
-  warmedSongLyricsThisSession = true;
-
-  try {
-    // Use the cached list (it is populated by listSongs when the tab opens).
-    const summaries = await listSongs();
-    if (summaries.length === 0) return;
-
-    // Which ids still need their detail fetched?
-    const missing: string[] = [];
-    for (const s of summaries) {
-      const cached = await cacheRead<SongDetail>(CACHE_KEYS.songDetail(s.id));
-      if (!cached) missing.push(s.id);
-    }
-    if (missing.length === 0) return;
-
-    // Throttled prefetch: 3 concurrent, pause between batches.
-    const CONCURRENCY = 3;
-    const BATCH_PAUSE_MS = 200;
-
-    for (let i = 0; i < missing.length; i += CONCURRENCY) {
-      const batch = missing.slice(i, i + CONCURRENCY);
-      await Promise.all(
-        batch.map(async (id) => {
-          try {
-            await getSong(id); // getSong writes to cache on success
-          } catch {
-            // Skip this song; try again next session.
-          }
-        }),
-      );
-      if (i + CONCURRENCY < missing.length) {
-        await new Promise((r) => setTimeout(r, BATCH_PAUSE_MS));
-      }
-    }
-  } catch {
-    // Never let warm-up break the UI.
-  }
-}
-
-// ---------- Leader-side helpers ----------
+// ---------- Leader-side helpers (unchanged) ----------
 
 export type LeaderSongRow = {
   id: string;
@@ -308,8 +206,6 @@ export async function leaderDeleteSong(id: string): Promise<void> {
   await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
 }
 
-// ---------- Categories (leader) ----------
-
 export async function leaderCreateCategory(name: string): Promise<SongCategory> {
   const res = await http.post<{ category: SongCategory }>('/leaders/song-categories', { name });
   await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
@@ -326,8 +222,6 @@ export async function leaderDeleteCategory(id: string): Promise<void> {
   await apiDelete(`/leaders/song-categories/${id}`);
   await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
 }
-
-// ---------- Zema Team (FIXED: matches backend /leaders/zema-members) ----------
 
 export async function leaderListZemaMembers(): Promise<ZemaMember[]> {
   const res = await apiGet<{ items: ZemaMember[] }>('/leaders/zema-members');
@@ -346,8 +240,6 @@ export async function leaderRemoveZemaMember(userId: string): Promise<{ ok: true
   return res;
 }
 
-// ---------- Song Submissions (FIXED: matches backend /leaders/song-submissions) ----------
-
 export async function leaderListPendingSubmissions(): Promise<PendingSubmission[]> {
   const res = await apiGet<{ items: PendingSubmission[] }>('/leaders/song-submissions');
   return res.items;
@@ -364,9 +256,6 @@ export async function leaderReturnSubmission(submissionId: string, reason: strin
   await cacheInvalidatePrefix(CACHE_PREFIXES.songs);
   return res;
 }
-
-// ---------- Zema Team member (author-side) ----------
-// Backend: zema.routes.ts. Mounted at `/zema`.
 
 const ZEMA_BASE = '/zema';
 
@@ -402,11 +291,6 @@ export async function zemaListMySubmissions(): Promise<MySubmission[]> {
   return res.items;
 }
 
-/**
- * The backend has no dedicated "am I a member?" endpoint: every /zema route
- * rejects non-members with 403. So we probe the lightest route and map a
- * 403 to `false`. Any other failure (network, 500, ...) is rethrown.
- */
 export async function zemaIsTeamMember(): Promise<boolean> {
   try {
     await apiGet<{ items: MySubmission[] }>(`${ZEMA_BASE}/submissions/me`);

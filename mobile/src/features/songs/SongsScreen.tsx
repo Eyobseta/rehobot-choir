@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,19 +14,17 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../../theme/ThemeContext';
+import { SongSummary, zemaIsTeamMember } from '../../services/songs';
+import { BRAND, withAlpha, ErrorBanner } from '../auth/Auth_UI';
+import { useMe } from '../chat/chatSession';
 import {
-  listSongs,
-  listCategories,
-  SongSummary,
-  SongCategory,
-  zemaIsTeamMember,
+  useSongsQuery,
+  useSongCategoriesQuery,
   warmSongDetailCache,
-} from '../../services/songs';
-import { ApiError } from '../../services/api';
-import { BRAND, withAlpha } from '../auth/Auth_UI';
+} from './useSongs';
 
 const PLACEHOLDERS: readonly [string, string][] = [
   [BRAND.violet, BRAND.magenta],
@@ -40,43 +38,39 @@ export default function SongsScreen({ navigation }: any) {
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
+  const userId = useMe()?.id ?? null;
 
   const [search, setSearch] = useState('');
+  const [debounced, setDebounced] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [categories, setCategories] = useState<SongCategory[]>([]);
-  const [items, setItems] = useState<SongSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isZema, setIsZema] = useState(false);
 
-  const load = useCallback(async (q: string) => {
-    setError(null);
-    try {
-      setItems(await listSongs(q));
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(search.trim()), 300);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  const q = useSongsQuery(debounced);
+  const catQ = useSongCategoriesQuery();
+
+  // Evaluate zema membership once on mount
+  useEffect(() => {
+    void (async () => {
+      try { setIsZema(await zemaIsTeamMember()); } catch { setIsZema(false); }
+    })();
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      void (async () => {
-        try { setCategories(await listCategories()); } catch {}
-        try { setIsZema(await zemaIsTeamMember()); } catch { setIsZema(false); }
-        await load(search);
-        // Fire-and-forget: prefetch every song's detail (lyrics) into cache
-        // once per app session. Failures are swallowed inside the helper.
-        void warmSongDetailCache();
-      })();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [search]),
-  );
+  const items = q.data ?? [];
+  const categories = catQ.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
+
+  // Warm the lyrics cache in the background
+  useEffect(() => {
+    if (!items.length) return;
+    void warmSongDetailCache(qc, userId, items.map((s) => s.id));
+  }, [items, qc, userId]);
 
   const filtered = categoryId
     ? items.filter((s) => s.category?.id === categoryId)
@@ -84,7 +78,6 @@ export default function SongsScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Hero */}
       <LinearGradient
         colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
         start={{ x: 0, y: 0 }}
@@ -115,7 +108,6 @@ export default function SongsScreen({ navigation }: any) {
           </View>
         </View>
 
-        {/* Search */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.28)', backgroundColor: 'rgba(255,255,255,0.16)', marginTop: 16 }}>
           <Ionicons name="search" size={18} color="rgba(255,255,255,0.85)" />
           <TextInput
@@ -134,7 +126,6 @@ export default function SongsScreen({ navigation }: any) {
           )}
         </View>
 
-        {/* Quick actions */}
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
           <HeroAction icon="heart" label={t('songs.favorites')} onPress={() => navigation.navigate('Favorites')} />
           <HeroAction icon="cloud-download" label={t('songs.offline')} onPress={() => navigation.navigate('Offline')} />
@@ -143,7 +134,6 @@ export default function SongsScreen({ navigation }: any) {
           )}
         </View>
 
-        {/* Category chips */}
         {categories.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }} contentContainerStyle={{ paddingRight: 8 }}>
             <CategoryChip label={t('songs.allCategories')} active={categoryId === null} onPress={() => setCategoryId(null)} />
@@ -157,14 +147,37 @@ export default function SongsScreen({ navigation }: any) {
         )}
       </LinearGradient>
 
-      {error && (
-        <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md, borderRadius: 14, backgroundColor: withAlpha(colors.error, 0.1), borderWidth: 1, borderColor: withAlpha(colors.error, 0.35) }}>
-          <Ionicons name="alert-circle" size={18} color={colors.error} />
-          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
+      {showingSavedData && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: withAlpha('#F59E0B', 0.14),
+              borderWidth: 1,
+              borderColor: withAlpha('#F59E0B', 0.4),
+            }}
+          >
+            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+              {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+            </Text>
+          </View>
         </View>
       )}
 
-      {loading ? (
+      {q.isError && q.data === undefined && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <ErrorBanner message={(q.error as any)?.message ?? 'Something went wrong.'} />
+        </View>
+      )}
+
+      {firstLoad ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={BRAND.violet} />
         </View>
@@ -175,7 +188,7 @@ export default function SongsScreen({ navigation }: any) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(search); }} tintColor={BRAND.violet} colors={[BRAND.violet]} />
+            <RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} tintColor={BRAND.violet} colors={[BRAND.violet]} />
           }
           ListEmptyComponent={
             <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
@@ -201,7 +214,7 @@ export default function SongsScreen({ navigation }: any) {
 }
 
 function HeroAction({ icon, label, onPress }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; onPress: () => void }) {
-  const scale = React.useRef(new Animated.Value(1)).current;
+  const scale = useRef(new Animated.Value(1)).current;
   const to = (v: number) => Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
   return (
     <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
@@ -215,7 +228,7 @@ function HeroAction({ icon, label, onPress }: { icon: React.ComponentProps<typeo
 }
 
 function CategoryChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const scale = React.useRef(new Animated.Value(1)).current;
+  const scale = useRef(new Animated.Value(1)).current;
   const to = (v: number) => Animated.spring(scale, { toValue: v, speed: 40, bounciness: 8, useNativeDriver: true }).start();
   return (
     <Animated.View style={{ transform: [{ scale }], marginRight: 8 }}>
@@ -231,9 +244,9 @@ function SongCard({ item, index, onPress }: { item: SongSummary; index: number; 
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
   const palette = PLACEHOLDERS[index % PLACEHOLDERS.length];
-  const enter = React.useRef(new Animated.Value(0)).current;
-  const scale = React.useRef(new Animated.Value(1)).current;
-  React.useEffect(() => {
+  const enter = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
     const a = Animated.timing(enter, { toValue: 1, duration: 420, delay: Math.min(index, 8) * 50, easing: Easing.out(Easing.cubic), useNativeDriver: true });
     a.start();
     return () => a.stop();

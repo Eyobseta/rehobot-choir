@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,20 +9,13 @@ import {
   Animated,
   Easing,
   Modal,
-  StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  getSong,
-  SongDetail,
-  favoriteSong,
-  unfavoriteSong,
-  listMyFavorites,
-} from '../../services/songs';
+import { SongDetail } from '../../services/songs';
 import { ApiError } from '../../services/api';
 import {
   saveOffline,
@@ -39,10 +32,13 @@ import {
   getCurrentKey,
   SimpleStatus,
 } from '../../services/audioPlayer';
-import { BRAND, withAlpha } from '../auth/Auth_UI';
+import { BRAND, withAlpha, ErrorBanner } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
-import { cacheRead, cacheWrite } from '../../services/cache';
-import { CACHE_KEYS } from '../../services/cacheKeys';
+import {
+  useSongDetailQuery,
+  useFavoriteSongsQuery,
+  useToggleFavoriteMutation,
+} from './useSongs';
 
 const HEART = '#E0245E';
 const YT = '#FF0000';
@@ -54,20 +50,29 @@ export default function SongDetailScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { id } = route.params;
 
-  const [item, setItem] = useState<SongDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isFav, setIsFav] = useState(false);
+  // --- TanStack Queries ---
+  const q = useSongDetailQuery(id);
+  const favQ = useFavoriteSongsQuery();
+  const toggleFavMut = useToggleFavoriteMutation();
+
+  const item = q.data;
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
+
+  // Derive favorite status from the favorites list cache
+  const isFav = favQ.data?.some((f) => f.song.id === id) ?? false;
+  const isBusyFav = toggleFavMut.isPending;
+
+  // --- Local UI State ---
   const [savedOffline, setSavedOffline] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [lyricsOpen, setLyricsOpen] = useState(true);
   const [offlineUri, setOfflineUri] = useState<string | null>(null);
   const [playerStatus, setPlayerStatus] = useState<SimpleStatus>(getSnapshot());
-
+  const [offlineBusy, setOfflineBusy] = useState(false);
   const [downloadPct, setDownloadPct] = useState<number | null>(null);
   const [lyricsFullscreen, setLyricsFullscreen] = useState(false);
 
-  // Lyrics entrance animation (inline card)
+  // --- Animations ---
   const lyricsEnter = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (lyricsOpen) {
@@ -81,7 +86,6 @@ export default function SongDetailScreen({ route, navigation }: any) {
     }
   }, [lyricsOpen, lyricsEnter]);
 
-  // Fullscreen lyrics fade-in
   const fsEnter = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (lyricsFullscreen) {
@@ -95,67 +99,32 @@ export default function SongDetailScreen({ route, navigation }: any) {
     }
   }, [lyricsFullscreen, fsEnter]);
 
-  const load = useCallback(async () => {
-    setError(null);
-
-    // 1. FAST LOAD: Try to read the song details from cache immediately.
-    //    This is what makes lyrics available offline for every song the
-    //    member has ever opened while online.
-    const cachedSong = await cacheRead<SongDetail>(CACHE_KEYS.songDetail(id));
-    if (cachedSong) {
-      setItem(cachedSong);
-      setLoading(false); // Hide spinner instantly!
-    }
-
-    try {
-      // 2. BACKGROUND LOAD: Fetch fresh data (or fetch if no cache exists).
-      const [song, favs, offline, offlineList] = await Promise.all([
-        getSong(id),
-        listMyFavorites(),
-        isOffline(id),
-        listOffline(),
-      ]);
-
-      setItem(song);
-      setIsFav(favs.some((f) => f.song.id === id));
-      setSavedOffline(offline);
-      setOfflineUri(offlineList.find((x) => x.songId === id)?.fileUri ?? null);
-
-      // NEW: Cache the detail (including lyrics) as soon as it loads online.
-      // This is independent of audio download, so lyrics become available
-      // offline for *every* song the member has opened at least once online.
-      await cacheWrite(CACHE_KEYS.songDetail(id), song);
-    } catch (e) {
-      const err = e as ApiError;
-      if (!cachedSong) setError(`${err.message} [${err.code}]`); // Only show error if we had nothing in cache
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
+  // --- Player Status Subscription ---
   useEffect(() => {
     const unsub = subscribe(setPlayerStatus);
     setPlayerStatus(getSnapshot());
     return unsub;
   }, []);
 
-  const toggleFav = async () => {
+  // --- Check Offline Status ---
+  useEffect(() => {
     if (!item) return;
-    setBusy(true);
-    try {
-      if (isFav) await unfavoriteSong(item.id);
-      else await favoriteSong(item.id);
-      setIsFav(!isFav);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setBusy(false);
-    }
+    void (async () => {
+      const isSaved = await isOffline(item.id);
+      setSavedOffline(isSaved);
+      if (isSaved) {
+        const list = await listOffline();
+        setOfflineUri(list.find((x) => x.songId === item.id)?.fileUri ?? null);
+      } else {
+        setOfflineUri(null);
+      }
+    })();
+  }, [item]);
+
+  // --- Handlers ---
+  const onToggleFav = () => {
+    if (!item) return;
+    toggleFavMut.mutate({ id: item.id, isFav });
   };
 
   const onToggleOffline = async () => {
@@ -165,21 +134,20 @@ export default function SongDetailScreen({ route, navigation }: any) {
       return;
     }
     if (savedOffline) {
-      setBusy(true);
+      setOfflineBusy(true);
       try {
         await removeOffline(item.id);
         setSavedOffline(false);
         setOfflineUri(null);
       } catch (e) {
-        const err = e as ApiError;
-        setError(`${err.message} [${err.code}]`);
+        Alert.alert('Error', (e as any)?.message ?? 'Could not remove offline file');
       } finally {
-        setBusy(false);
+        setOfflineBusy(false);
       }
       return;
     }
 
-    setBusy(true);
+    setOfflineBusy(true);
     setDownloadPct(0);
     try {
       const entry = await saveOffline(
@@ -190,15 +158,10 @@ export default function SongDetailScreen({ route, navigation }: any) {
       );
       setSavedOffline(true);
       setOfflineUri(entry.fileUri);
-
-      // Keep this too: guarantees the detail is cached the moment audio is
-      // downloaded, even if the online-view write above somehow missed.
-      await cacheWrite(CACHE_KEYS.songDetail(item.id), item);
     } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
+      Alert.alert('Error', (e as any)?.message ?? 'Could not save offline');
     } finally {
-      setBusy(false);
+      setOfflineBusy(false);
       setDownloadPct(null);
     }
   };
@@ -226,8 +189,8 @@ export default function SongDetailScreen({ route, navigation }: any) {
     await playTrack({ key: item.id, uri, title: item.title });
   };
 
-  // ONLY show full screen spinner if we have NO item at all (not even cached)
-  if (loading && !item) {
+  // --- Render Checks ---
+  if (firstLoad) {
     return (
       <View
         style={{
@@ -253,9 +216,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
           padding: spacing.xl,
         }}
       >
-        <Text style={[typography.body, { color: colors.error }]}>
-          {error ?? t('songs.notFound')}
-        </Text>
+        <ErrorBanner message={((q as any).error)?.message ?? 'Error'} />
         <View style={{ position: 'absolute', top: insets.top + 12, right: 16 }}>
           <GlassBackButton onPress={() => navigation.goBack()} size={44} />
         </View>
@@ -270,6 +231,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
 
   const hasAudio = Boolean(offlineUri || item.audioUrl);
   const downloading = downloadPct !== null;
+  const isAnyBusy = isBusyFav || downloading || offlineBusy;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -380,8 +342,8 @@ export default function SongDetailScreen({ route, navigation }: any) {
               tint={isFav ? '#FFFFFF' : HEART}
               active={isFav}
               bgActive={HEART}
-              onPress={toggleFav}
-              disabled={busy || downloading}
+              onPress={onToggleFav}
+              disabled={isAnyBusy}
             />
 
             {downloading ? (
@@ -394,13 +356,38 @@ export default function SongDetailScreen({ route, navigation }: any) {
                 active={savedOffline}
                 bgActive="rgba(255,255,255,0.28)"
                 onPress={onToggleOffline}
-                disabled={busy}
+                disabled={isAnyBusy}
               />
             )}
           </View>
         </LinearGradient>
 
         <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.lg }}>
+          {/* ---------- Saved Data Notice ---------- */}
+          {showingSavedData && (
+            <View style={{ marginBottom: spacing.md }}>
+              <View
+                style={{
+                  alignSelf: 'flex-start',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  backgroundColor: withAlpha('#F59E0B', 0.14),
+                  borderWidth: 1,
+                  borderColor: withAlpha('#F59E0B', 0.4),
+                }}
+              >
+                <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+                <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+                  {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* ---------- YouTube ---------- */}
           {item.youtubeUrl && (
             <Pressable
@@ -446,7 +433,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
           {hasAudio && (
             <Pressable
               onPress={onTogglePlay}
-              disabled={busy || downloading}
+              disabled={isAnyBusy}
               style={{
                 marginTop: 14,
                 borderRadius: 18,
@@ -456,7 +443,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                 shadowRadius: 12,
                 shadowOffset: { width: 0, height: 6 },
                 elevation: 5,
-                opacity: busy || downloading ? 0.6 : 1,
+                opacity: isAnyBusy ? 0.6 : 1,
               }}
               accessibilityRole="button"
             >
@@ -731,24 +718,9 @@ export default function SongDetailScreen({ route, navigation }: any) {
             </View>
           )}
 
-          {error && (
-            <View
-              style={{
-                marginTop: spacing.md,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                padding: spacing.md,
-                borderRadius: 14,
-                backgroundColor: withAlpha(colors.error, 0.1),
-                borderWidth: 1,
-                borderColor: withAlpha(colors.error, 0.35),
-              }}
-            >
-              <Ionicons name="alert-circle" size={18} color={colors.error} />
-              <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
-                {error}
-              </Text>
+          {q.isError && q.data === undefined && (
+            <View style={{ marginTop: spacing.md }}>
+              <ErrorBanner message={((q as any).error)?.message ?? 'Error'} />
             </View>
           )}
         </View>

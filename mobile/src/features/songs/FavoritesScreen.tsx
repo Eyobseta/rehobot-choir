@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl,
   Animated, Easing,
@@ -6,13 +6,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { listMyFavorites, FavoriteRow } from '../../services/songs';
-import { ApiError } from '../../services/api';
-import { BRAND, withAlpha } from '../auth/Auth_UI';
+import { FavoriteRow } from '../../services/songs';
+import { BRAND, withAlpha, ErrorBanner } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { useFavoriteSongsQuery } from './useSongs';
 
 const HEART = '#E0245E';
 const PALETTES: readonly [string, string][] = [
@@ -28,19 +27,10 @@ export default function FavoritesScreen({ navigation }: any) {
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState<FavoriteRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setError(null);
-    try { setItems(await listMyFavorites()); }
-    catch (e) { const err = e as ApiError; setError(`${err.message} [${err.code}]`); }
-    finally { setLoading(false); setRefreshing(false); }
-  }, []);
-
-  useFocusEffect(useCallback(() => { setLoading(true); void load(); }, [load]));
+  const q = useFavoriteSongsQuery();
+  const items = q.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -63,7 +53,7 @@ export default function FavoritesScreen({ navigation }: any) {
           <GlassBackButton onPress={() => navigation.goBack()} size={44} />
         </View>
 
-        {!loading && (
+        {!firstLoad && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.18)' }}>
             <Ionicons name="musical-notes" size={13} color="#FFFFFF" />
             <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>{items.length} songs</Text>
@@ -71,14 +61,22 @@ export default function FavoritesScreen({ navigation }: any) {
         )}
       </LinearGradient>
 
-      {error && (
-        <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md, borderRadius: 14, backgroundColor: withAlpha(colors.error, 0.1), borderWidth: 1, borderColor: withAlpha(colors.error, 0.35) }}>
-          <Ionicons name="alert-circle" size={18} color={colors.error} />
-          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
+      {showingSavedData && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#F59E0B', 0.14), borderWidth: 1, borderColor: withAlpha('#F59E0B', 0.4) }}>
+            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>{t('home.showingSavedData', { defaultValue: 'Showing saved data' })}</Text>
+          </View>
         </View>
       )}
 
-      {loading ? (
+      {q.isError && q.data === undefined && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <ErrorBanner message={(q.error as any)?.message ?? 'Error'} />
+        </View>
+      )}
+
+      {firstLoad ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>
       ) : (
         <FlatList
@@ -86,7 +84,7 @@ export default function FavoritesScreen({ navigation }: any) {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl }}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} tintColor={BRAND.violet} colors={[BRAND.violet]} />}
+          refreshControl={<RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} tintColor={BRAND.violet} colors={[BRAND.violet]} />}
           ListEmptyComponent={
             <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
               <LinearGradient colors={[BRAND.violet, BRAND.magenta, BRAND.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' }}>
