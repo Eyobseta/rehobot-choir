@@ -10,6 +10,7 @@ import {
   ScrollView,
   Animated,
   Easing,
+  StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { SongSummary, zemaIsTeamMember } from '../../services/songs';
 import { BRAND, withAlpha, ErrorBanner } from '../auth/Auth_UI';
 import { useMe } from '../chat/chatSession';
+import GlassBackButton from '../../components/GlassBackButton';
 import {
   useSongsQuery,
   useSongCategoriesQuery,
@@ -54,7 +56,6 @@ export default function SongsScreen({ navigation }: any) {
   const q = useSongsQuery(debounced);
   const catQ = useSongCategoriesQuery();
 
-  // Evaluate zema membership once on mount
   useEffect(() => {
     void (async () => {
       try { setIsZema(await zemaIsTeamMember()); } catch { setIsZema(false); }
@@ -66,7 +67,6 @@ export default function SongsScreen({ navigation }: any) {
   const firstLoad = q.isPending && q.data === undefined;
   const showingSavedData = q.isError && q.data !== undefined;
 
-  // Warm the lyrics cache in the background
   useEffect(() => {
     if (!items.length) return;
     void warmSongDetailCache(qc, userId, items.map((s) => s.id));
@@ -76,8 +76,8 @@ export default function SongsScreen({ navigation }: any) {
     ? items.filter((s) => s.category?.id === categoryId)
     : items;
 
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+  const ListHeader = () => (
+    <View style={{ marginHorizontal: -spacing.lg, marginTop: -spacing.md }}>
       <LinearGradient
         colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
         start={{ x: 0, y: 0 }}
@@ -146,9 +146,18 @@ export default function SongsScreen({ navigation }: any) {
           </ScrollView>
         )}
       </LinearGradient>
+    </View>
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Floating Back Button (stays on top while scrolling) */}
+      <View style={{ position: 'absolute', top: insets.top + 16, right: 16, zIndex: 10 }}>
+        <GlassBackButton onPress={() => navigation.goBack()} size={44} />
+      </View>
 
       {showingSavedData && (
-        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, zIndex: 10 }}>
           <View
             style={{
               alignSelf: 'flex-start',
@@ -172,7 +181,7 @@ export default function SongsScreen({ navigation }: any) {
       )}
 
       {q.isError && q.data === undefined && (
-        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, zIndex: 10 }}>
           <ErrorBanner message={(q.error as any)?.message ?? 'Something went wrong.'} />
         </View>
       )}
@@ -186,6 +195,7 @@ export default function SongsScreen({ navigation }: any) {
           data={filtered}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={ListHeader}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl }}
           refreshControl={
             <RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} tintColor={BRAND.violet} colors={[BRAND.violet]} />
@@ -272,4 +282,4 @@ function SongCard({ item, index, onPress }: { item: SongSummary; index: number; 
       </Pressable>
     </Animated.View>
   );
-}
+} 

@@ -14,9 +14,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Clipboard from 'expo-clipboard';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { useTheme } from '../../theme/ThemeContext';
 import { SongDetail } from '../../services/songs';
-import { ApiError } from '../../services/api';
 import {
   saveOffline,
   isOffline,
@@ -71,6 +73,10 @@ export default function SongDetailScreen({ route, navigation }: any) {
   const [offlineBusy, setOfflineBusy] = useState(false);
   const [downloadPct, setDownloadPct] = useState<number | null>(null);
   const [lyricsFullscreen, setLyricsFullscreen] = useState(false);
+
+  // --- Copy & Share State ---
+  const [copied, setCopied] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   // --- Animations ---
   const lyricsEnter = useRef(new Animated.Value(0)).current;
@@ -187,6 +193,47 @@ export default function SongDetailScreen({ route, navigation }: any) {
       return;
     }
     await playTrack({ key: item.id, uri, title: item.title });
+  };
+
+  // --- Copy Lyrics ---
+  const onCopyLyrics = async () => {
+    if (!item?.lyrics) return;
+    await Clipboard.setStringAsync(item.lyrics);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // --- Share as PDF ---
+  const onSharePDF = async () => {
+    if (!item?.lyrics) return;
+    setPdfLoading(true);
+    try {
+      const html = `
+        <html>
+          <head>
+            <style>
+              body { font-family: Helvetica, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
+              h1 { color: #6C3FE0; text-align: center; font-size: 28px; margin-bottom: 5px; }
+              h2 { color: #E0409A; text-align: center; font-size: 16px; font-weight: normal; margin-top: 0; margin-bottom: 30px; }
+              .lyrics { font-size: 16px; font-style: italic; white-space: pre-wrap; text-align: center; margin-top: 40px; }
+              .footer { text-align: center; margin-top: 60px; font-size: 12px; color: #999; }
+            </style>
+          </head>
+          <body>
+            <h1>${item.title}</h1>
+            ${item.category ? `<h2>${item.category.name}</h2>` : ''}
+            <div class="lyrics">${item.lyrics}</div>
+            <div class="footer">Rehobot Choir</div>
+          </body>
+        </html>
+      `;
+      const { uri } = await Print.printToFileAsync({ html });
+      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+    } catch (e) {
+      Alert.alert('Error', 'Could not generate PDF.');
+    } finally {
+      setPdfLoading(false);
+    }
   };
 
   // --- Render Checks ---
@@ -646,7 +693,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                     contentContainerStyle={{
                       paddingHorizontal: 22,
                       paddingTop: 16,
-                      paddingBottom: 22,
+                      paddingBottom: 16,
                     }}
                     nestedScrollEnabled
                     showsVerticalScrollIndicator
@@ -674,45 +721,67 @@ export default function SongDetailScreen({ route, navigation }: any) {
                         {item.lyrics}
                       </Text>
                     </View>
+                  </ScrollView>
 
-                    <LinearGradient
-                      colors={[
-                        'transparent',
-                        withAlpha(BRAND.violet, 0.35),
-                        'transparent',
-                      ]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={{
-                        height: 1,
-                        marginTop: 20,
-                        marginBottom: 12,
-                        borderRadius: 1,
-                      }}
-                    />
-                    <View
+                  {/* NEW: Bottom Action Row for Copy & Share */}
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end',
+                      gap: 12,
+                      paddingHorizontal: 22,
+                      paddingBottom: 18,
+                      paddingTop: 10,
+                      borderTopWidth: 1,
+                      borderTopColor: withAlpha(colors.border, 0.5),
+                    }}
+                  >
+                    <Pressable
+                      onPress={onCopyLyrics}
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        gap: 8,
-                        alignSelf: 'center',
+                        gap: 6,
+                        paddingVertical: 8,
+                        paddingHorizontal: 12,
+                        borderRadius: 10,
+                        backgroundColor: withAlpha(BRAND.violet, 0.1),
                       }}
                     >
-                      <Ionicons name="musical-notes" size={13} color={colors.textSecondary} />
-                      <Text
-                        style={[
-                          typography.caption,
-                          {
-                            color: colors.textSecondary,
-                            fontWeight: '700',
-                            letterSpacing: 0.6,
-                          },
-                        ]}
-                      >
-                        {item.title}
+                      <Ionicons
+                        name={copied ? 'checkmark-circle' : 'copy-outline'}
+                        size={16}
+                        color={BRAND.violet}
+                      />
+                      <Text style={{ color: BRAND.violet, fontSize: 12, fontWeight: '700' }}>
+                        {copied ? 'Copied' : 'Copy'}
                       </Text>
-                    </View>
-                  </ScrollView>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={onSharePDF}
+                      disabled={pdfLoading}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        paddingVertical: 8,
+                        paddingHorizontal: 12,
+                        borderRadius: 10,
+                        backgroundColor: withAlpha(BRAND.magenta, 0.1),
+                      }}
+                    >
+                      {pdfLoading ? (
+                        <ActivityIndicator size="small" color={BRAND.magenta} />
+                      ) : (
+                        <Ionicons name="share-outline" size={16} color={BRAND.magenta} />
+                      )}
+                      <Text style={{ color: BRAND.magenta, fontSize: 12, fontWeight: '700' }}>
+                        {pdfLoading ? '...' : 'Share PDF'}
+                      </Text>
+                    </Pressable>
+                  </View>
                 </Animated.View>
               )}
             </View>

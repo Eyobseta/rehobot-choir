@@ -64,7 +64,8 @@
       "expo-image",
       "expo-font",
       "expo-asset",
-      "expo-updates"
+      "expo-updates",
+      "expo-sharing"
     ],
     "extra": {
       "eas": {
