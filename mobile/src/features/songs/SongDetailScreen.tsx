@@ -45,6 +45,10 @@ import {
 const HEART = '#E0245E';
 const YT = '#FF0000';
 
+// Escape user content before putting it into the PDF's HTML
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 export default function SongDetailScreen({ route, navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -77,6 +81,14 @@ export default function SongDetailScreen({ route, navigation }: any) {
   // --- Copy & Share State ---
   const [copied, setCopied] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear the "Copied" timer when leaving the screen
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
 
   // --- Animations ---
   const lyricsEnter = useRef(new Animated.Value(0)).current;
@@ -146,7 +158,10 @@ export default function SongDetailScreen({ route, navigation }: any) {
         setSavedOffline(false);
         setOfflineUri(null);
       } catch (e) {
-        Alert.alert('Error', (e as any)?.message ?? 'Could not remove offline file');
+        Alert.alert(
+          t('common.error', { defaultValue: 'Error' }),
+          (e as any)?.message ?? 'Could not remove offline file',
+        );
       } finally {
         setOfflineBusy(false);
       }
@@ -165,7 +180,10 @@ export default function SongDetailScreen({ route, navigation }: any) {
       setSavedOffline(true);
       setOfflineUri(entry.fileUri);
     } catch (e) {
-      Alert.alert('Error', (e as any)?.message ?? 'Could not save offline');
+      Alert.alert(
+        t('common.error', { defaultValue: 'Error' }),
+        (e as any)?.message ?? 'Could not save offline',
+      );
     } finally {
       setOfflineBusy(false);
       setDownloadPct(null);
@@ -198,9 +216,17 @@ export default function SongDetailScreen({ route, navigation }: any) {
   // --- Copy Lyrics ---
   const onCopyLyrics = async () => {
     if (!item?.lyrics) return;
-    await Clipboard.setStringAsync(item.lyrics);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await Clipboard.setStringAsync(item.lyrics);
+      setCopied(true);
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      Alert.alert(
+        t('common.error', { defaultValue: 'Error' }),
+        t('songs.copyFailed', { defaultValue: 'Could not copy lyrics.' }),
+      );
+    }
   };
 
   // --- Share as PDF ---
@@ -208,9 +234,20 @@ export default function SongDetailScreen({ route, navigation }: any) {
     if (!item?.lyrics) return;
     setPdfLoading(true);
     try {
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert(
+          t('common.error', { defaultValue: 'Error' }),
+          t('songs.sharingUnavailable', {
+            defaultValue: 'Sharing is not available on this device.',
+          }),
+        );
+        return;
+      }
+
       const html = `
         <html>
           <head>
+            <meta charset="utf-8" />
             <style>
               body { font-family: Helvetica, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
               h1 { color: #6C3FE0; text-align: center; font-size: 28px; margin-bottom: 5px; }
@@ -220,9 +257,9 @@ export default function SongDetailScreen({ route, navigation }: any) {
             </style>
           </head>
           <body>
-            <h1>${item.title}</h1>
-            ${item.category ? `<h2>${item.category.name}</h2>` : ''}
-            <div class="lyrics">${item.lyrics}</div>
+            <h1>${escapeHtml(item.title)}</h1>
+            ${item.category ? `<h2>${escapeHtml(item.category.name)}</h2>` : ''}
+            <div class="lyrics">${escapeHtml(item.lyrics)}</div>
             <div class="footer">Rehobot Choir</div>
           </body>
         </html>
@@ -230,7 +267,10 @@ export default function SongDetailScreen({ route, navigation }: any) {
       const { uri } = await Print.printToFileAsync({ html });
       await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
     } catch (e) {
-      Alert.alert('Error', 'Could not generate PDF.');
+      Alert.alert(
+        t('common.error', { defaultValue: 'Error' }),
+        t('songs.pdfFailed', { defaultValue: 'Could not generate PDF.' }),
+      );
     } finally {
       setPdfLoading(false);
     }
@@ -385,7 +425,11 @@ export default function SongDetailScreen({ route, navigation }: any) {
           >
             <ActionPill
               icon={isFav ? 'heart' : 'heart-outline'}
-              label={isFav ? 'Favorited' : 'Favorite'}
+              label={
+                isFav
+                  ? t('songs.favorited', { defaultValue: 'Favorited' })
+                  : t('songs.favorite', { defaultValue: 'Favorite' })
+              }
               tint={isFav ? '#FFFFFF' : HEART}
               active={isFav}
               bgActive={HEART}
@@ -398,7 +442,11 @@ export default function SongDetailScreen({ route, navigation }: any) {
             ) : (
               <ActionPill
                 icon={savedOffline ? 'cloud-done' : 'download-outline'}
-                label={savedOffline ? 'Saved' : 'Save offline'}
+                label={
+                  savedOffline
+                    ? t('songs.saved', { defaultValue: 'Saved' })
+                    : t('songs.saveOffline', { defaultValue: 'Save offline' })
+                }
                 tint="#FFFFFF"
                 active={savedOffline}
                 bgActive="rgba(255,255,255,0.28)"
@@ -614,7 +662,9 @@ export default function SongDetailScreen({ route, navigation }: any) {
                         }}
                         numberOfLines={1}
                       >
-                        Tap to {lyricsOpen ? 'collapse' : 'expand'}
+                        {lyricsOpen
+                          ? t('songs.tapToCollapse', { defaultValue: 'Tap to collapse' })
+                          : t('songs.tapToExpand', { defaultValue: 'Tap to expand' })}
                       </Text>
                     </View>
                   </Pressable>
@@ -723,7 +773,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                     </View>
                   </ScrollView>
 
-                  {/* NEW: Bottom Action Row for Copy & Share */}
+                  {/* Bottom action row: Copy & Share */}
                   <View
                     style={{
                       flexDirection: 'row',
@@ -739,6 +789,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                   >
                     <Pressable
                       onPress={onCopyLyrics}
+                      accessibilityRole="button"
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
@@ -755,13 +806,16 @@ export default function SongDetailScreen({ route, navigation }: any) {
                         color={BRAND.violet}
                       />
                       <Text style={{ color: BRAND.violet, fontSize: 12, fontWeight: '700' }}>
-                        {copied ? 'Copied' : 'Copy'}
+                        {copied
+                          ? t('songs.copied', { defaultValue: 'Copied' })
+                          : t('songs.copy', { defaultValue: 'Copy' })}
                       </Text>
                     </Pressable>
 
                     <Pressable
                       onPress={onSharePDF}
                       disabled={pdfLoading}
+                      accessibilityRole="button"
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
@@ -770,6 +824,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                         paddingHorizontal: 12,
                         borderRadius: 10,
                         backgroundColor: withAlpha(BRAND.magenta, 0.1),
+                        opacity: pdfLoading ? 0.7 : 1,
                       }}
                     >
                       {pdfLoading ? (
@@ -778,7 +833,9 @@ export default function SongDetailScreen({ route, navigation }: any) {
                         <Ionicons name="share-outline" size={16} color={BRAND.magenta} />
                       )}
                       <Text style={{ color: BRAND.magenta, fontSize: 12, fontWeight: '700' }}>
-                        {pdfLoading ? '...' : 'Share PDF'}
+                        {pdfLoading
+                          ? '...'
+                          : t('songs.sharePdf', { defaultValue: 'Share PDF' })}
                       </Text>
                     </Pressable>
                   </View>
@@ -977,7 +1034,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                 contentContainerStyle={{
                   paddingHorizontal: 26,
                   paddingTop: 8,
-                  paddingBottom: (insets.bottom || 0) + 40,
+                  paddingBottom: (insets.bottom || 0) + 110,
                 }}
                 showsVerticalScrollIndicator={false}
               >
@@ -1029,6 +1086,87 @@ export default function SongDetailScreen({ route, navigation }: any) {
                   </Text>
                 </View>
               </ScrollView>
+            </Animated.View>
+
+            {/* Floating action bar: Copy & Share PDF */}
+            <Animated.View
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: 0,
+                flexDirection: 'row',
+                gap: 12,
+                paddingHorizontal: 20,
+                paddingTop: 12,
+                paddingBottom: (insets.bottom || 0) + 14,
+                opacity: fsEnter,
+              }}
+            >
+              <Pressable
+                onPress={onCopyLyrics}
+                accessibilityRole="button"
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  paddingVertical: 14,
+                  borderRadius: 16,
+                  backgroundColor: 'rgba(255,255,255,0.16)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.28)',
+                }}
+              >
+                <Ionicons
+                  name={copied ? 'checkmark-circle' : 'copy-outline'}
+                  size={18}
+                  color={copied ? BRAND.gold : '#FFFFFF'}
+                />
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
+                  {copied
+                    ? t('songs.copied', { defaultValue: 'Copied' })
+                    : t('songs.copy', { defaultValue: 'Copy' })}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={onSharePDF}
+                disabled={pdfLoading}
+                accessibilityRole="button"
+                style={{
+                  flex: 1,
+                  borderRadius: 16,
+                  overflow: 'hidden',
+                  opacity: pdfLoading ? 0.7 : 1,
+                }}
+              >
+                <LinearGradient
+                  colors={[BRAND.violet, BRAND.magenta]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    paddingVertical: 14,
+                    borderRadius: 16,
+                  }}
+                >
+                  {pdfLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="share-outline" size={18} color="#FFFFFF" />
+                  )}
+                  <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
+                    {pdfLoading
+                      ? '...'
+                      : t('songs.sharePdf', { defaultValue: 'Share PDF' })}
+                  </Text>
+                </LinearGradient>
+              </Pressable>
             </Animated.View>
           </LinearGradient>
         </Modal>
