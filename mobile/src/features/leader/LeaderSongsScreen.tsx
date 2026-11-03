@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -12,15 +12,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { leaderListSongs, LeaderSongRow } from '../../services/songs';
-import { ApiError } from '../../services/api';
-import { cachedFetch } from '../../services/cache';
-import { CACHE_KEYS } from '../../services/cacheKeys';
+import { LeaderSongRow } from '../../services/songs';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { useLeaderSongsQuery } from './useLeaderSongsAndMemories';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -37,37 +34,12 @@ export default function LeaderSongsScreen({ navigation }: any) {
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState<LeaderSongRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const data = await cachedFetch(
-        CACHE_KEYS.leaderSongs,
-        () => leaderListSongs(),
-        (freshData) => setItems(freshData),
-      );
-      if (data) setItems(data);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (items.length === 0) {
-        setLoading(true);
-      }
-      void load();
-    }, [load, items.length]),
-  );
+  const q = useLeaderSongsQuery();
+  const items = q.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
+  const error =
+    (q.error as { message?: string; code?: string } | null)?.message ?? null;
 
   const statusTint = (s: LeaderSongRow['status']) => {
     switch (s) {
@@ -123,11 +95,8 @@ export default function LeaderSongsScreen({ navigation }: any) {
         contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              void load();
-            }}
+            refreshing={q.isRefetching && !firstLoad}
+            onRefresh={() => q.refetch()}
             tintColor={BRAND.violet}
             colors={[BRAND.violet]}
           />
@@ -187,7 +156,18 @@ export default function LeaderSongsScreen({ navigation }: any) {
               </View>
             </LinearGradient>
 
-            {error && (
+            {showingSavedData && (
+              <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+                <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#F59E0B', 0.14), borderWidth: 1, borderColor: withAlpha('#F59E0B', 0.4) }}>
+                  <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+                  <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+                    {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {error && q.data === undefined && (
               <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md, borderRadius: 14, backgroundColor: withAlpha(colors.error, 0.1), borderWidth: 1, borderColor: withAlpha(colors.error, 0.35) }}>
                 <Ionicons name="alert-circle" size={18} color={colors.error} />
                 <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
@@ -208,7 +188,7 @@ export default function LeaderSongsScreen({ navigation }: any) {
           </View>
         }
         ListEmptyComponent={
-          loading ? (
+          firstLoad ? (
             <View style={{ paddingVertical: spacing.xl * 2, alignItems: 'center' }}>
               <ActivityIndicator size="large" color={BRAND.violet} />
             </View>

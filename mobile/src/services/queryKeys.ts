@@ -108,4 +108,17 @@ export const queryKeys = {
 
   applicationDetail: (userId: string | null, id: string) =>
     ['leader', userId ?? 'anon', 'approvals', 'detail', id] as const,
+
+    // --- LEADER SONGS + MEMORIES REVIEW ---
+  leaderSongs: (userId: string | null) =>
+    ['leader', userId ?? 'anon', 'songs', 'list'] as const,
+
+  songReviewQueue: (userId: string | null) =>
+    ['leader', userId ?? 'anon', 'songs', 'review'] as const,
+
+  leaderMemoriesPending: (userId: string | null) =>
+    ['leader', userId ?? 'anon', 'memories', 'pending'] as const,
+
+  leaderMemoryDetail: (userId: string | null, id: string) =>
+    ['leader', userId ?? 'anon', 'memories', 'detail', id] as const,
 } as const;

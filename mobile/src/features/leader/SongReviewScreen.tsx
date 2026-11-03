@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, FlatList, Pressable, Image, ActivityIndicator,
   Modal, TextInput, KeyboardAvoidingView, Platform, RefreshControl,
@@ -7,24 +7,20 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  leaderListPendingSubmissions,
-  leaderApproveSubmission,
-  leaderReturnSubmission,
-  PendingSubmission,
-} from '../../services/songs';
-import { ApiError } from '../../services/api';
-import { cachedFetch } from '../../services/cache';
-import { CACHE_KEYS } from '../../services/cacheKeys';
+import { PendingSubmission } from '../../services/songs';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import {
   playTrack, pauseTrack, resumeTrack, subscribe,
   getSnapshot, getCurrentKey, SimpleStatus,
 } from '../../services/audioPlayer';
+import {
+  useSongReviewQueueQuery,
+  useApproveSongSubmissionMutation,
+  useReturnSongSubmissionMutation,
+} from './useLeaderSongsAndMemories';
 
 const PALETTES: readonly [string, string][] = [
   [BRAND.violet, BRAND.magenta],
@@ -36,20 +32,29 @@ const PALETTES: readonly [string, string][] = [
 export default function SongReviewScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState<PendingSubmission[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const q = useSongReviewQueueQuery();
+  const approveMut = useApproveSongSubmissionMutation();
+  const returnMut = useReturnSongSubmissionMutation();
+
+  const items = q.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
+  const error =
+    (q.error as { message?: string } | null)?.message ??
+    (approveMut.error as { message?: string } | null)?.message ??
+    (returnMut.error as { message?: string } | null)?.message ??
+    null;
+
+  const busy = approveMut.isPending || returnMut.isPending;
 
   const [detailOpen, setDetailOpen] = useState<PendingSubmission | null>(null);
   const [returnTarget, setReturnTarget] = useState<PendingSubmission | null>(null);
   const [reason, setReason] = useState('');
 
-  // Shared player state
+  // Audio player
   const [playerStatus, setPlayerStatus] = useState<SimpleStatus>(getSnapshot());
   useEffect(() => {
     const unsub = subscribe(setPlayerStatus);
@@ -67,51 +72,27 @@ export default function SongReviewScreen({ navigation }: any) {
     }
   }, [detailOpen, returnTarget, sheetPop]);
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const data = await cachedFetch(
-        CACHE_KEYS.leaderSubmissions,
-        () => leaderListPendingSubmissions(),
-        (freshData) => setItems(freshData),
-      );
-      if (data) setItems(data);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (items.length === 0) {
-        setLoading(true);
-      }
-      void load();
-    }, [load, items.length]),
-  );
-
   const onApprove = async (sub: PendingSubmission) => {
-    setBusy(true);
-    try { await leaderApproveSubmission(sub.id); setDetailOpen(null); await load(); }
-    catch (e) { const err = e as ApiError; setError(`${err.message} [${err.code}]`); }
-    finally { setBusy(false); }
+    try {
+      await approveMut.mutateAsync(sub.id);
+      setDetailOpen(null);
+    } catch {
+      /* surfaced by error */
+    }
   };
 
   const onReturn = async () => {
     if (!returnTarget) return;
     const clean = reason.trim();
-    if (!clean) { setError(t('leaderSongs.reasonRequired')); return; }
-    setBusy(true);
+    if (!clean) return;
     try {
-      await leaderReturnSubmission(returnTarget.id, clean);
-      setReturnTarget(null); setDetailOpen(null); setReason('');
-      await load();
-    } catch (e) { const err = e as ApiError; setError(`${err.message} [${err.code}]`); }
-    finally { setBusy(false); }
+      await returnMut.mutateAsync({ submissionId: returnTarget.id, reason: clean });
+      setReturnTarget(null);
+      setDetailOpen(null);
+      setReason('');
+    } catch {
+      /* surfaced by error */
+    }
   };
 
   return (
@@ -122,7 +103,7 @@ export default function SongReviewScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} tintColor={BRAND.violet} colors={[BRAND.violet]} />
+          <RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} tintColor={BRAND.violet} colors={[BRAND.violet]} />
         }
         ListHeaderComponent={
           <View>
@@ -142,7 +123,7 @@ export default function SongReviewScreen({ navigation }: any) {
                 </View>
                 <GlassBackButton onPress={() => navigation.goBack()} size={44} />
               </View>
-              {!loading && items.length > 0 && (
+              {!firstLoad && items.length > 0 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.18)' }}>
                   <Ionicons name="time" size={13} color="#FFFFFF" />
                   <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>{items.length} pending</Text>
@@ -150,7 +131,18 @@ export default function SongReviewScreen({ navigation }: any) {
               )}
             </LinearGradient>
 
-            {error && (
+            {showingSavedData && (
+              <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+                <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#F59E0B', 0.14), borderWidth: 1, borderColor: withAlpha('#F59E0B', 0.4) }}>
+                  <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+                  <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+                    {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {error && q.data === undefined && (
               <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md, borderRadius: 14, backgroundColor: withAlpha(colors.error, 0.1), borderWidth: 1, borderColor: withAlpha(colors.error, 0.35) }}>
                 <Ionicons name="alert-circle" size={18} color={colors.error} />
                 <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
@@ -159,7 +151,7 @@ export default function SongReviewScreen({ navigation }: any) {
           </View>
         }
         ListEmptyComponent={
-          loading ? (
+          firstLoad ? (
             <View style={{ paddingVertical: spacing.xl * 2, alignItems: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>
           ) : (
             <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
@@ -218,7 +210,6 @@ export default function SongReviewScreen({ navigation }: any) {
                   </View>
                 </View>
 
-                {/* ---------- MEDIA PREVIEW ---------- */}
                 {(detailOpen?.song.audioUrl || detailOpen?.song.youtubeUrl) && (
                   <View style={{ marginTop: 16 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -228,7 +219,6 @@ export default function SongReviewScreen({ navigation }: any) {
                       <Text style={[typography.h3, { color: colors.text, fontWeight: '800' }]}>Preview</Text>
                     </View>
 
-                    {/* Audio preview */}
                     {detailOpen?.song.audioUrl && (() => {
                       const audioKey = `leader-review:${detailOpen.song.id}`;
                       const isPlaying =
@@ -280,7 +270,6 @@ export default function SongReviewScreen({ navigation }: any) {
                       );
                     })()}
 
-                    {/* YouTube preview */}
                     {detailOpen?.song.youtubeUrl && (
                       <Pressable
                         onPress={() =>
@@ -305,7 +294,6 @@ export default function SongReviewScreen({ navigation }: any) {
                   </View>
                 )}
 
-                {/* Lyrics */}
                 {detailOpen?.song.lyrics && (
                   <View style={{ marginTop: 16 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -324,9 +312,8 @@ export default function SongReviewScreen({ navigation }: any) {
                 )}
               </ScrollView>
 
-              {/* Actions */}
               <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', gap: 12 }}>
-                <Pressable onPress={() => { if (detailOpen) { setReturnTarget(detailOpen); setReason(''); setError(null); } }} disabled={busy} style={{ flex: 1, opacity: busy ? 0.7 : 1 }} accessibilityRole="button">
+                <Pressable onPress={() => { if (detailOpen) { setReturnTarget(detailOpen); setReason(''); } }} disabled={busy} style={{ flex: 1, opacity: busy ? 0.7 : 1 }} accessibilityRole="button">
                   <LinearGradient colors={['#C0262D', '#E0405A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ minHeight: 54, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     <Ionicons name="return-down-back" size={18} color="#FFFFFF" />
                     <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>{t('leaderSongs.returnBtn')}</Text>
@@ -334,7 +321,7 @@ export default function SongReviewScreen({ navigation }: any) {
                 </Pressable>
                 <Pressable onPress={() => detailOpen && onApprove(detailOpen)} disabled={busy} style={{ flex: 1, opacity: busy ? 0.7 : 1 }} accessibilityRole="button">
                   <LinearGradient colors={['#16A34A', '#22C55E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ minHeight: 54, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    {busy ? <ActivityIndicator color="#FFFFFF" /> : (
+                    {approveMut.isPending ? <ActivityIndicator color="#FFFFFF" /> : (
                       <>
                         <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
                         <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>{t('leaderSongs.approveBtn')}</Text>
@@ -348,7 +335,6 @@ export default function SongReviewScreen({ navigation }: any) {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Return reason modal (unchanged) */}
       <Modal visible={!!returnTarget} transparent animationType="fade" onRequestClose={() => setReturnTarget(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: 20 }}>
@@ -371,7 +357,7 @@ export default function SongReviewScreen({ navigation }: any) {
                 </Pressable>
                 <Pressable onPress={onReturn} disabled={busy} style={{ flex: 1, opacity: busy ? 0.7 : 1 }}>
                   <LinearGradient colors={['#C0262D', '#E0405A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ minHeight: 54, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                    {busy ? <ActivityIndicator color="#FFFFFF" /> : (
+                    {returnMut.isPending ? <ActivityIndicator color="#FFFFFF" /> : (
                       <>
                         <Ionicons name="return-down-back" size={16} color="#FFFFFF" />
                         <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>{t('leaderSongs.returnBtn')}</Text>
@@ -388,7 +374,7 @@ export default function SongReviewScreen({ navigation }: any) {
   );
 }
 
-// ---------- Widgets ----------
+// ---------- Widgets (unchanged) ----------
 
 function Equalizer({ active }: { active: boolean }) {
   const bars = useRef([0.35, 0.6, 0.45, 0.7].map((v) => new Animated.Value(v))).current;
