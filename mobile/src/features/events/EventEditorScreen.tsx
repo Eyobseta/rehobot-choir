@@ -20,6 +20,8 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { EthDate, ethTodayFromInstant, ethToUtcDate, formatEthDate } from '../../utils/ethiopianCalendar';
+import EthDatePicker from '../funding/EthDatePicker';
 import {
   useEventDetailQuery,
   useCreateEventMutation,
@@ -30,13 +32,13 @@ import {
 type IconName = keyof typeof Ionicons.glyphMap;
 
 export default function EventEditorScreen({ route, navigation }: any) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
   const insets = useSafeAreaInsets();
+  const lang = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const editingId: string | null = route.params?.id ?? null;
 
-  // Query runs only when editing — React Query handles `enabled: false`.
   const eventQ = useEventDetailQuery(editingId ?? '__new__', {
     enabled: !!editingId,
   });
@@ -50,7 +52,12 @@ export default function EventEditorScreen({ route, navigation }: any) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [dateText, setDateText] = useState('');
+  
+  // --- Date & Time State ---
+  const [ethDate, setEthDate] = useState<EthDate>(ethTodayFromInstant(new Date()));
+  const [timeText, setTimeText] = useState('10:00'); // HH:MM
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   const [coverUri, setCoverUri] = useState<string | null>(null);
   const [removeCover, setRemoveCover] = useState(false);
 
@@ -65,26 +72,19 @@ export default function EventEditorScreen({ route, navigation }: any) {
     setTitle(ev.title);
     setDescription(ev.description ?? '');
     setLocation(ev.location ?? '');
+    
+    // Parse date to Ethiopian and time
     try {
-      const { ethToUtcDate } = require('../../utils/ethiopianCalendar');
-      const greg = ethToUtcDate(ev.date);
-      setDateText(
-        `${greg.getUTCFullYear()}-${String(greg.getUTCMonth() + 1).padStart(2, '0')}-${String(
-          greg.getUTCDate(),
-        ).padStart(2, '0')} 10:00`,
-      );
+      const d = new Date(ev.dateGregorian);
+      setTimeText(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+      
+      const addis = new Date(d.getTime() + 3 * 3600_000);
+      const { gregorianToEthiopian } = require('../../utils/ethiopianCalendar');
+      setEthDate(gregorianToEthiopian(addis.getUTCFullYear(), addis.getUTCMonth() + 1, addis.getUTCDate()));
     } catch {
-      const d = new Date(ev.date as any);
-      if (!isNaN(d.getTime())) {
-        setDateText(
-          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-            d.getDate(),
-          ).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(
-            d.getMinutes(),
-          ).padStart(2, '0')}`,
-        );
-      }
+      // fallback
     }
+    
     setCoverUri(ev.coverImageUrl);
   }, [editingId, eventQ.data]);
 
@@ -132,20 +132,24 @@ export default function EventEditorScreen({ route, navigation }: any) {
     setRemoveCover(false);
   };
 
-  const parseDate = (): string | null => {
-    const m = dateText.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/);
+  const buildIsoDate = (): string | null => {
+    const m = timeText.trim().match(/^(\d{2}):(\d{2})$/);
     if (!m) return null;
-    const [, y, mo, d, h, mi] = m;
-    const iso = `${y}-${mo}-${d}T${h}:${mi}:00`;
-    const date = new Date(iso);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    const [, h, mi] = m;
+    
+    // Get Gregorian UTC date from the Ethiopian date
+    const greg = ethToUtcDate(ethDate);
+    
+    // Combine with the time
+    const dt = new Date(Date.UTC(greg.getUTCFullYear(), greg.getUTCMonth(), greg.getUTCDate(), Number(h), Number(mi)));
+    return dt.toISOString();
   };
 
   const onSave = async (publish: boolean) => {
     setError(null);
-    const isoDate = parseDate();
+    const isoDate = buildIsoDate();
     if (!title.trim()) return setError(t('register.fieldRequired'));
-    if (!isoDate) return setError(t('events.dateField'));
+    if (!isoDate) return setError(t('register.invalidDate'));
 
     try {
       if (editingId) {
@@ -404,13 +408,64 @@ export default function EventEditorScreen({ route, navigation }: any) {
               value={location}
               onChange={setLocation}
             />
-            <EditorField
-              icon="calendar"
-              label={t('events.dateField')}
-              value={dateText}
-              onChange={setDateText}
-              placeholder="2026-12-15 10:00"
-            />
+            
+            {/* --- Ethiopian Date & Time --- */}
+            <Text
+              style={[
+                typography.bodySmall,
+                { color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs, fontWeight: '700' },
+              ]}
+            >
+              {t('events.dateField')}
+            </Text>
+            
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <Pressable
+                onPress={() => setPickerOpen(true)}
+                style={{
+                  flex: 1.5,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  borderWidth: 1.5,
+                  borderRadius: radius.md + 4,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.md,
+                }}
+              >
+                <Ionicons name="calendar" size={18} color={BRAND.violet} />
+                <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>
+                  {formatEthDate(ethDate, lang)}
+                </Text>
+              </Pressable>
+              
+              <View
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  borderWidth: 1.5,
+                  borderRadius: radius.md + 4,
+                  paddingHorizontal: spacing.md,
+                }}
+              >
+                <Ionicons name="time" size={18} color={BRAND.violet} />
+                <TextInput
+                  value={timeText}
+                  onChangeText={setTimeText}
+                  placeholder="10:00"
+                  placeholderTextColor={colors.textSecondary}
+                  keyboardType="numbers-and-punctuation"
+                  style={{ flex: 1, paddingVertical: spacing.md, color: colors.text }}
+                />
+              </View>
+            </View>
+
             <EditorField
               icon="reader"
               label={t('events.description')}
@@ -543,6 +598,19 @@ export default function EventEditorScreen({ route, navigation }: any) {
           </LinearGradient>
         </Pressable>
       </View>
+
+      <EthDatePicker
+        visible={pickerOpen}
+        title={t('events.dateField')}
+        value={ethDate}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={(d) => {
+          setEthDate(d);
+          setPickerOpen(false);
+        }}
+        minYear={ethTodayFromInstant(new Date()).year - 1}
+        maxYear={ethTodayFromInstant(new Date()).year + 2}
+      />
     </KeyboardAvoidingView>
   );
 }

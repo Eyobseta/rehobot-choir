@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -11,16 +11,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  leaderListAnnouncements,
-  LeaderAnnouncementRow,
-} from '../../services/announcements';
-import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { useLeaderAnnouncementsQuery } from './useAnnouncements';
 
 const AMBER = '#F59E0B';
 
@@ -30,32 +25,12 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
   const { colors, spacing, radius, typography } = theme;
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState<LeaderAnnouncementRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const q = useLeaderAnnouncementsQuery();
+  const items = q.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      setItems(await leaderListAnnouncements());
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      void load();
-    }, [load]),
-  );
-
-  if (loading) {
+  if (firstLoad) {
     return (
       <View
         style={{
@@ -72,7 +47,6 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ---------- Hero ---------- */}
       <LinearGradient
         colors={['#F59E0B', BRAND.magenta, BRAND.violet]}
         start={{ x: 0, y: 0 }}
@@ -140,7 +114,31 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
         </View>
       </LinearGradient>
 
-      {error && (
+      {showingSavedData && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: withAlpha(AMBER, 0.14),
+              borderWidth: 1,
+              borderColor: withAlpha(AMBER, 0.4),
+            }}
+          >
+            <Ionicons name="cloud-offline" size={13} color={AMBER} />
+            <Text style={[typography.caption, { color: AMBER, fontWeight: '800' }]}>
+              {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {q.isError && q.data === undefined && (
         <View
           style={{
             marginHorizontal: spacing.lg,
@@ -156,7 +154,9 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
           }}
         >
           <Ionicons name="alert-circle" size={18} color={colors.error} />
-          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
+          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
+            {(q.error as { message?: string })?.message ?? 'Error'}
+          </Text>
         </View>
       )}
 
@@ -224,11 +224,8 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
         }}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              void load();
-            }}
+            refreshing={q.isRefetching && !firstLoad}
+            onRefresh={() => q.refetch()}
             tintColor={BRAND.violet}
             colors={[BRAND.violet]}
           />

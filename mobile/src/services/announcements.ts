@@ -1,6 +1,5 @@
 import { apiGet, apiDelete, http } from './api';
-import { cachedFetch, cacheInvalidatePrefix, cacheRead, cacheWrite } from './cache';
-import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
+import { queryClient } from './queryClient';
 
 export type AnnouncementStatus =
   | 'DRAFT'
@@ -38,107 +37,30 @@ export type LeaderAnnouncementRow = {
   eventId: string | null;
 };
 
+// ---------- Member (TanStack owns the cache) ----------
+
 export async function listAnnouncements(
   search?: string,
 ): Promise<AnnouncementSummary[]> {
-  const key = CACHE_KEYS.announcementsList(search ?? '');
-  const cached = await cachedFetch<AnnouncementSummary[]>(
-    key,
-    async () => {
-      const q = search?.trim()
-        ? `?search=${encodeURIComponent(search.trim())}`
-        : '';
-      const res = await apiGet<{ items: AnnouncementSummary[] }>(
-        `/announcements${q}`,
-      );
-      return res.items;
-    },
-    () => {},
+  const q = search?.trim()
+    ? `?search=${encodeURIComponent(search.trim())}`
+    : '';
+  const res = await apiGet<{ items: AnnouncementSummary[] }>(
+    `/announcements${q}`,
   );
-  return cached ?? [];
+  return res.items;
 }
 
 export async function getAnnouncement(
   id: string,
 ): Promise<AnnouncementDetail> {
-  const key = CACHE_KEYS.announcementDetail(id);
-  const cached = await cachedFetch<AnnouncementDetail>(
-    key,
-    async () => {
-      const res = await apiGet<{ item: AnnouncementDetail }>(
-        `/announcements/${id}`,
-      );
-      return res.item;
-    },
-    () => {},
+  const res = await apiGet<{ item: AnnouncementDetail }>(
+    `/announcements/${id}`,
   );
-  if (cached) return cached;
-  // Fall back to the raw cache entry (helps when `cachedFetch` resolved but
-  // the write race lost; harmless if the entry does not exist).
-  const fallback = await cacheRead<AnnouncementDetail>(key);
-  if (fallback) return fallback;
-  throw new Error('Announcement not available.');
+  return res.item;
 }
 
-// ---------- Announcement detail warm-up (once per app session) ----------
-
-let warmedAnnouncementDetailThisSession = false;
-
-/** Test/diagnostic reset — force a re-warm without a full app reload. */
-export function resetAnnouncementWarmGuard(): void {
-  warmedAnnouncementDetailThisSession = false;
-}
-
-/**
- * Prefetch the full detail of every announcement into the cache, so
- * announcements are available offline for the whole list — not only for
- * ones the member has opened while online.
- *
- * Behavior:
- *  - Runs at most once per app session.
- *  - Skips announcements whose detail is already cached.
- *  - Fetches with a concurrency cap of 3 and a small pause between batches.
- *  - Never throws: failures are swallowed.
- */
-export async function warmAnnouncementDetailCache(): Promise<void> {
-  if (warmedAnnouncementDetailThisSession) return;
-  warmedAnnouncementDetailThisSession = true;
-
-  try {
-    const summaries = await listAnnouncements();
-    if (summaries.length === 0) return;
-
-    const missing: string[] = [];
-    for (const s of summaries) {
-      const cached = await cacheRead<AnnouncementDetail>(
-        CACHE_KEYS.announcementDetail(s.id),
-      );
-      if (!cached) missing.push(s.id);
-    }
-    if (missing.length === 0) return;
-
-    const CONCURRENCY = 3;
-    const BATCH_PAUSE_MS = 200;
-
-    for (let i = 0; i < missing.length; i += CONCURRENCY) {
-      const batch = missing.slice(i, i + CONCURRENCY);
-      await Promise.all(
-        batch.map(async (id) => {
-          try {
-            await getAnnouncement(id);
-          } catch {
-            // skip, try next session
-          }
-        }),
-      );
-      if (i + CONCURRENCY < missing.length) {
-        await new Promise((r) => setTimeout(r, BATCH_PAUSE_MS));
-      }
-    }
-  } catch {
-    /* never break the UI */
-  }
-}
+// ---------- Leader ----------
 
 export async function leaderListAnnouncements(): Promise<
   LeaderAnnouncementRow[]
@@ -147,6 +69,14 @@ export async function leaderListAnnouncements(): Promise<
     '/leaders/announcements',
   );
   return res.items;
+}
+
+// ---------- Mutations (invalidate via TanStack) ----------
+
+function invalidateAnnouncements(userId: string | null): Promise<void> {
+  return queryClient
+    .invalidateQueries({ queryKey: ['announcements', userId ?? 'anon'] })
+    .then(() => undefined);
 }
 
 export type CreateAnnouncementInput = {
@@ -161,6 +91,7 @@ export type CreateAnnouncementInput = {
 
 export async function leaderCreateAnnouncement(
   input: CreateAnnouncementInput,
+  userId: string | null,
 ): Promise<{ id: string }> {
   const form = new FormData();
   form.append('title', input.title);
@@ -189,7 +120,7 @@ export async function leaderCreateAnnouncement(
       transformRequest: (d) => d,
     },
   );
-  await cacheInvalidatePrefix(CACHE_PREFIXES.announcements);
+  await invalidateAnnouncements(userId);
   return { id: res.data.announcement.id };
 }
 
@@ -206,6 +137,7 @@ export type UpdateAnnouncementInput = {
 export async function leaderUpdateAnnouncement(
   id: string,
   input: UpdateAnnouncementInput,
+  userId: string | null,
 ): Promise<void> {
   const form = new FormData();
   if (input.title !== undefined) form.append('title', input.title);
@@ -231,10 +163,13 @@ export async function leaderUpdateAnnouncement(
     timeout: 60_000,
     transformRequest: (d) => d,
   });
-  await cacheInvalidatePrefix(CACHE_PREFIXES.announcements);
+  await invalidateAnnouncements(userId);
 }
 
-export async function leaderDeleteAnnouncement(id: string): Promise<void> {
+export async function leaderDeleteAnnouncement(
+  id: string,
+  userId: string | null,
+): Promise<void> {
   await apiDelete(`/leaders/announcements/${id}`);
-  await cacheInvalidatePrefix(CACHE_PREFIXES.announcements);
+  await invalidateAnnouncements(userId);
 }

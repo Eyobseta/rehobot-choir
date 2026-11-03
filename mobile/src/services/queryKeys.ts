@@ -15,6 +15,14 @@ export const queryKeys = {
   announcements: (userId: string | null, search = '') =>
     ['announcements', userId ?? 'anon', 'list', search] as const,
 
+  // NEW: single announcement detail
+  announcementDetail: (userId: string | null, id: string) =>
+    ['announcements', userId ?? 'anon', 'detail', id] as const,
+
+  // NEW: leader announcements list
+  leaderAnnouncements: (userId: string | null) =>
+    ['announcements', userId ?? 'anon', 'leader', 'list'] as const,
+
   birthdays: (userId: string | null) =>
     ['birthdays', userId ?? 'anon', 'list'] as const,
 

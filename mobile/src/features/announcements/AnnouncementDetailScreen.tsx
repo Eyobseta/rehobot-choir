@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -12,14 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  getAnnouncement,
-  AnnouncementDetail,
-} from '../../services/announcements';
-import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
-import { formatEthDate, EthDate } from '../../utils/ethiopianCalendar'; // NEW
+import { formatEthDate, EthDate } from '../../utils/ethiopianCalendar';
+import { useAnnouncementDetailQuery } from './useAnnouncements';
 
 const AMBER = '#F59E0B';
 
@@ -30,29 +26,12 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { id } = route.params;
 
-  const [item, setItem] = useState<AnnouncementDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const q = useAnnouncementDetailQuery(id);
+  const item = q.data;
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
-  useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const data = await getAnnouncement(id);
-        if (isMounted) setItem(data);
-      } catch (e) {
-        const err = e as ApiError;
-        if (isMounted) setError(`${err.message} [${err.code}]`);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
-
-  if (loading) {
+  if (firstLoad) {
     return (
       <View
         style={{
@@ -92,7 +71,7 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
           <Ionicons name="megaphone-outline" size={32} color={colors.error} />
         </View>
         <Text style={[typography.body, { color: colors.error, textAlign: 'center' }]}>
-          {error ?? t('announcements.notFound')}
+          {(q.error as { message?: string })?.message ?? t('announcements.notFound')}
         </Text>
 
         <View style={{ position: 'absolute', top: insets.top + 12, right: 16 }}>
@@ -102,7 +81,6 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
     );
   }
 
-  // FIXED: Safely build the Ethiopian date for the linked event
   let evEth: EthDate | null = null;
   if (item.event) {
     evEth = {
@@ -118,7 +96,6 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
         contentContainerStyle={{ paddingBottom: spacing.xxl }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero image / gradient */}
         <View style={{ height: item.imageUrl ? 260 : 190 }}>
           {item.imageUrl ? (
             <Image
@@ -142,7 +119,6 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
           />
         </View>
 
-        {/* Sheet */}
         <View
           style={{
             marginTop: -28,
@@ -153,6 +129,30 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
             paddingTop: spacing.xl + 2,
           }}
         >
+          {showingSavedData && (
+            <View style={{ marginBottom: spacing.md }}>
+              <View
+                style={{
+                  alignSelf: 'flex-start',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  backgroundColor: withAlpha(AMBER, 0.14),
+                  borderWidth: 1,
+                  borderColor: withAlpha(AMBER, 0.4),
+                }}
+              >
+                <Ionicons name="cloud-offline" size={13} color={AMBER} />
+                <Text style={[typography.caption, { color: AMBER, fontWeight: '800' }]}>
+                  {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+                </Text>
+              </View>
+            </View>
+          )}
+
           <View
             style={{
               alignSelf: 'flex-start',
@@ -380,7 +380,6 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
         </View>
       </ScrollView>
 
-      {/* Floating back button */}
       <View
         pointerEvents="box-none"
         style={{ position: 'absolute', top: insets.top + 12, right: 16, zIndex: 10 }}

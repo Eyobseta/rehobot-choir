@@ -12,16 +12,17 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  listAnnouncements,
-  AnnouncementSummary,
-  warmAnnouncementDetailCache,
-} from '../../services/announcements';
-import { ApiError } from '../../services/api';
+import { AnnouncementSummary } from '../../services/announcements';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { useMe } from '../chat/chatSession';
+import {
+  useAnnouncementsQuery,
+  warmAnnouncementDetailCache,
+} from './useAnnouncements';
 
 const AMBER = '#F59E0B';
 
@@ -30,44 +31,30 @@ export default function AnnouncementsScreen({ navigation }: any) {
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
   const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
+  const userId = useMe()?.id ?? null;
 
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const [focused, setFocused] = useState(false);
-  const [items, setItems] = useState<AnnouncementSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Debounce search input (300ms) so we don't hammer the API per keystroke
   useEffect(() => {
-    const timer = setTimeout(() => setDebounced(search), 300);
+    const timer = setTimeout(() => setDebounced(search.trim()), 300);
     return () => clearTimeout(timer);
   }, [search]);
 
-  const load = useCallback(async (q: string) => {
-    setError(null);
-    try {
-      setItems(await listAnnouncements(q));
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const q = useAnnouncementsQuery(debounced);
+  const items = q.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
   useEffect(() => {
-    void load(debounced);
-    // Fire-and-forget: prefetch every announcement's detail into cache once
-    // per app session. Failures are swallowed inside the helper.
-    void warmAnnouncementDetailCache();
-  }, [debounced, load]);
+    if (!items.length) return;
+    void warmAnnouncementDetailCache(qc, userId, items.map((a) => a.id));
+  }, [items, qc, userId]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ---------- Hero ---------- */}
       <LinearGradient
         colors={['#F59E0B', BRAND.magenta, BRAND.violet]}
         start={{ x: 0, y: 0 }}
@@ -134,7 +121,6 @@ export default function AnnouncementsScreen({ navigation }: any) {
           />
         </View>
 
-        {/* Search box */}
         <View
           style={{
             flexDirection: 'row',
@@ -173,7 +159,31 @@ export default function AnnouncementsScreen({ navigation }: any) {
         </View>
       </LinearGradient>
 
-      {error && (
+      {showingSavedData && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: withAlpha(AMBER, 0.14),
+              borderWidth: 1,
+              borderColor: withAlpha(AMBER, 0.4),
+            }}
+          >
+            <Ionicons name="cloud-offline" size={13} color={AMBER} />
+            <Text style={[typography.caption, { color: AMBER, fontWeight: '800' }]}>
+              {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {q.isError && q.data === undefined && (
         <View
           style={{
             marginHorizontal: spacing.lg,
@@ -190,12 +200,12 @@ export default function AnnouncementsScreen({ navigation }: any) {
         >
           <Ionicons name="alert-circle" size={18} color={colors.error} />
           <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
-            {error}
+            {(q.error as { message?: string })?.message ?? 'Error'}
           </Text>
         </View>
       )}
 
-      {loading ? (
+      {firstLoad ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={BRAND.violet} />
         </View>
@@ -212,11 +222,8 @@ export default function AnnouncementsScreen({ navigation }: any) {
           }}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                void load(search);
-              }}
+              refreshing={q.isRefetching && !firstLoad}
+              onRefresh={() => q.refetch()}
               tintColor={BRAND.violet}
               colors={[BRAND.violet]}
             />
@@ -248,9 +255,7 @@ export default function AnnouncementsScreen({ navigation }: any) {
                   <Ionicons name="megaphone-outline" size={40} color={colors.textSecondary} />
                 </View>
               </LinearGradient>
-              <Text
-                style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}
-              >
+              <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}>
                 {t('announcements.empty')}
               </Text>
             </View>

@@ -20,35 +20,48 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  getAnnouncement,
-  leaderCreateAnnouncement,
-  leaderUpdateAnnouncement,
-  leaderDeleteAnnouncement,
-} from '../../services/announcements';
-import { listSongs, SongSummary } from '../../services/songs';
-import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { listSongs, SongSummary } from '../../services/songs';
+import { EthDate, ethTodayFromInstant, ethToUtcDate, formatEthDate } from '../../utils/ethiopianCalendar';
+import EthDatePicker from '../funding/EthDatePicker';
+import {
+  useAnnouncementDetailQuery,
+  useCreateAnnouncementMutation,
+  useUpdateAnnouncementMutation,
+  useDeleteAnnouncementMutation,
+} from './useAnnouncements';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
 const AMBER = '#F59E0B';
 
 export default function AnnouncementEditorScreen({ route, navigation }: any) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
   const insets = useSafeAreaInsets();
+  const lang = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const editingId: string | null = route.params?.id ?? null;
 
-  const [loading, setLoading] = useState(!!editingId);
-  const [busy, setBusy] = useState(false);
+  const eventQ = useAnnouncementDetailQuery(editingId ?? '__new__', {
+    enabled: !!editingId,
+  });
+
+  const createMut = useCreateAnnouncementMutation();
+  const updateMut = useUpdateAnnouncementMutation();
+  const deleteMut = useDeleteAnnouncementMutation();
+
   const [error, setError] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
-  const [publishAtText, setPublishAtText] = useState('');
+  
+  // --- Date & Time State ---
+  const [ethDate, setEthDate] = useState<EthDate>(ethTodayFromInstant(new Date()));
+  const [timeText, setTimeText] = useState('10:00'); // HH:MM
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
 
@@ -57,41 +70,32 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
   const [songPickerOpen, setSongPickerOpen] = useState(false);
   const [allSongs, setAllSongs] = useState<SongSummary[]>([]);
 
+  const busy =
+    createMut.isPending || updateMut.isPending || deleteMut.isPending;
+
   useEffect(() => {
-    if (!editingId) {
-      const now = new Date();
-      setPublishAtText(
-        `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
-          now.getDate(),
-        ).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(
-          now.getMinutes(),
-        ).padStart(2, '0')}`,
-      );
-      return;
+    if (!editingId) return;
+    const item = eventQ.data;
+    if (!item) return;
+
+    setTitle(item.title);
+    setMessage(item.message);
+    
+    // Parse the ISO date to Ethiopian and Time
+    try {
+      const d = new Date(item.publishAt);
+      setTimeText(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+      
+      const addis = new Date(d.getTime() + 3 * 3600_000); // Roughly adjust to Addis time for Eth Date
+      const { gregorianToEthiopian } = require('../../utils/ethiopianCalendar');
+      setEthDate(gregorianToEthiopian(addis.getUTCFullYear(), addis.getUTCMonth() + 1, addis.getUTCDate()));
+    } catch {
+      // fallback
     }
-    (async () => {
-      try {
-        const item = await getAnnouncement(editingId);
-        setTitle(item.title);
-        setMessage(item.message);
-        const d = new Date(item.publishAt);
-        setPublishAtText(
-          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-            d.getDate(),
-          ).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(
-            d.getMinutes(),
-          ).padStart(2, '0')}`,
-        );
-        setImageUri(item.imageUrl);
-        setSongs(item.songs.map((s) => ({ songId: s.songId, songTitle: s.songTitle })));
-      } catch (e) {
-        const err = e as ApiError;
-        setError(`${err.message} [${err.code}]`);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [editingId]);
+
+    setImageUri(item.imageUrl);
+    setSongs(item.songs.map((s) => ({ songId: s.songId, songTitle: s.songTitle })));
+  }, [editingId, eventQ.data]);
 
   const openSongPicker = async () => {
     try {
@@ -146,35 +150,42 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
     setRemoveImage(false);
   };
 
-  const parseDate = (): string | null => {
-    const m = publishAtText.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})$/);
+  const buildIsoDate = (): string | null => {
+    const m = timeText.trim().match(/^(\d{2}):(\d{2})$/);
     if (!m) return null;
-    const [, y, mo, d, h, mi] = m;
-    const dt = new Date(`${y}-${mo}-${d}T${h}:${mi}:00`);
-    return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
+    const [, h, mi] = m;
+    
+    // Get Gregorian UTC date from the Ethiopian date
+    const greg = ethToUtcDate(ethDate);
+    
+    // Combine with the time
+    const dt = new Date(Date.UTC(greg.getUTCFullYear(), greg.getUTCMonth(), greg.getUTCDate(), Number(h), Number(mi)));
+    return dt.toISOString();
   };
 
   const onSave = async (publish: boolean) => {
     setError(null);
-    const isoDate = parseDate();
+    const isoDate = buildIsoDate();
     if (!title.trim()) return setError(t('register.fieldRequired'));
     if (!message.trim()) return setError(t('register.fieldRequired'));
-    if (!isoDate) return setError(t('announcements.publishAt'));
+    if (!isoDate) return setError(t('register.invalidDate'));
 
-    setBusy(true);
     try {
       if (editingId) {
-        await leaderUpdateAnnouncement(editingId, {
-          title: title.trim(),
-          message: message.trim(),
-          publishAt: isoDate,
-          publish,
-          removeImage,
-          imageUri: imageUri && !imageUri.startsWith('http') ? imageUri : null,
-          songs,
+        await updateMut.mutateAsync({
+          id: editingId,
+          input: {
+            title: title.trim(),
+            message: message.trim(),
+            publishAt: isoDate,
+            publish,
+            removeImage,
+            imageUri: imageUri && !imageUri.startsWith('http') ? imageUri : null,
+            songs,
+          },
         });
       } else {
-        await leaderCreateAnnouncement({
+        await createMut.mutateAsync({
           title: title.trim(),
           message: message.trim(),
           publishAt: isoDate,
@@ -185,10 +196,7 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
       }
       navigation.goBack();
     } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setBusy(false);
+      setError((e as { message?: string })?.message ?? 'Error');
     }
   };
 
@@ -200,22 +208,19 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
         text: t('announcements.delete'),
         style: 'destructive',
         onPress: async () => {
-          setBusy(true);
           try {
-            await leaderDeleteAnnouncement(editingId);
+            await deleteMut.mutateAsync(editingId);
             navigation.goBack();
           } catch (e) {
-            const err = e as ApiError;
-            setError(`${err.message} [${err.code}]`);
-          } finally {
-            setBusy(false);
+            setError((e as { message?: string })?.message ?? 'Error');
           }
         },
       },
     ]);
   };
 
-  if (loading) {
+  const firstLoad = !!editingId && eventQ.isPending && eventQ.data === undefined;
+  if (firstLoad) {
     return (
       <View
         style={{
@@ -242,7 +247,6 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
       >
-        {/* ---------- Hero ---------- */}
         <LinearGradient
           colors={['#F59E0B', BRAND.magenta, BRAND.violet]}
           start={{ x: 0, y: 0 }}
@@ -310,7 +314,6 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
         </LinearGradient>
 
         <View style={{ padding: spacing.lg }}>
-          {/* Image */}
           <Text
             style={[
               typography.bodySmall,
@@ -409,7 +412,6 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
             </Pressable>
           )}
 
-          {/* Fields */}
           <View
             style={{
               marginTop: spacing.lg,
@@ -434,16 +436,65 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
               onChange={setMessage}
               multiline
             />
-            <Field
-              icon="calendar"
-              label={t('announcements.publishAt')}
-              value={publishAtText}
-              onChange={setPublishAtText}
-              placeholder="2026-10-15 10:00"
-            />
+            
+            {/* --- Ethiopian Date & Time --- */}
+            <Text
+              style={[
+                typography.bodySmall,
+                { color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs, fontWeight: '700' },
+              ]}
+            >
+              {t('announcements.publishAt')}
+            </Text>
+            
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <Pressable
+                onPress={() => setPickerOpen(true)}
+                style={{
+                  flex: 1.5,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  borderWidth: 1.5,
+                  borderRadius: radius.md + 4,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.md,
+                }}
+              >
+                <Ionicons name="calendar" size={18} color={AMBER} />
+                <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>
+                  {formatEthDate(ethDate, lang)}
+                </Text>
+              </Pressable>
+              
+              <View
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  borderWidth: 1.5,
+                  borderRadius: radius.md + 4,
+                  paddingHorizontal: spacing.md,
+                }}
+              >
+                <Ionicons name="time" size={18} color={AMBER} />
+                <TextInput
+                  value={timeText}
+                  onChangeText={setTimeText}
+                  placeholder="10:00"
+                  placeholderTextColor={colors.textSecondary}
+                  keyboardType="numbers-and-punctuation"
+                  style={{ flex: 1, paddingVertical: spacing.md, color: colors.text }}
+                />
+              </View>
+            </View>
           </View>
 
-          {/* ---------- Songs picker ---------- */}
           <View style={{ marginTop: spacing.lg }}>
             <Text style={[typography.bodySmall, { color: colors.textSecondary, fontWeight: '700', marginBottom: spacing.sm }]}>
               {t('announcements.songs')}
@@ -501,7 +552,6 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
         </View>
       </ScrollView>
 
-      {/* Sticky action bar */}
       <View
         style={{
           flexDirection: 'row',
@@ -605,7 +655,20 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
         </Pressable>
       </View>
 
-      {/* ---------- Song picker modal ---------- */}
+      {/* --- MODALS --- */}
+      <EthDatePicker
+        visible={pickerOpen}
+        title={t('announcements.publishAt')}
+        value={ethDate}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={(d) => {
+          setEthDate(d);
+          setPickerOpen(false);
+        }}
+        minYear={ethTodayFromInstant(new Date()).year - 1}
+        maxYear={ethTodayFromInstant(new Date()).year + 2}
+      />
+
       <Modal
         visible={songPickerOpen}
         transparent
