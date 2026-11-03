@@ -1,4 +1,7 @@
 import { apiGet, apiPost, apiDelete } from './api';
+import { queryClient } from './queryClient';
+import { queryKeys } from './queryKeys';
+import { getPersisterScope } from './queryPersister';
 
 export type NotificationType =
   | 'ANNOUNCEMENT'
@@ -74,4 +77,15 @@ export async function updatePreferences(
     input,
   );
   return res.data;
+}
+
+/**
+ * Invalidate the shared notifications list. Safe to call from anywhere —
+ * including outside React — because it reads the current scope from
+ * `queryPersister` (not from a hook).
+ */
+export function invalidateNotifications(): Promise<void> {
+  return queryClient.invalidateQueries({
+    queryKey: queryKeys.notifications(getPersisterScope()),
+  });
 }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,25 +14,23 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  listNotifications,
-  markRead,
-  markAllRead,
-  deleteNotification,
+import type {
   NotificationItem,
   NotificationType,
 } from '../../services/notifications';
-import { ApiError } from '../../services/api';
-import { setUnread } from '../../services/unreadStore';
-import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
+import { BRAND, withAlpha, ErrorBanner } from '../auth/Auth_UI';
 import { ScreenHero } from '../profile/SettingsKit';
+import {
+  useDeleteNotification,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotificationsQuery,
+  useUnreadNotifications,
+} from './useNotifications';
+import { useHomeUnreadSync } from '../home/useHomeUnreadSync';
 
-type Props = {
-  navigation: any;
-};
-
+type Props = { navigation: any };
 type IconName = keyof typeof Ionicons.glyphMap;
 
 export default function NotificationsScreen({ navigation }: Props) {
@@ -40,65 +38,24 @@ export default function NotificationsScreen({ navigation }: Props) {
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
 
-  const [items, setItems] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const q = useNotificationsQuery();
+  useHomeUnreadSync();
 
-  const mountedRef = useRef(true);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+  const deleteNotification = useDeleteNotification();
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const list = await listNotifications();
-      if (!mountedRef.current) return;
-      setItems(list);
-      setUnread(list.filter((n) => !n.readAt).length);
-    } catch (e) {
-      const err = e as ApiError;
-      if (mountedRef.current) setError(`${err.message} [${err.code}]`);
-    } finally {
-      if (mountedRef.current) {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    }
-  }, []);
+  const items = q.data ?? [];
+  const unread = useUnreadNotifications(q.data);
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
-  useFocusEffect(
-    useCallback(() => {
-      if (items.length === 0) setLoading(true);
-      void load();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [load]),
-  );
-
-  const onMarkAllRead = async () => {
-    try {
-      await markAllRead();
-      if (!mountedRef.current) return;
-      setItems((prev) =>
-        prev.map((x) => ({ ...x, readAt: x.readAt ?? new Date().toISOString() })),
-      );
-      setUnread(0);
-    } catch (e) {
-      const err = e as ApiError;
-      if (mountedRef.current) setError(`${err.message} [${err.code}]`);
-    }
-  };
-
-  /**
-   * Navigate to the right screen based on the notification's related entity.
-   * Handles both "already inside the tab" and "navigation.getParent() is null" cases.
-   */
   const navigateToEntity = useCallback(
-    (item: NotificationItem | { type?: string; entityType?: string | null; entityId?: string | null }) => {
+    (
+      item:
+        | NotificationItem
+        | { type?: string; entityType?: string | null; entityId?: string | null },
+    ) => {
       const entityType =
         'relatedEntityType' in item ? item.relatedEntityType : item.entityType;
       const entityId =
@@ -114,7 +71,10 @@ export default function NotificationsScreen({ navigation }: Props) {
             if (navigation.getState().routeNames.includes('AnnouncementDetail')) {
               navigation.navigate('AnnouncementDetail', { id: entityId });
             } else {
-              root.navigate('Home', { screen: 'AnnouncementDetail', params: { id: entityId } });
+              root.navigate('Home', {
+                screen: 'AnnouncementDetail',
+                params: { id: entityId },
+              });
             }
           }
           break;
@@ -124,7 +84,10 @@ export default function NotificationsScreen({ navigation }: Props) {
             if (navigation.getState().routeNames.includes('SongDetail')) {
               navigation.navigate('SongDetail', { id: entityId });
             } else {
-              root.navigate('Songs', { screen: 'SongDetail', params: { id: entityId } });
+              root.navigate('Songs', {
+                screen: 'SongDetail',
+                params: { id: entityId },
+              });
             }
           }
           break;
@@ -134,7 +97,10 @@ export default function NotificationsScreen({ navigation }: Props) {
             if (navigation.getState().routeNames.includes('MemoryDetail')) {
               navigation.navigate('MemoryDetail', { id: entityId });
             } else {
-              root.navigate('Memories', { screen: 'MemoryDetail', params: { id: entityId } });
+              root.navigate('Memories', {
+                screen: 'MemoryDetail',
+                params: { id: entityId },
+              });
             }
           }
           break;
@@ -144,7 +110,10 @@ export default function NotificationsScreen({ navigation }: Props) {
             if (navigation.getState().routeNames.includes('EventDetail')) {
               navigation.navigate('EventDetail', { id: entityId });
             } else {
-              root.navigate('Home', { screen: 'EventDetail', params: { id: entityId } });
+              root.navigate('Home', {
+                screen: 'EventDetail',
+                params: { id: entityId },
+              });
             }
           }
           break;
@@ -153,7 +122,6 @@ export default function NotificationsScreen({ navigation }: Props) {
           root.navigate('Home', { screen: 'DailyQuoteHistory' });
           break;
 
-        // Chat conversations. Chat is its own tab; Conversation lives inside it.
         case 'ChatConversation':
           if (entityId) {
             root.navigate('Chat', {
@@ -163,15 +131,12 @@ export default function NotificationsScreen({ navigation }: Props) {
           }
           break;
 
-        // Funding entities — jump to the Funding screen.
         case 'AnnualContributionRecord':
         case 'SpecialDonationPayment':
         case 'SpecialDonationCampaign':
           root.navigate('Profile', { screen: 'Funding' });
           break;
 
-        // Birthday notifications point at the BirthdayPost row now; open the
-        // detail screen so the member can react / comment.
         case 'BirthdayPost':
           if (entityId) {
             if (navigation.getState().routeNames.includes('BirthdayDetail')) {
@@ -185,7 +150,6 @@ export default function NotificationsScreen({ navigation }: Props) {
           }
           break;
 
-        // No dedicated screen for leadership changes; informational only.
         case 'LeadershipHistory':
           break;
 
@@ -196,14 +160,10 @@ export default function NotificationsScreen({ navigation }: Props) {
     [navigation],
   );
 
-  // ---------- Push tap handler ----------
-  // A tap on a phone notification carries the same { entityType, entityId }
-  // payload that fanOut stored in the DB, so we can reuse navigateToEntity.
-  // Guarded so it works in Expo Go on Android too.
+  // Push tap handler — unchanged.
   useEffect(() => {
     let sub: { remove: () => void } | null = null;
     let cancelled = false;
-
     (async () => {
       try {
         const Notifications = await import('expo-notifications');
@@ -213,39 +173,27 @@ export default function NotificationsScreen({ navigation }: Props) {
             | { entityType?: string | null; entityId?: string | null }
             | undefined;
           if (!data) return;
-          // Defer one tick so the navigation tree is mounted.
           setTimeout(() => {
             try {
               navigateToEntity(data);
             } catch {
-              /* ignore — navigation not ready */
+              /* ignore */
             }
           }, 0);
         });
       } catch {
-        // expo-notifications unavailable (Expo Go Android); ignore.
+        /* expo-notifications unavailable */
       }
     })();
-
     return () => {
       cancelled = true;
       sub?.remove();
     };
   }, [navigateToEntity]);
 
-  const onOpen = async (item: NotificationItem) => {
+  const onOpen = (item: NotificationItem) => {
     if (!item.readAt) {
-      try {
-        await markRead(item.id);
-        if (!mountedRef.current) return;
-        const updated = items.map((x) =>
-          x.id === item.id ? { ...x, readAt: new Date().toISOString() } : x,
-        );
-        setItems(updated);
-        setUnread(updated.filter((n) => !n.readAt).length);
-      } catch {
-        // ignore — best-effort read mark
-      }
+      markRead.mutate(item.id); // fire-and-forget; invalidates on success
     }
     navigateToEntity(item);
   };
@@ -256,21 +204,12 @@ export default function NotificationsScreen({ navigation }: Props) {
       {
         text: t('notifications.delete'),
         style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteNotification(item.id);
-            if (!mountedRef.current) return;
-            const updated = items.filter((x) => x.id !== item.id);
-            setItems(updated);
-            setUnread(updated.filter((n) => !n.readAt).length);
-          } catch (e) {
-            const err = e as ApiError;
-            if (mountedRef.current) setError(`${err.message} [${err.code}]`);
-          }
-        },
+        onPress: () => deleteNotification.mutate(item.id),
       },
     ]);
   };
+
+  const onMarkAllRead = () => markAllRead.mutate();
 
   const iconFor = (type: NotificationType): IconName => {
     switch (type) {
@@ -300,15 +239,22 @@ export default function NotificationsScreen({ navigation }: Props) {
     }
   };
 
-  if (loading) {
+  if (firstLoad) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
         <ActivityIndicator size="large" color={BRAND.violet} />
       </View>
     );
   }
 
-  const unreadCount = items.filter((i) => !i.readAt).length;
+  const unreadCount = unread.length;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -317,15 +263,57 @@ export default function NotificationsScreen({ navigation }: Props) {
         title={t('notifications.title')}
         subtitle={
           unreadCount > 0
-            ? t('notifications.unreadCount', { count: unreadCount, defaultValue: '{{count}} unread' })
-            : t('notifications.allCaughtUp', { defaultValue: "You're all caught up" })
+            ? t('notifications.unreadCount', {
+                count: unreadCount,
+                defaultValue: '{{count}} unread',
+              })
+            : t('notifications.allCaughtUp', {
+                defaultValue: "You're all caught up",
+              })
         }
         onBack={() => navigation.goBack()}
       />
 
-      {error && (
+      {showingSavedData && (
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-          <ErrorBanner message={error} />
+          <View
+            accessibilityRole="text"
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: withAlpha('#F59E0B', 0.14),
+              borderWidth: 1,
+              borderColor: withAlpha('#F59E0B', 0.4),
+            }}
+          >
+            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Text
+              style={[
+                typography.caption,
+                { color: '#F59E0B', fontWeight: '800' },
+              ]}
+            >
+              {t('home.showingSavedData', {
+                defaultValue: 'Showing saved data',
+              })}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {q.isError && q.data === undefined && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <ErrorBanner
+            message={
+              (q.error as { message?: string })?.message ??
+              t('common.error', { defaultValue: 'Something went wrong.' })
+            }
+          />
         </View>
       )}
 
@@ -333,6 +321,7 @@ export default function NotificationsScreen({ navigation }: Props) {
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
           <Pressable
             onPress={onMarkAllRead}
+            disabled={markAllRead.isPending}
             accessibilityRole="button"
             accessibilityLabel={t('notifications.markAllRead')}
             style={({ pressed }) => [
@@ -340,12 +329,17 @@ export default function NotificationsScreen({ navigation }: Props) {
               {
                 backgroundColor: withAlpha(BRAND.violet, 0.14),
                 borderColor: withAlpha(BRAND.violet, 0.45),
-                opacity: pressed ? 0.7 : 1,
+                opacity: pressed || markAllRead.isPending ? 0.7 : 1,
               },
             ]}
           >
             <Ionicons name="checkmark-done" size={16} color={BRAND.violet} />
-            <Text style={[typography.caption, { color: BRAND.violet, fontWeight: '800', marginLeft: 6 }]}>
+            <Text
+              style={[
+                typography.caption,
+                { color: BRAND.violet, fontWeight: '800', marginLeft: 6 },
+              ]}
+            >
               {t('notifications.markAllRead')}
             </Text>
           </Pressable>
@@ -362,11 +356,8 @@ export default function NotificationsScreen({ navigation }: Props) {
         }}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              void load();
-            }}
+            refreshing={q.isRefetching && !firstLoad}
+            onRefresh={() => q.refetch()}
             tintColor={BRAND.violet}
             colors={[BRAND.violet]}
           />
@@ -380,13 +371,21 @@ export default function NotificationsScreen({ navigation }: Props) {
               style={styles.emptyRing}
             >
               <View style={[styles.emptyInner, { backgroundColor: colors.background }]}>
-                <Ionicons name="notifications-off-outline" size={40} color={colors.textSecondary} />
+                <Ionicons
+                  name="notifications-off-outline"
+                  size={40}
+                  color={colors.textSecondary}
+                />
               </View>
             </LinearGradient>
             <Text
               style={[
                 typography.body,
-                { color: colors.textSecondary, marginTop: spacing.lg, textAlign: 'center' },
+                {
+                  color: colors.textSecondary,
+                  marginTop: spacing.lg,
+                  textAlign: 'center',
+                },
               ]}
             >
               {t('notifications.empty')}
@@ -408,7 +407,7 @@ export default function NotificationsScreen({ navigation }: Props) {
   );
 }
 
-// ---------- Card ----------
+// ---------- Card (unchanged visuals) ----------
 
 function NotificationCard({
   item,
@@ -445,7 +444,12 @@ function NotificationCard({
   }, [enter, index]);
 
   const to = (v: number) =>
-    Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
+    Animated.spring(scale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 6,
+      useNativeDriver: true,
+    }).start();
 
   return (
     <Animated.View
@@ -482,7 +486,12 @@ function NotificationCard({
           />
         )}
 
-        <View style={[styles.iconTile, { backgroundColor: withAlpha(tint, unread ? 0.22 : 0.14) }]}>
+        <View
+          style={[
+            styles.iconTile,
+            { backgroundColor: withAlpha(tint, unread ? 0.22 : 0.14) },
+          ]}
+        >
           <Ionicons name={icon} size={22} color={tint} />
         </View>
 
@@ -498,7 +507,10 @@ function NotificationCard({
           </Text>
           {item.body && (
             <Text
-              style={[typography.bodySmall, { color: colors.textSecondary, marginTop: 2 }]}
+              style={[
+                typography.bodySmall,
+                { color: colors.textSecondary, marginTop: 2 },
+              ]}
               numberOfLines={2}
             >
               {item.body}
@@ -538,7 +550,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   unreadBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 },
-  iconTile: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  iconTile: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
   dot: {
     width: 11,
@@ -552,6 +570,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     elevation: 3,
   },
-  emptyRing: { width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' },
-  emptyInner: { width: 104, height: 104, borderRadius: 52, alignItems: 'center', justifyContent: 'center' },
+  emptyRing: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyInner: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

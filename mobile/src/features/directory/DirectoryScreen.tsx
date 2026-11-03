@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,19 +14,15 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  listMembers,
-  DirectoryMember,
-  describeLastSeen,
-} from '../../services/members';
-import { ApiError } from '../../services/api';
-import { BRAND, withAlpha } from '../auth/Auth_UI';
+import { describeLastSeen, type DirectoryMember } from '../../services/members';
+import { BRAND, withAlpha, ErrorBanner } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import type { HomeStackParamList } from '../../navigation/HomeStack';
+import { useDirectoryQuery } from './useDirectory';
+import { warmMemberProfileCache } from './warmMemberProfileCache';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'Directory'>;
 
@@ -40,36 +36,30 @@ const AVATAR_PALETTE: readonly [string, string][] = [
 export default function DirectoryScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
 
   const [search, setSearch] = useState('');
+  const [debounced, setDebounced] = useState('');
   const [focused, setFocused] = useState(false);
-  const [items, setItems] = useState<DirectoryMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (q: string) => {
-    setError(null);
-    try {
-      const list = await listMembers(q);
-      setItems(list);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(search.trim()), 300);
+    return () => clearTimeout(id);
+  }, [search]);
 
-  useFocusEffect(
-    useCallback(() => {
-      void load(search);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [search]),
-  );
+  const q = useDirectoryQuery(debounced);
+  const items = q.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
+
+  // After the directory list is cached, warm every member's profile in the
+  // background so tapping any member opens instantly online AND offline.
+  // Fire-and-forget: never blocks, never throws, bounded (~3 concurrent).
+  useEffect(() => {
+    if (!q.data || q.data.length === 0) return;
+    void warmMemberProfileCache(q.data.map((m) => m.id));
+  }, [q.data]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -191,29 +181,50 @@ export default function DirectoryScreen({ navigation }: Props) {
         </View>
       </LinearGradient>
 
-      {error && (
-        <View
-          style={{
-            marginHorizontal: spacing.lg,
-            marginTop: spacing.md,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing.sm,
-            padding: spacing.md,
-            borderRadius: radius.md + 2,
-            backgroundColor: withAlpha(colors.error, 0.1),
-            borderWidth: 1,
-            borderColor: withAlpha(colors.error, 0.35),
-          }}
-        >
-          <Ionicons name="alert-circle" size={18} color={colors.error} />
-          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
-            {error}
-          </Text>
+      {showingSavedData && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <View
+            accessibilityRole="text"
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: withAlpha('#F59E0B', 0.14),
+              borderWidth: 1,
+              borderColor: withAlpha('#F59E0B', 0.4),
+            }}
+          >
+            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Text
+              style={[
+                typography.caption,
+                { color: '#F59E0B', fontWeight: '800' },
+              ]}
+            >
+              {t('home.showingSavedData', {
+                defaultValue: 'Showing saved data',
+              })}
+            </Text>
+          </View>
         </View>
       )}
 
-      {loading ? (
+      {q.isError && q.data === undefined && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <ErrorBanner
+            message={
+              (q.error as { message?: string })?.message ??
+              t('common.error', { defaultValue: 'Something went wrong.' })
+            }
+          />
+        </View>
+      )}
+
+      {firstLoad ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={BRAND.violet} />
         </View>
@@ -229,11 +240,8 @@ export default function DirectoryScreen({ navigation }: Props) {
           }}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                void load(search);
-              }}
+              refreshing={q.isRefetching && !firstLoad}
+              onRefresh={() => q.refetch()}
               tintColor={BRAND.violet}
               colors={[BRAND.violet]}
             />
@@ -305,10 +313,10 @@ function MemberCard({
   const seen = describeLastSeen(item.lastActiveAt);
   const initial = item.fullName.trim().charAt(0).toUpperCase();
 
-  const enter = React.useRef(new Animated.Value(0)).current;
-  const scale = React.useRef(new Animated.Value(1)).current;
+  const enter = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     const a = Animated.timing(enter, {
       toValue: 1,
       duration: 420,
@@ -357,7 +365,6 @@ function MemberCard({
           overflow: 'hidden',
         }}
       >
-        {/* accent bar */}
         <LinearGradient
           colors={palette}
           start={{ x: 0, y: 0 }}
@@ -365,7 +372,6 @@ function MemberCard({
           style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }}
         />
 
-        {/* Avatar with gradient ring + online dot */}
         <View style={{ width: 52, height: 52 }}>
           <LinearGradient
             colors={palette}

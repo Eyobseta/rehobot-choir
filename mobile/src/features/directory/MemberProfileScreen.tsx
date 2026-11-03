@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -14,15 +14,14 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
-import { getMember, MemberDetail } from '../../services/members';
-import { ApiError } from '../../services/api';
-import { BRAND, withAlpha } from '../auth/Auth_UI';
+import type { MemberDetail } from '../../services/members';
+import { BRAND, withAlpha, ErrorBanner } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import type { HomeStackParamList } from '../../navigation/HomeStack';
-import { formatEthDate } from '../../utils/ethiopianCalendar'; // FIXED: added import
+import { formatEthDate } from '../../utils/ethiopianCalendar';
+import { useMemberQuery } from './useDirectory';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'MemberProfile'>;
-
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const accents = {
@@ -40,24 +39,12 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { id } = route.params;
 
-  const [member, setMember] = useState<MemberDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const q = useMemberQuery(id);
+  const member = q.data;
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
-  useEffect(() => {
-    (async () => {
-      try {
-        setMember(await getMember(id));
-      } catch (e) {
-        const err = e as ApiError;
-        setError(`${err.message} [${err.code}]`);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [id]);
-
-  if (loading) {
+  if (firstLoad) {
     return (
       <View
         style={{
@@ -96,9 +83,12 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
         >
           <Ionicons name="person-outline" size={32} color={colors.error} />
         </View>
-        <Text style={[typography.body, { color: colors.error, textAlign: 'center' }]}>
-          {error ?? 'Not found'}
-        </Text>
+        <ErrorBanner
+          message={
+            (q.error as { message?: string })?.message ??
+            t('directory.memberNotFound', { defaultValue: 'Member not found' })
+          }
+        />
 
         <View style={{ position: 'absolute', top: insets.top + 12, right: 16 }}>
           <GlassBackButton onPress={() => navigation.goBack()} size={44} />
@@ -115,7 +105,6 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
       contentContainerStyle={{ paddingBottom: spacing.xxl }}
       showsVerticalScrollIndicator={false}
     >
-      {/* ---------- Hero ---------- */}
       <LinearGradient
         colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
         start={{ x: 0, y: 0 }}
@@ -155,7 +144,6 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
           }}
         />
 
-        {/* Back — top-right of hero */}
         <View
           pointerEvents="box-none"
           style={{ alignSelf: 'flex-end', marginBottom: 8 }}
@@ -167,7 +155,6 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
           />
         </View>
 
-        {/* Avatar with gradient ring */}
         <LinearGradient
           colors={[BRAND.gold, BRAND.magenta, BRAND.violet, BRAND.water, BRAND.gold]}
           start={{ x: 0, y: 0 }}
@@ -226,7 +213,38 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
         )}
       </LinearGradient>
 
-      {/* ---------- Info card ---------- */}
+      {showingSavedData && (
+        <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.md }}>
+          <View
+            accessibilityRole="text"
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: withAlpha('#F59E0B', 0.14),
+              borderWidth: 1,
+              borderColor: withAlpha('#F59E0B', 0.4),
+            }}
+          >
+            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Text
+              style={[
+                typography.caption,
+                { color: '#F59E0B', fontWeight: '800' },
+              ]}
+            >
+              {t('home.showingSavedData', {
+                defaultValue: 'Showing saved data',
+              })}
+            </Text>
+          </View>
+        </View>
+      )}
+
       {!member.deleted && (
         <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.lg }}>
           <View
@@ -269,10 +287,7 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
                     {t('memberProfile.phone')}
                   </Text>
                   <Text
-                    style={[
-                      typography.body,
-                      { color: BRAND.violet, fontWeight: '700' },
-                    ]}
+                    style={[typography.body, { color: BRAND.violet, fontWeight: '700' }]}
                     numberOfLines={1}
                   >
                     {member.phone}

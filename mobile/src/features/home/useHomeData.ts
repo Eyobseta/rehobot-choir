@@ -6,20 +6,11 @@ import { listBirthdays } from '../../services/birthdays';
 import { listNotifications } from '../../services/notifications';
 import { getTodayQuote } from '../../services/quotes';
 import { queryKeys } from '../../services/queryKeys';
-import { useMe } from '../chat/chatSession'; // decode user id from token
+import { useMe } from '../chat/chatSession';
+import { NOTIFICATIONS_PAGE_SIZE } from '../notifications/useNotifications';
 
 /**
  * All Home GETs, expressed as TanStack queries.
- *
- * Behavior contract:
- *   - Cached data renders immediately (data !== undefined) even if stale.
- *   - Background revalidation runs on mount, on app focus, on reconnect.
- *   - `isPending` is only true on the very first load with no cache.
- *   - `isFetching` is true during any background refresh (drives the subtle
- *     "refreshing" indicator on Home).
- *   - `isError && data` means "showing saved data".
- *
- * The hooks do NOT mutate any state, so refetching is safe at any time.
  */
 
 function useUserId(): string | null {
@@ -32,8 +23,6 @@ export function useMeQuery() {
   return useQuery({
     queryKey: queryKeys.profileMe(userId),
     queryFn: me,
-    // `me()` gives us `mustChangePassword` and the canonical user id.
-    // Refetching it on every focus is cheap and expected.
   });
 }
 
@@ -62,9 +51,6 @@ export function useBirthdaysQuery() {
   const userId = useUserId();
   return useQuery({
     queryKey: queryKeys.birthdays(userId),
-    // NOTE: uses `services/birthdays.ts`'s cached variant, NOT the plain
-    // apiGet in members.ts. Both endpoints are identical; the difference
-    // is that this one is shared with the BirthdayDetail flow.
     queryFn: listBirthdays,
   });
 }
@@ -73,8 +59,11 @@ export function useBirthdaysQuery() {
 export function useNotificationsPreviewQuery(limit = 5) {
   const userId = useUserId();
   return useQuery({
-    queryKey: queryKeys.notifications(userId, limit),
-    queryFn: () => listNotifications(limit),
+    // SAME key as the Notifications screen — one cache entry shared.
+    queryKey: queryKeys.notifications(userId),
+    // Fetch the full list; `select` slices for Home.
+    queryFn: () => listNotifications(NOTIFICATIONS_PAGE_SIZE),
+    select: (items) => items.slice(0, limit),
   });
 }
 
