@@ -1,13 +1,19 @@
 import { prisma } from '../db/prisma';
 import { ApiError } from '../utils/ApiError';
 import { AttendanceStatus, GatheringType, UserRole } from '@prisma/client';
-import { EthDate, ethToUtcDate } from '../utils/ethiopianCalendar';
+import { EthDate, ethToUtcDate, ethTodayFromInstant } from '../utils/ethiopianCalendar';
 import { ethFields } from '../utils/eth-fields';
 
+/**
+ * A record is locked once its Addis-calendar day has ended.
+ * Compares date-only values (both sides are UTC midnight of the Gregorian
+ * mirror of an Ethiopian date), so the check is timezone-independent on
+ * the server — the "today" used is the current EAT day.
+ */
 function isLocked(dateGregorian: Date): boolean {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  return dateGregorian.getTime() < today.getTime();
+  const todayEth = ethTodayFromInstant(new Date());
+  const todayUtc = ethToUtcDate(todayEth);
+  return dateGregorian.getTime() < todayUtc.getTime();
 }
 
 function isGatheringType(v: unknown): v is GatheringType {
@@ -21,6 +27,13 @@ function isGatheringType(v: unknown): v is GatheringType {
 function isStatus(v: unknown): v is AttendanceStatus {
   return v === 'PRESENT' || v === 'ABSENT';
 }
+
+/**
+ * Upper bound on rows accepted in one attendance submission.
+ * A real roster is well under this; the guard exists to cap the transaction
+ * at a bounded amount of DB work per request.
+ */
+const MAX_ATTENDANCE_ROWS = 200;
 
 export async function listMembersForAttendance(gathering: GatheringType) {
   const members = await prisma.user.findMany({
@@ -83,13 +96,19 @@ export async function recordAttendance(
   if (!isGatheringType(input.gathering)) {
     throw ApiError.badRequest('Invalid gathering.');
   }
-  
+
   const dateGregorian = ethToUtcDate(input.date);
   if (isLocked(dateGregorian)) {
     throw new ApiError(400, 'ATTENDANCE_LOCKED', 'Attendance is locked after the day ends.');
   }
   if (!Array.isArray(input.records) || input.records.length === 0) {
     throw ApiError.badRequest('No attendance rows provided.');
+  }
+  if (input.records.length > MAX_ATTENDANCE_ROWS) {
+    throw ApiError.badRequest(
+      `Too many attendance rows in one submission (max ${MAX_ATTENDANCE_ROWS}). Split into smaller batches.`,
+      'TOO_MANY_ROWS',
+    );
   }
   for (const row of input.records) {
     if (!row || typeof row.memberId !== 'string' || !row.memberId) {
@@ -159,7 +178,7 @@ export async function getGridSummary(
 ) {
   const fromGregorian = ethToUtcDate(from);
   const toGregorian = ethToUtcDate(to);
-  
+
   if (fromGregorian.getTime() > toGregorian.getTime()) {
     throw ApiError.badRequest('from must be <= to.');
   }

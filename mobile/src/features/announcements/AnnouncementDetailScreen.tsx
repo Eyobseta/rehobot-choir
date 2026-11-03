@@ -20,7 +20,8 @@ import { useAnnouncementDetailQuery } from './useAnnouncements';
 const AMBER = '#F59E0B';
 
 export default function AnnouncementDetailScreen({ route, navigation }: any) {
-  const { t } = useTranslation();
+   const { t, i18n } = useTranslation();
+ const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
@@ -273,7 +274,7 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
                       textTransform: 'uppercase',
                     }}
                   >
-                    {formatEthDate(evEth, 'en').split(' ')[0].slice(0, 3)}
+                    {formatEthDate(evEth, lang).split(' ')[0].slice(0, 3)}
                   </Text>
                 </View>
                 <View style={{ flex: 1 }}>
@@ -287,7 +288,7 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
                     style={[typography.caption, { color: 'rgba(255,255,255,0.85)', marginTop: 3 }]}
                     numberOfLines={1}
                   >
-                    {formatEthDate(evEth, 'en')}
+                    {formatEthDate(evEth, lang)}
                   </Text>
                 </View>
                 <View

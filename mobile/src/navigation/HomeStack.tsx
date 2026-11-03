@@ -12,7 +12,7 @@ import AnnouncementsScreen from '../features/announcements/AnnouncementsScreen';
 import AnnouncementDetailScreen from '../features/announcements/AnnouncementDetailScreen';
 import DailyQuoteComposerScreen from '../features/quotes/DailyQuoteComposerScreen';
 import DailyQuoteHistoryScreen from '../features/quotes/DailyQuoteHistoryScreen';
-import DailyQuoteDetailScreen from '../features/quotes/Dailyquotedetailscreen ';
+import DailyQuoteDetailScreen from '../features/quotes/DailyQuoteDetailScreen';
 import SongVideoScreen from '../features/songs/SongVideoScreen';
 import BirthdayDetailScreen from '../features/birthdays/BirthdayDetailScreen';
 import type { DailyQuote } from '../services/quotes';
@@ -49,15 +49,15 @@ export default function HomeStack() {
     >
       <Stack.Screen name="HomeMain" component={HomeScreen} options={{ headerShown: false }} />
       <Stack.Screen
-  name="Directory"
-  component={DirectoryScreen}
-  options={{ headerShown: false }}
-/>
-<Stack.Screen
-  name="MemberProfile"
-  component={MemberProfileScreen}
-  options={{ headerShown: false, animation: 'slide_from_right' }}
-/>
+        name="Directory"
+        component={DirectoryScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="MemberProfile"
+        component={MemberProfileScreen}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      />
 
       <Stack.Screen name="EventsList" component={EventsScreen} options={{ headerShown: false }} />
       <Stack.Screen

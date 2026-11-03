@@ -20,6 +20,7 @@ import { publishTodayQuote } from '../../services/quotes';
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { useMe } from '../chat/chatSession';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -30,6 +31,7 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
   const insets = useSafeAreaInsets();
+  const userId = useMe()?.id ?? null;
 
   const [quoteText, setQuoteText] = useState('');
   const [source, setSource] = useState('');
@@ -65,14 +67,17 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
 
     setBusy(true);
     try {
-      await publishTodayQuote({
-        quoteText: quoteText.trim(),
-        source: source.trim(),
-        youtubeUrl: youtubeUrl.trim() || undefined,
-        audioUri,
-        audioName,
-        audioMime,
-      });
+      await publishTodayQuote(
+        {
+          quoteText: quoteText.trim(),
+          source: source.trim(),
+          youtubeUrl: youtubeUrl.trim() || undefined,
+          audioUri,
+          audioName,
+          audioMime,
+        },
+        userId,
+      );
       Alert.alert(t('quote.published'), t('quote.publishedBody'), [
         { text: t('common.continue'), onPress: () => navigation.goBack() },
       ]);
@@ -113,7 +118,6 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
             overflow: 'hidden',
           }}
         >
-          {/* giant quote mark */}
           <Text
             pointerEvents="none"
             style={{

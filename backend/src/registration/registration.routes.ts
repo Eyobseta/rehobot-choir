@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { register, getStatus } from './registration.service';
 import { ApiError } from '../utils/ApiError';
-import { EthDate } from '../utils/ethiopianCalendar';
+import { reqEthDate, optEthDate } from '../funding/funding.validation';
 
 const router = Router();
 
@@ -19,8 +19,13 @@ const upload = multer({
 });
 
 /**
- * POST /api/v1/auth/register  — public
- * multipart/form-data with fields + photo
+ * POST /api/v1/auth/register — public
+ * multipart/form-data with fields + photo.
+ *
+ * Date fields (dateOfBirth, joiningDate) must be a JSON object string like
+ * '{"year":2016,"month":1,"day":1}' in the Ethiopian calendar. Validated by
+ * reqEthDate / optEthDate so a bad date returns 400 with a specific code
+ * instead of crashing the request with a 500.
  */
 router.post(
   '/register',
@@ -29,37 +34,22 @@ router.post(
     try {
       if (!req.file) throw ApiError.badRequest('Profile photo is required.');
 
-      const {
-        fullName,
-        phone,
-        email,
-        password,
-        gender,
-        dateOfBirth,
-        emergencyContactName,
-        emergencyContactPhone,
-        joiningDate,
-      } = req.body ?? {};
+      const body = req.body ?? {};
 
-      // Parse the Ethiopian date objects sent by the mobile app
-      let parsedDOB: EthDate;
-      try {
-        parsedDOB = JSON.parse(String(dateOfBirth));
-      } catch {
-        throw ApiError.badRequest('Invalid dateOfBirth format.');
-      }
-      const parsedJoining = joiningDate ? JSON.parse(String(joiningDate)) : undefined;
+      // Validate Ethiopian dates up front — before any DB or storage work.
+      const dateOfBirth = reqEthDate(body.dateOfBirth, 'Date of birth');
+      const joiningDate = optEthDate(body.joiningDate, 'Joining date');
 
       const result = await register({
-        fullName,
-        phone,
-        email,
-        password,
-        gender,
-        dateOfBirth: parsedDOB,
-        emergencyContactName,
-        emergencyContactPhone,
-        joiningDate: parsedJoining,
+        fullName: String(body.fullName ?? ''),
+        phone: String(body.phone ?? ''),
+        email: String(body.email ?? ''),
+        password: String(body.password ?? ''),
+        gender: String(body.gender ?? ''),
+        dateOfBirth,
+        emergencyContactName: String(body.emergencyContactName ?? ''),
+        emergencyContactPhone: String(body.emergencyContactPhone ?? ''),
+        joiningDate,
         photo: { buffer: req.file.buffer, mimetype: req.file.mimetype },
       });
       res.status(201).json(result);

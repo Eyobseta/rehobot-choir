@@ -26,7 +26,9 @@ const AMBER = '#F59E0B';
 const RED = '#EF4444';
 
 export default function EventDetailScreen({ route, navigation }: any) {
-  const { t } = useTranslation();
+  
+const { t, i18n } = useTranslation();
+const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
   const insets = useSafeAreaInsets();
@@ -86,11 +88,10 @@ export default function EventDetailScreen({ route, navigation }: any) {
   const total = event.rsvps.length;
 
   const ethDate = event.date;
-  const timeStr = new Date(event.dateGregorian).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  const dateLabel = `${formatEthDate(ethDate, 'en')} · ${timeStr}`;
+  // `event.dateGregorian` is a date-only value (UTC midnight of the event day).
+  // Rendering it with toLocaleTimeString shows a phantom time that changes with
+  // the device's timezone. Events have no time column — display only the date.
+  const dateLabel = formatEthDate(ethDate, lang);
 
   const busy = rsvpMut.isPending;
 
@@ -147,7 +148,7 @@ export default function EventDetailScreen({ route, navigation }: any) {
                 textTransform: 'uppercase',
               }}
             >
-              {formatEthDate(ethDate, 'en').split(' ')[0].slice(0, 3)}
+              {formatEthDate(ethDate, lang).split(' ')[0].slice(0, 3)}
             </Text>
           </View>
         </View>
@@ -192,7 +193,7 @@ export default function EventDetailScreen({ route, navigation }: any) {
           </Text>
 
           <View style={{ marginTop: spacing.md, gap: spacing.sm + 2 }}>
-            <InfoRow icon="time" tint={BRAND.violet} text={dateLabel} />
+            <InfoRow icon="calendar" tint={BRAND.violet} text={dateLabel} />
             {event.location && (
               <InfoRow icon="location" tint={BRAND.magenta} text={event.location} />
             )}

@@ -1,18 +1,20 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, FlatList, Pressable, Image, ActivityIndicator, Alert, Animated, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { leaderListZemaMembers, leaderAddZemaMember, leaderRemoveZemaMember, ZemaMember } from '../../services/songs';
-import { listMembers, DirectoryMember } from '../../services/members';
+import { ZemaMember } from '../../services/songs';
 import { ApiError } from '../../services/api';
-import { cachedFetch } from '../../services/cache';
-import { CACHE_KEYS } from '../../services/cacheKeys';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { useDirectoryQuery } from '../directory/useDirectory';
+import {
+  useZemaMembersQuery,
+  useAddZemaMemberMutation,
+  useRemoveZemaMemberMutation,
+} from './useLeaderCategoriesAndZema';
 
 const PALETTES: readonly [string, string][] = [
   [BRAND.violet, BRAND.magenta],
@@ -27,56 +29,52 @@ export default function ZemaTeamScreen({ navigation }: any) {
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState<ZemaMember[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const zemaQ = useZemaMembersQuery();
+  const dirQ = useDirectoryQuery('');
+  const addMut = useAddZemaMemberMutation();
+  const removeMut = useRemoveZemaMemberMutation();
+
+  const items = zemaQ.data ?? [];
+  const directory = dirQ.data ?? [];
+  const firstLoad = zemaQ.isPending && zemaQ.data === undefined;
+  const busy = addMut.isPending || removeMut.isPending;
+
   const [error, setError] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
-  const [directory, setDirectory] = useState<DirectoryMember[]>([]);
 
-  const load = useCallback(async () => {
+  const errorMsg =
+    error ??
+    (zemaQ.isError
+      ? ((zemaQ.error as { message?: string } | null)?.message ?? 'Error')
+      : null);
+
+  const onAdd = async (userId: string) => {
     setError(null);
     try {
-      const data = await cachedFetch(
-        CACHE_KEYS.leaderZema,
-        () => leaderListZemaMembers(),
-        (freshData) => setItems(freshData),
-      );
-      if (data) setItems(data);
+      await addMut.mutateAsync(userId);
+      setShowPicker(false);
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
     }
-  }, []);
-
-  const loadDirectory = useCallback(async () => {
-    try { setDirectory(await listMembers('')); } catch {}
-  }, []);
-
-  useFocusEffect(useCallback(() => {
-    if (items.length === 0) setLoading(true);
-    void load();
-    void loadDirectory();
-  }, [load, loadDirectory, items.length]));
-
-  const onAdd = async (userId: string) => {
-    setBusy(true);
-    try { await leaderAddZemaMember(userId); setShowPicker(false); await load(); }
-    catch (e) { const err = e as ApiError; setError(`${err.message} [${err.code}]`); }
-    finally { setBusy(false); }
   };
 
   const onRemove = (m: ZemaMember) => {
     Alert.alert(t('leaderSongs.removeZema'), m.user.memberProfile?.fullName ?? '', [
       { text: t('common.cancel'), style: 'cancel' },
-      { text: t('leaderSongs.remove'), style: 'destructive', onPress: async () => {
-        setBusy(true);
-        try { await leaderRemoveZemaMember(m.user.id); await load(); }
-        catch (e) { const err = e as ApiError; setError(`${err.message} [${err.code}]`); }
-        finally { setBusy(false); }
-      }},
+      {
+        text: t('leaderSongs.remove'),
+        style: 'destructive',
+        onPress: async () => {
+          setError(null);
+          try {
+            await removeMut.mutateAsync(m.user.id);
+          } catch (e) {
+            const err = e as ApiError;
+            setError(`${err.message} [${err.code}]`);
+          }
+        },
+      },
     ]);
   };
 
@@ -115,10 +113,10 @@ export default function ZemaTeamScreen({ navigation }: any) {
         </Pressable>
       </LinearGradient>
 
-      {error && (
+      {errorMsg && (
         <View style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 8, padding: spacing.md, borderRadius: 14, backgroundColor: withAlpha(colors.error, 0.1), borderWidth: 1, borderColor: withAlpha(colors.error, 0.35) }}>
           <Ionicons name="alert-circle" size={18} color={colors.error} />
-          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
+          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{errorMsg}</Text>
         </View>
       )}
 
@@ -144,15 +142,19 @@ export default function ZemaTeamScreen({ navigation }: any) {
               </Pressable>
             )}
             ListEmptyComponent={
-              <View style={{ padding: spacing.md }}>
-                <Text style={[typography.bodySmall, { color: colors.textSecondary }]}>{t('leaderSongs.noCandidates')}</Text>
+              <View style={{ padding: spacing.md, alignItems: 'center' }}>
+                {dirQ.isPending ? (
+                  <ActivityIndicator color={BRAND.violet} />
+                ) : (
+                  <Text style={[typography.bodySmall, { color: colors.textSecondary }]}>{t('leaderSongs.noCandidates')}</Text>
+                )}
               </View>
             }
           />
         </View>
       )}
 
-      {loading ? (
+      {firstLoad ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>
       ) : (
         <FlatList

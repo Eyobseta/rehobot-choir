@@ -12,31 +12,33 @@ router.use(authenticate, touchLastActive);
 
 /**
  * GET /api/v1/attendance/grid/me?from={json}&to={json}
+ *
+ * `from` and `to` are optional Ethiopian date JSON objects:
+ *   ?from={"year":2016,"month":1,"day":1}&to={"year":2016,"month":12,"day":30}
+ *
+ * If either is provided but malformed or out of range, reqEthDate throws a
+ * specific 400 (DATE_REQUIRED / INVALID_DATE_FORMAT / INVALID_ETHIOPIAN_DATE)
+ * instead of silently falling back to the default window.
  */
 router.get('/grid/me', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.auth) throw ApiError.unauthorized();
 
     const today = ethTodayFromInstant(new Date());
-    const threeMonthsAgo = { year: today.year, month: Math.max(1, today.month - 3), day: 1 };
+    const threeMonthsAgo = {
+      year: today.year,
+      month: Math.max(1, today.month - 3),
+      day: 1,
+    };
 
     let from = threeMonthsAgo;
     let to = today;
 
-    // FIXED: Safe parsing with try/catch
     if (req.query.from) {
-      try {
-        from = reqEthDate(JSON.parse(String(req.query.from)), 'from');
-      } catch {
-        // ignore, use default
-      }
+      from = reqEthDate(req.query.from, 'from');
     }
     if (req.query.to) {
-      try {
-        to = reqEthDate(JSON.parse(String(req.query.to)), 'to');
-      } catch {
-        // ignore, use default
-      }
+      to = reqEthDate(req.query.to, 'to');
     }
 
     const data = await getMyGridSummary(req.auth.userId, from, to);

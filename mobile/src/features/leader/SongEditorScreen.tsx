@@ -78,7 +78,7 @@ export default function SongEditorScreen({ route, navigation }: any) {
       setAudioUri(asset.uri);
       setAudioName(asset.name ?? 'audio.m4a');
       setAudioMime(asset.mimeType ?? 'audio/m4a');
-    } catch { setError('Failed to pick audio file.'); }
+    } catch { setError(t('leaderSongs.pickAudioFailed', { defaultValue: 'Failed to pick audio file.' })); }
   };
 
   const onSave = async (publish: boolean) => {
@@ -135,7 +135,11 @@ export default function SongEditorScreen({ route, navigation }: any) {
   const onToggleAudioPreview = async () => {
     if (!previewAudioUri) return;
     if (getCurrentKey() !== audioKey) {
-      await playTrack({ key: audioKey, uri: previewAudioUri, title: title || 'Preview' });
+      await playTrack({
+        key: audioKey,
+        uri: previewAudioUri,
+        title: title || t('leaderSongs.audioPreviewDefault', { defaultValue: 'Preview' }),
+      });
       return;
     }
     if (isAudioPlaying) await pauseTrack();
@@ -211,7 +215,9 @@ export default function SongEditorScreen({ route, navigation }: any) {
                 <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: withAlpha(BRAND.violet, 0.16), alignItems: 'center', justifyContent: 'center' }}>
                   <Ionicons name="play-circle" size={14} color={BRAND.violet} />
                 </View>
-                <Text style={[typography.h3, { color: colors.text, fontWeight: '800' }]}>Preview</Text>
+                <Text style={[typography.h3, { color: colors.text, fontWeight: '800' }]}>
+                  {t('leaderSongs.previewSection', { defaultValue: 'Preview' })}
+                </Text>
               </View>
 
               {previewAudioUri && (
@@ -235,7 +241,9 @@ export default function SongEditorScreen({ route, navigation }: any) {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>
-                        {audioUri ? 'Preview picked audio' : 'Preview attached audio'}
+                        {audioUri
+                          ? t('leaderSongs.previewPickedAudio', { defaultValue: 'Preview picked audio' })
+                          : t('leaderSongs.previewAttachedAudio', { defaultValue: 'Preview attached audio' })}
                       </Text>
                       <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 }} numberOfLines={1}>
                         {title || t('songs.nowPlaying')}

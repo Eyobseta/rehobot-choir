@@ -75,10 +75,10 @@ export default function ManageMemberScreen({ navigation }: any) {
     setError(null);
     try {
       await resetMemberPassword(member.id, newPassword.trim());
-      
+
       setResetOpen(false);
       setNewPassword('');
-      
+
       Alert.alert(
         t('leaderTools.resetPasswordSuccessTitle', { defaultValue: 'Password reset' }),
         t('leaderTools.resetPasswordSuccess', {
@@ -298,12 +298,15 @@ export default function ManageMemberScreen({ navigation }: any) {
                 {t('leaderTools.resetPassword')}
               </Text>
               <Text style={[typography.body, { color: colors.textSecondary, marginTop: spacing.sm }]}>
-                Type a temporary password for {member?.fullName ?? member?.phone}. They will be asked to change it after logging in.
+                {t('leaderTools.resetPasswordBody', {
+                  name: member?.fullName ?? member?.phone ?? '',
+                  defaultValue: 'Type a temporary password for {{name}}. They will be asked to change it after logging in.',
+                })}
               </Text>
 
               <View style={{ marginTop: spacing.lg }}>
                 <AuthField
-                  label="Temporary Password"
+                  label={t('leaderTools.resetPasswordTitle', { defaultValue: 'Temporary Password' })}
                   iconNode={<Ionicons name="lock-closed" size={16} color={BRAND.violet} />}
                   value={newPassword}
                   onChangeText={setNewPassword}
@@ -314,7 +317,9 @@ export default function ManageMemberScreen({ navigation }: any) {
                 />
                 <Pressable onPress={() => setShowPassword(!showPassword)} style={{ alignSelf: 'flex-start', marginTop: 8 }}>
                   <Text style={{ color: BRAND.violet, fontSize: 12, fontWeight: '700' }}>
-                    {showPassword ? 'Hide password' : 'Show password'}
+                    {showPassword
+                      ? t('leaderTools.hidePassword', { defaultValue: 'Hide password' })
+                      : t('leaderTools.showPassword', { defaultValue: 'Show password' })}
                   </Text>
                 </Pressable>
               </View>
@@ -328,7 +333,9 @@ export default function ManageMemberScreen({ navigation }: any) {
                     {busy ? <ActivityIndicator color="#FFFFFF" /> : (
                       <>
                         <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                        <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800', marginLeft: 6 }]}>Reset</Text>
+                        <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800', marginLeft: 6 }]}>
+                          {t('leaderTools.resetPasswordAction', { defaultValue: 'Reset' })}
+                        </Text>
                       </>
                     )}
                   </LinearGradient>

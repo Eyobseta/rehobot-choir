@@ -288,13 +288,15 @@ function YearChip({ label, active, onPress }: { label: string; active: boolean; 
 
 function MemoryCard({ item, index, onPress }: { item: MemorySummary; index: number; onPress: () => void; }) {
   const { theme } = useTheme();
+  const { i18n } = useTranslation();
+  const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { colors, spacing, typography } = theme;
 
   const thumb = item.media.find((m) => m.type === 'PHOTO')?.storageUrl;
   const photoCount = item.media.filter((m) => m.type === 'PHOTO').length;
   const hasAudio = item.media.some((m) => m.type === 'AUDIO');
   const ytCount = item.media.filter((m) => m.type === 'YOUTUBE').length;
-  const ethLabel = formatEthDate(memoryToEthDate(item), 'en');
+  const ethLabel = formatEthDate(memoryToEthDate(item), lang);
   const palette = PLACEHOLDERS[index % PLACEHOLDERS.length];
 
   const enter = useRef(new Animated.Value(0)).current;

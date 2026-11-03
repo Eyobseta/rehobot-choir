@@ -31,8 +31,9 @@ function publisherOf(item: DailyQuote): { name: string | null; photo: string | n
 }
 
 export default function DailyQuoteHistoryScreen({ navigation }: any) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
+  const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { colors, spacing, radius, typography } = theme;
   const insets = useSafeAreaInsets();
 
@@ -288,7 +289,7 @@ export default function DailyQuoteHistoryScreen({ navigation }: any) {
                           month: item.dateEthMonth,
                           day: item.dateEthDay,
                         },
-                        'en',
+                        lang,
                       )}
                     </Text>
                   </View>

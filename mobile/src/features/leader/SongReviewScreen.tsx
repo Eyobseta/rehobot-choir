@@ -126,7 +126,9 @@ export default function SongReviewScreen({ navigation }: any) {
               {!firstLoad && items.length > 0 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.18)' }}>
                   <Ionicons name="time" size={13} color="#FFFFFF" />
-                  <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>{items.length} pending</Text>
+                  <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
+                    {t('leaderSongs.pendingCount', { count: items.length, defaultValue: '{{count}} pending' })}
+                  </Text>
                 </View>
               )}
             </LinearGradient>
@@ -165,7 +167,14 @@ export default function SongReviewScreen({ navigation }: any) {
           )
         }
         renderItem={({ item, index }) => (
-          <SubmissionCard item={item} index={index} palette={PALETTES[index % PALETTES.length]} onPress={() => setDetailOpen(item)} tapLabel={t('leaderSongs.tapToReview')} />
+          <SubmissionCard
+            item={item}
+            index={index}
+            palette={PALETTES[index % PALETTES.length]}
+            onPress={() => setDetailOpen(item)}
+            tapLabel={t('leaderSongs.tapToReview')}
+            byLabel={t('leaderSongs.byLabel', { defaultValue: 'By' })}
+          />
         )}
       />
 
@@ -178,7 +187,9 @@ export default function SongReviewScreen({ navigation }: any) {
                 <View pointerEvents="none" style={{ position: 'absolute', top: -40, right: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: withAlpha(BRAND.gold, 0.22) }} />
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <View style={{ flex: 1, marginRight: 12 }}>
-                    <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>Review</Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>
+                      {t('leaderSongs.reviewKicker', { defaultValue: 'Review' })}
+                    </Text>
                     <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '800', marginTop: 2 }} numberOfLines={1}>{detailOpen?.song.title}</Text>
                     {detailOpen?.song.category && (
                       <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, fontWeight: '600', marginTop: 2 }} numberOfLines={1}>{detailOpen.song.category.name}</Text>
@@ -203,7 +214,9 @@ export default function SongReviewScreen({ navigation }: any) {
                     </LinearGradient>
                   )}
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>Submitted by</Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+                      {t('leaderSongs.submittedBy', { defaultValue: 'Submitted by' })}
+                    </Text>
                     <Text style={[typography.body, { color: colors.text, fontWeight: '800', marginTop: 1 }]} numberOfLines={1}>
                       {detailOpen?.submittedBy.memberProfile?.fullName ?? ''}
                     </Text>
@@ -216,7 +229,9 @@ export default function SongReviewScreen({ navigation }: any) {
                       <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: withAlpha(BRAND.violet, 0.16), alignItems: 'center', justifyContent: 'center' }}>
                         <Ionicons name="play-circle" size={14} color={BRAND.violet} />
                       </View>
-                      <Text style={[typography.h3, { color: colors.text, fontWeight: '800' }]}>Preview</Text>
+                      <Text style={[typography.h3, { color: colors.text, fontWeight: '800' }]}>
+                        {t('leaderSongs.previewSection', { defaultValue: 'Preview' })}
+                      </Text>
                     </View>
 
                     {detailOpen?.song.audioUrl && (() => {
@@ -259,7 +274,9 @@ export default function SongReviewScreen({ navigation }: any) {
                               />
                             </View>
                             <View style={{ flex: 1 }}>
-                              <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>Play audio</Text>
+                              <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>
+                                {t('songs.playAudio', { defaultValue: 'Play audio' })}
+                              </Text>
                               <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 }} numberOfLines={1}>
                                 {detailOpen.song.title}
                               </Text>
@@ -408,8 +425,8 @@ function Equalizer({ active }: { active: boolean }) {
   );
 }
 
-function SubmissionCard({ item, index, palette, onPress, tapLabel }: {
-  item: PendingSubmission; index: number; palette: readonly [string, string]; onPress: () => void; tapLabel: string;
+function SubmissionCard({ item, index, palette, onPress, tapLabel, byLabel }: {
+  item: PendingSubmission; index: number; palette: readonly [string, string]; onPress: () => void; tapLabel: string; byLabel: string;
 }) {
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
@@ -449,7 +466,7 @@ function SubmissionCard({ item, index, palette, onPress, tapLabel }: {
               </LinearGradient>
             )}
             <View style={{ flex: 1 }}>
-              <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '700' }]}>By</Text>
+              <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '700' }]}>{byLabel}</Text>
               <Text style={[typography.bodySmall, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
                 {item.submittedBy.memberProfile?.fullName ?? ''}
               </Text>

@@ -1,6 +1,7 @@
 import { prisma } from '../db/prisma';
 import { ApiError } from '../utils/ApiError';
 import {
+  Prisma,
   SongStatus,
   SubmissionStatus,
   NotificationType,
@@ -8,7 +9,6 @@ import {
 } from '@prisma/client';
 import { uploadBuffer, deleteByPublicId } from '../storage/cloudinary';
 import { fanOut } from '../notifications/notifications.service';
-
 
 // ---------- Categories ----------
 
@@ -19,30 +19,73 @@ export async function listCategories() {
   });
 }
 
+/**
+ * Race-safe: relies on the DB's unique constraint on `SongCategory.name`.
+ * A concurrent insert that loses the race surfaces as P2002 and is mapped
+ * to a 409 instead of leaking a 500.
+ */
 export async function createCategory(name: string) {
   const clean = name.trim();
   if (!clean) throw ApiError.badRequest('Name is required.');
-  const clash = await prisma.songCategory.findUnique({ where: { name: clean } });
-  if (clash) throw ApiError.conflict('Category already exists.', 'CATEGORY_EXISTS');
-  return prisma.songCategory.create({ data: { name: clean } });
+
+  try {
+    return await prisma.songCategory.create({ data: { name: clean } });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      throw ApiError.conflict('Category already exists.', 'CATEGORY_EXISTS');
+    }
+    throw e;
+  }
 }
 
+/**
+ * Race-safe rename. Handles:
+ *   P2002 — another category took the name first   -> 409
+ *   P2025 — the category was deleted concurrently  -> 404
+ */
 export async function renameCategory(id: string, name: string) {
   const clean = name.trim();
   if (!clean) throw ApiError.badRequest('Name is required.');
-  const cat = await prisma.songCategory.findUnique({ where: { id } });
-  if (!cat) throw ApiError.notFound('Category not found.');
-  const clash = await prisma.songCategory.findUnique({ where: { name: clean } });
-  if (clash && clash.id !== id) {
-    throw ApiError.conflict('Category already exists.', 'CATEGORY_EXISTS');
+
+  try {
+    return await prisma.songCategory.update({
+      where: { id },
+      data: { name: clean },
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      if (e.code === 'P2002') {
+        throw ApiError.conflict('Category already exists.', 'CATEGORY_EXISTS');
+      }
+      if (e.code === 'P2025') {
+        throw ApiError.notFound('Category not found.');
+      }
+    }
+    throw e;
   }
-  return prisma.songCategory.update({ where: { id }, data: { name: clean } });
 }
 
+/**
+ * Race-safe delete. Handles:
+ *   P2025 — the category was deleted concurrently  -> 404
+ *
+ * The Song.category relation is `onDelete: SetNull`, so deleting a category
+ * does not fail even if songs still reference it — they just end up with
+ * categoryId = null. The deleted songs' `category` field is removed by the
+ * DB; no app-level cleanup needed.
+ */
 export async function deleteCategory(id: string) {
-  const cat = await prisma.songCategory.findUnique({ where: { id } });
-  if (!cat) throw ApiError.notFound('Category not found.');
-  await prisma.songCategory.delete({ where: { id } });
+  try {
+    await prisma.songCategory.delete({ where: { id } });
+  } catch (e) {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === 'P2025'
+    ) {
+      throw ApiError.notFound('Category not found.');
+    }
+    throw e;
+  }
   return { ok: true };
 }
 
@@ -592,6 +635,7 @@ async function fanOutNotification(songId: string, title: string) {
     relatedEntityId: songId,
   });
 }
+
 /**
  * Leader-side fetch — returns a song in ANY status except DELETED.
  * Used by the leader editor and the review queue detail view.

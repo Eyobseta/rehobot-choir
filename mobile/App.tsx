@@ -4,6 +4,7 @@ import {
   NavigationContainer,
   DefaultTheme,
   DarkTheme,
+  createNavigationContainerRef,
 } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
@@ -20,6 +21,7 @@ import {
 } from './src/services/session';
 import { setOnUnauthorized } from './src/services/api';
 import { configureForegroundNotifications } from './src/services/pushTokens';
+import { navigateFromRoot, type PushPayload } from './src/services/pushNavigation';
 import AppLoading from './src/components/AppLoading';
 import ChangePasswordScreen from './src/features/profile/ChangePasswordScreen';
 
@@ -30,6 +32,12 @@ import { clearAllCaches } from './src/services/cacheWipe';
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 const PERSIST_OPTIONS = makePersistOptions();
+
+// App-level navigation ref. Used by the push-tap listener in AppShell so a
+// notification tap navigates correctly regardless of which tab / screen is
+// currently focused. Must be module-scoped (not created inside a component)
+// so it survives theme / state re-renders without losing the ready state.
+const navigationRef = createNavigationContainerRef<any>();
 
 type BootState = {
   i18nReady: boolean;
@@ -53,6 +61,11 @@ function AppShell() {
   const [authenticated, setAuthenticated] = useState(false);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const backgroundTime = useRef<number | null>(null);
+
+  // Buffered push payload. Set when a notification is tapped while the
+  // navigator is not yet ready (cold start, or forced-password screen).
+  // Flushed from NavigationContainer's onReady.
+  const pendingPush = useRef<PushPayload | null>(null);
 
   // --- Phase 1: i18n ---
   useEffect(() => {
@@ -149,6 +162,9 @@ function AppShell() {
       setAuthenticated(s === 'authenticated');
       if (s === 'unauthenticated') {
         setMustChangePassword(false);
+        // Drop any buffered push from a previous session so it does not
+        // fire against the wrong user's navigator after re-login.
+        pendingPush.current = null;
       }
     });
 
@@ -157,6 +173,60 @@ function AppShell() {
       setOnUnauthorized(null);
     };
   }, [boot.i18nReady]);
+
+  // --- Push-tap listener (registered once, at app root) ---
+  //
+  // Previously this lived inside NotificationsScreen, which meant a push tap
+  // only did anything while that screen was mounted. Now it lives here so
+  // taps are routed correctly from Home / Songs / Chat / Profile / cold start.
+  useEffect(() => {
+    let cancelled = false;
+    let sub: { remove: () => void } | null = null;
+
+    (async () => {
+      try {
+        const Notifications = await import('expo-notifications');
+        if (cancelled) return;
+
+        // Cold start: was the app launched by tapping a notification?
+        try {
+          const last = await Notifications.getLastNotificationResponseAsync();
+          const data = last?.notification?.request?.content?.data as
+            | PushPayload
+            | undefined;
+          if (data) {
+            if (navigationRef.isReady()) {
+              navigateFromRoot(navigationRef, data);
+            } else {
+              pendingPush.current = data;
+            }
+          }
+        } catch {
+          // ignore
+        }
+
+        // Live taps while the app is running.
+        sub = Notifications.addNotificationResponseReceivedListener((response) => {
+          const data = response?.notification?.request?.content?.data as
+            | PushPayload
+            | undefined;
+          if (!data) return;
+          if (navigationRef.isReady()) {
+            navigateFromRoot(navigationRef, data);
+          } else {
+            pendingPush.current = data;
+          }
+        });
+      } catch {
+        // expo-notifications unavailable (e.g. Expo Go on Android)
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      sub?.remove();
+    };
+  }, []);
 
   // --- 7-day inactivity logout ---
   useEffect(() => {
@@ -196,6 +266,7 @@ function AppShell() {
           }}
           route={{ params: { forced: true } }}
           forced
+          onPasswordChanged={() => setMustChangePassword(false)}
         />
       </View>
     );
@@ -214,7 +285,19 @@ function AppShell() {
   };
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={navTheme}
+      onReady={() => {
+        // Flush a push tap that was buffered while the navigator was not
+        // ready yet (cold start, or while forced-password was blocking the UI).
+        if (pendingPush.current) {
+          const data = pendingPush.current;
+          pendingPush.current = null;
+          navigateFromRoot(navigationRef, data);
+        }
+      }}
+    >
       {authenticated ? <RootTabs /> : <AuthNavigator />}
     </NavigationContainer>
   );

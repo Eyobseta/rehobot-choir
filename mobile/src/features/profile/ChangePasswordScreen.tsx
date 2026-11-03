@@ -25,7 +25,7 @@ function strengthOf(p: string): number {
   return Math.min(s, 4);
 }
 
-export default function ChangePasswordScreen({ navigation, forced }: any) {
+export default function ChangePasswordScreen({ navigation, forced, onPasswordChanged }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
@@ -47,9 +47,14 @@ export default function ChangePasswordScreen({ navigation, forced }: any) {
     try {
       await changePassword(current, next);
       setSuccess(t('password.success'));
-      // When forced, don't navigate back automatically — the app will
-      // re-render and route the user onward once mustChangePassword clears.
-      if (!forced) {
+      if (forced) {
+        // Give the user a moment to see the success confirmation, then hand
+        // control back to App.tsx. It will clear `mustChangePassword`, which
+        // re-renders AppShell and mounts the normal navigator (RootTabs).
+        // Without this callback, the screen was a dead-end: nothing in the
+        // app ever cleared the forced flag after a successful change.
+        setTimeout(() => onPasswordChanged?.(), 800);
+      } else {
         setTimeout(() => navigation.goBack(), 800);
       }
     } catch (e) {

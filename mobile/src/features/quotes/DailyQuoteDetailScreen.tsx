@@ -8,14 +8,13 @@ import {
   Alert,
   Animated,
   Easing,
-  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { DailyQuote, getTodayQuote, getCachedQuoteById } from '../../services/quotes';
+import { DailyQuote } from '../../services/quotes';
 import {
   playTrack,
   pauseTrack,
@@ -35,54 +34,21 @@ const YT = '#FF0000';
 
 /**
  * Route params:
- *   { quote: DailyQuote }              — preferred (from history / today card)
- *   { id: string }                     — fallback; resolved from cache
- *   {}                                 — last resort: today's cached quote
+ *   { quote: DailyQuote }  — required (every caller already passes this)
+ *
+ * The previous `{ id }` fallback path was removed — it referenced
+ * `getCachedQuoteById`, which does not exist in services/quotes.ts, and no
+ * caller ever passed `{ id }`. Deep-linking to a specific quote is not
+ * currently implemented; if it ever is, it should pass `{ quote }` too.
  */
 export default function DailyQuoteDetailScreen({ route, navigation }: any) {
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const { spacing, typography } = theme;
   const insets = useSafeAreaInsets();
+  const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
 
-  const paramQuote: DailyQuote | undefined = route.params?.quote;
-  const paramId: string | undefined = route.params?.id;
-
-  const [resolvedQuote, setResolvedQuote] = useState<DailyQuote | undefined>(paramQuote);
-  const [resolving, setResolving] = useState(!paramQuote);
-
-  // If the caller passed the quote directly, use it. Otherwise try the cache
-  // so deep-links still work offline (today's quote, then by-id lookup).
-  useEffect(() => {
-    if (paramQuote) {
-      setResolvedQuote(paramQuote);
-      setResolving(false);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        if (paramId) {
-          const byId = await getCachedQuoteById(paramId);
-          if (!cancelled && byId) {
-            setResolvedQuote(byId);
-            return;
-          }
-        }
-        const today = await getTodayQuote();
-        if (!cancelled && today) {
-          setResolvedQuote(today);
-        }
-      } finally {
-        if (!cancelled) setResolving(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [paramQuote, paramId]);
-
-  const quote = resolvedQuote;
+  const quote: DailyQuote | undefined = route.params?.quote;
 
   const [playerStatus, setPlayerStatus] = useState<SimpleStatus>(getSnapshot());
 
@@ -118,18 +84,6 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
 
   // ---------- Missing data fallback ----------
   if (!quote) {
-    if (resolving) {
-      return (
-        <LinearGradient
-          colors={['#C98B4A', '#A56B36', '#6E4220']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-        >
-          <ActivityIndicator size="large" color={SAND} />
-        </LinearGradient>
-      );
-    }
     return (
       <LinearGradient
         colors={['#C98B4A', '#A56B36', '#6E4220']}
@@ -149,7 +103,6 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
   }
 
   // ---------- Derived values ----------
-  const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const ethDate = {
     year: quote.dateEthYear,
     month: quote.dateEthMonth,

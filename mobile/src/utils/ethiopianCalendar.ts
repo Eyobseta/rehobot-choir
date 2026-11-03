@@ -97,6 +97,7 @@ export function compareEth(a: EthDate, b: EthDate): number {
   return a.year - b.year || a.month - b.month || a.day - b.day;
 }
 
+/** Add whole days (can be negative) to an Ethiopian date. */
 export function addEthDays(e: EthDate, days: number): EthDate {
   return jdnToEth(ethToJdn(e) + days);
 }
@@ -124,13 +125,8 @@ export function formatEthDate(e: EthDate, lang: 'en' | 'am' = 'en'): string {
   return lang === 'am' ? `${name} ${e.day}፣ ${e.year} ዓ.ም` : `${name} ${e.day}, ${e.year} E.C.`;
 }
 
-/** Today in Ethiopian calendar, derived from the LOCAL system date. */
-export function todayEthiopian(now: Date = new Date()): EthDate {
-  const localMidnightUTC = new Date(Date.UTC(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    0, 0, 0, 0,
-  ));
-  return utcDateToEth(localMidnightUTC);
+/** Convert an Ethiopian date to a JS Date at UTC midnight. */
+export function fromEthiopian({ year, month, day }: EthDate): Date {
+  const g = ethiopianToGregorian({ year, month, day });
+  return new Date(Date.UTC(g.year, g.month - 1, g.day, 0, 0, 0, 0));
 }

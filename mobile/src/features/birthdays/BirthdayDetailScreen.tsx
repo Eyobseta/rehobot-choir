@@ -243,106 +243,124 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
       </View>
     </KeyboardAvoidingView>
   );
+}
 
-  function CommentBlock({
-    comment,
-    myUserId,
-    onLike,
-    onReply,
-    onDelete,
-    onReplyLike,
-    onReplyDelete,
-  }: {
-    comment: BirthdayComment;
-    myUserId: string | null;
-    onLike: () => void;
-    onReply: () => void;
-    onDelete: () => void;
-    onReplyLike: (replyId: string, liked: boolean) => void;
-    onReplyDelete: (replyId: string) => void;
-  }) {
-    const isMine = myUserId === comment.author.id;
-    return (
-      <View style={{ marginTop: spacing.md, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          {comment.author.profilePhotoUrl ? (
-            <Image source={{ uri: comment.author.profilePhotoUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} />
-          ) : (
-            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceAlt }} />
-          )}
-          <Text style={[typography.body, { color: colors.text, fontWeight: '600', marginLeft: spacing.sm, flex: 1 }]} numberOfLines={1}>
-            {comment.author.fullName}
-          </Text>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>
-            {new Date(comment.createdAt).toLocaleDateString()}
-          </Text>
-        </View>
+// ---------------------------------------------------------------------------
+// CommentBlock — hoisted to module scope
+//
+// Previously declared INSIDE BirthdayDetailScreen, which meant a new function
+// reference was created on every render of that parent. React therefore
+// treated each <CommentBlock key="..."> as a new component *type* every time
+// the parent re-rendered (e.g. on each keystroke of the composer), tearing
+// down and re-mounting the whole comment subtree: entrance/reply animations
+// replayed, and the list scrolled back to the top mid-typing.
+//
+// Hoisting it fixes that: React now sees a stable component reference and
+// re-renders the comments in place, preserving layout and any transient state.
+// ---------------------------------------------------------------------------
 
-        <Text style={[typography.body, { color: colors.text, marginTop: spacing.sm, lineHeight: 20 }]}>
-          {comment.text}
+function CommentBlock({
+  comment,
+  myUserId,
+  onLike,
+  onReply,
+  onDelete,
+  onReplyLike,
+  onReplyDelete,
+}: {
+  comment: BirthdayComment;
+  myUserId: string | null;
+  onLike: () => void;
+  onReply: () => void;
+  onDelete: () => void;
+  onReplyLike: (replyId: string, liked: boolean) => void;
+  onReplyDelete: (replyId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const { theme } = useTheme();
+  const { colors, spacing, radius, typography } = theme;
+  const isMine = myUserId === comment.author.id;
+
+  return (
+    <View style={{ marginTop: spacing.md, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {comment.author.profilePhotoUrl ? (
+          <Image source={{ uri: comment.author.profilePhotoUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+        ) : (
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceAlt }} />
+        )}
+        <Text style={[typography.body, { color: colors.text, fontWeight: '600', marginLeft: spacing.sm, flex: 1 }]} numberOfLines={1}>
+          {comment.author.fullName}
         </Text>
-
-        <View style={{ flexDirection: 'row', gap: spacing.lg, marginTop: spacing.sm, alignItems: 'center' }}>
-          <Pressable onPress={onLike} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Ionicons
-              name={comment.likedByMe ? 'heart' : 'heart-outline'}
-              size={16}
-              color={comment.likedByMe ? '#E0245E' : colors.textSecondary}
-            />
-            {comment.likeCount > 0 && (
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>{comment.likeCount}</Text>
-            )}
-          </Pressable>
-
-          <Pressable onPress={onReply}>
-            <Text style={[typography.caption, { color: colors.primary }]}>{t('birthdays.reply')}</Text>
-          </Pressable>
-
-          {isMine && (
-            <Pressable onPress={onDelete}>
-              <Text style={[typography.caption, { color: colors.error }]}>{t('birthdays.deleteComment')}</Text>
-            </Pressable>
-          )}
-        </View>
-
-        {comment.replies.map((r) => {
-          const mine = myUserId === r.author.id;
-          return (
-            <View key={r.id} style={{ marginTop: spacing.md, marginLeft: spacing.xl, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.background, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {r.author.profilePhotoUrl ? (
-                  <Image source={{ uri: r.author.profilePhotoUrl }} style={{ width: 24, height: 24, borderRadius: 12 }} />
-                ) : (
-                  <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surfaceAlt }} />
-                )}
-                <Text style={[typography.bodySmall, { color: colors.text, fontWeight: '600', marginLeft: spacing.sm, flex: 1 }]} numberOfLines={1}>
-                  {r.author.fullName}
-                </Text>
-              </View>
-              <Text style={[typography.bodySmall, { color: colors.text, marginTop: 4, lineHeight: 18 }]}>
-                {r.text}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: spacing.lg, marginTop: 4, alignItems: 'center' }}>
-                <Pressable onPress={() => onReplyLike(r.id, r.likedByMe)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Ionicons
-                    name={r.likedByMe ? 'heart' : 'heart-outline'}
-                    size={14}
-                    color={r.likedByMe ? '#E0245E' : colors.textSecondary}
-                  />
-                  {r.likeCount > 0 && (
-                    <Text style={[typography.caption, { color: colors.textSecondary }]}>{r.likeCount}</Text>
-                  )}
-                </Pressable>
-                {mine && (
-                  <Pressable onPress={() => onReplyDelete(r.id)}>
-                    <Text style={[typography.caption, { color: colors.error }]}>{t('birthdays.deleteComment')}</Text>
-                  </Pressable>
-                )}
-              </View>
-            </View>
-          );
-        })}
+        <Text style={[typography.caption, { color: colors.textSecondary }]}>
+          {new Date(comment.createdAt).toLocaleDateString()}
+        </Text>
       </View>
-    );
-  }
+
+      <Text style={[typography.body, { color: colors.text, marginTop: spacing.sm, lineHeight: 20 }]}>
+        {comment.text}
+      </Text>
+
+      <View style={{ flexDirection: 'row', gap: spacing.lg, marginTop: spacing.sm, alignItems: 'center' }}>
+        <Pressable onPress={onLike} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Ionicons
+            name={comment.likedByMe ? 'heart' : 'heart-outline'}
+            size={16}
+            color={comment.likedByMe ? '#E0245E' : colors.textSecondary}
+          />
+          {comment.likeCount > 0 && (
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>{comment.likeCount}</Text>
+          )}
+        </Pressable>
+
+        <Pressable onPress={onReply}>
+          <Text style={[typography.caption, { color: colors.primary }]}>{t('birthdays.reply')}</Text>
+        </Pressable>
+
+        {isMine && (
+          <Pressable onPress={onDelete}>
+            <Text style={[typography.caption, { color: colors.error }]}>{t('birthdays.deleteComment')}</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {comment.replies.map((r) => {
+        const mine = myUserId === r.author.id;
+        return (
+          <View key={r.id} style={{ marginTop: spacing.md, marginLeft: spacing.xl, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.background, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {r.author.profilePhotoUrl ? (
+                <Image source={{ uri: r.author.profilePhotoUrl }} style={{ width: 24, height: 24, borderRadius: 12 }} />
+              ) : (
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.surfaceAlt }} />
+              )}
+              <Text style={[typography.bodySmall, { color: colors.text, fontWeight: '600', marginLeft: spacing.sm, flex: 1 }]} numberOfLines={1}>
+                {r.author.fullName}
+              </Text>
+            </View>
+            <Text style={[typography.bodySmall, { color: colors.text, marginTop: 4, lineHeight: 18 }]}>
+              {r.text}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: spacing.lg, marginTop: 4, alignItems: 'center' }}>
+              <Pressable onPress={() => onReplyLike(r.id, r.likedByMe)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons
+                  name={r.likedByMe ? 'heart' : 'heart-outline'}
+                  size={14}
+                  color={r.likedByMe ? '#E0245E' : colors.textSecondary}
+                />
+                {r.likeCount > 0 && (
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>{r.likeCount}</Text>
+                )}
+              </Pressable>
+              {mine && (
+                <Pressable onPress={() => onReplyDelete(r.id)}>
+                  <Text style={[typography.caption, { color: colors.error }]}>{t('birthdays.deleteComment')}</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
 }

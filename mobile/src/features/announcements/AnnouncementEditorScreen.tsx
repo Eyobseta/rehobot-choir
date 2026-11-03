@@ -23,7 +23,13 @@ import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import { listSongs, SongSummary } from '../../services/songs';
-import { EthDate, ethTodayFromInstant, ethToUtcDate, formatEthDate } from '../../utils/ethiopianCalendar';
+import {
+  EthDate,
+  ethTodayFromInstant,
+  ethToUtcDate,
+  gregorianToEthiopian,
+  formatEthDate,
+} from '../../utils/ethiopianCalendar';
 import EthDatePicker from '../funding/EthDatePicker';
 import {
   useAnnouncementDetailQuery,
@@ -35,6 +41,7 @@ import {
 type IconName = keyof typeof Ionicons.glyphMap;
 
 const AMBER = '#F59E0B';
+const ADDIS_OFFSET_MS = 3 * 3600_000;
 
 export default function AnnouncementEditorScreen({ route, navigation }: any) {
   const { t, i18n } = useTranslation();
@@ -56,10 +63,10 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
 
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
-  
-  // --- Date & Time State ---
+
+  // --- Date & Time State (both are interpreted as Addis / EAT) ---
   const [ethDate, setEthDate] = useState<EthDate>(ethTodayFromInstant(new Date()));
-  const [timeText, setTimeText] = useState('10:00'); // HH:MM
+  const [timeText, setTimeText] = useState('10:00');
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -80,15 +87,27 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
 
     setTitle(item.title);
     setMessage(item.message);
-    
-    // Parse the ISO date to Ethiopian and Time
+
+    // `publishAt` is stored as a UTC instant. Display it in Addis time
+    // regardless of the device's local timezone — the leader sees the
+    // time they originally typed, on any device.
     try {
       const d = new Date(item.publishAt);
-      setTimeText(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
-      
-      const addis = new Date(d.getTime() + 3 * 3600_000); // Roughly adjust to Addis time for Eth Date
-      const { gregorianToEthiopian } = require('../../utils/ethiopianCalendar');
-      setEthDate(gregorianToEthiopian(addis.getUTCFullYear(), addis.getUTCMonth() + 1, addis.getUTCDate()));
+      if (!Number.isNaN(d.getTime())) {
+        const addis = new Date(d.getTime() + ADDIS_OFFSET_MS);
+        setTimeText(
+          `${String(addis.getUTCHours()).padStart(2, '0')}:${String(
+            addis.getUTCMinutes(),
+          ).padStart(2, '0')}`,
+        );
+        setEthDate(
+          gregorianToEthiopian(
+            addis.getUTCFullYear(),
+            addis.getUTCMonth() + 1,
+            addis.getUTCDate(),
+          ),
+        );
+      }
     } catch {
       // fallback
     }
@@ -150,16 +169,37 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
     setRemoveImage(false);
   };
 
+  /**
+   * Build the ISO timestamp sent to the backend.
+   *
+   * The user picks an Ethiopian date and types a wall-clock time — both are
+   * interpreted in Addis Ababa time (EAT = UTC+3), because that's the only
+   * timezone the choir actually operates in.
+   *
+   * The backend stores `publishAt` as an absolute UTC instant, so:
+   *   publishAt_UTC = (EAT_date + typed_time) - 3h
+   *
+   * Date.UTC handles negative hours by rolling back a day as needed, so
+   * typing 00:30 correctly becomes the previous calendar day at 21:30 UTC.
+   */
   const buildIsoDate = (): string | null => {
-    const m = timeText.trim().match(/^(\d{2}):(\d{2})$/);
+    const m = timeText.trim().match(/^(\d{1,2}):(\d{2})$/);
     if (!m) return null;
-    const [, h, mi] = m;
-    
-    // Get Gregorian UTC date from the Ethiopian date
+    const hour = Number(m[1]);
+    const minute = Number(m[2]);
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
     const greg = ethToUtcDate(ethDate);
-    
-    // Combine with the time
-    const dt = new Date(Date.UTC(greg.getUTCFullYear(), greg.getUTCMonth(), greg.getUTCDate(), Number(h), Number(mi)));
+
+    const dt = new Date(
+      Date.UTC(
+        greg.getUTCFullYear(),
+        greg.getUTCMonth(),
+        greg.getUTCDate(),
+        hour - 3,
+        minute,
+      ),
+    );
     return dt.toISOString();
   };
 
@@ -436,17 +476,22 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
               onChange={setMessage}
               multiline
             />
-            
-            {/* --- Ethiopian Date & Time --- */}
+
+            {/* --- Ethiopian Date & Time (both interpreted as EAT) --- */}
             <Text
               style={[
                 typography.bodySmall,
-                { color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs, fontWeight: '700' },
+                {
+                  color: colors.textSecondary,
+                  marginTop: spacing.md,
+                  marginBottom: spacing.xs,
+                  fontWeight: '700',
+                },
               ]}
             >
               {t('announcements.publishAt')}
             </Text>
-            
+
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <Pressable
                 onPress={() => setPickerOpen(true)}
@@ -468,7 +513,7 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
                   {formatEthDate(ethDate, lang)}
                 </Text>
               </Pressable>
-              
+
               <View
                 style={{
                   flex: 1,
@@ -496,7 +541,12 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
           </View>
 
           <View style={{ marginTop: spacing.lg }}>
-            <Text style={[typography.bodySmall, { color: colors.textSecondary, fontWeight: '700', marginBottom: spacing.sm }]}>
+            <Text
+              style={[
+                typography.bodySmall,
+                { color: colors.textSecondary, fontWeight: '700', marginBottom: spacing.sm },
+              ]}
+            >
               {t('announcements.songs')}
             </Text>
             <Pressable
@@ -520,8 +570,19 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
             </Pressable>
 
             {songs.map((s) => (
-              <View key={s.songId} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, paddingHorizontal: 4 }}>
-                <Text style={{ color: colors.text, flex: 1 }} numberOfLines={1}>🎵 {s.songTitle}</Text>
+              <View
+                key={s.songId}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginTop: 6,
+                  paddingHorizontal: 4,
+                }}
+              >
+                <Text style={{ color: colors.text, flex: 1 }} numberOfLines={1}>
+                  🎵 {s.songTitle}
+                </Text>
                 <Pressable onPress={() => setSongs((prev) => prev.filter((x) => x.songId !== s.songId))}>
                   <Ionicons name="close-circle" size={20} color={colors.error} />
                 </Pressable>
@@ -676,11 +737,23 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
         onRequestClose={() => setSongPickerOpen(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '75%', padding: spacing.lg }}>
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              maxHeight: '75%',
+              padding: spacing.lg,
+            }}
+          >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-              <Text style={[typography.h3, { color: colors.text }]}>{t('announcements.songs')}</Text>
+              <Text style={[typography.h3, { color: colors.text }]}>
+                {t('announcements.songs')}
+              </Text>
               <Pressable onPress={() => setSongPickerOpen(false)}>
-                <Text style={{ color: BRAND.violet, fontWeight: '800' }}>{t('common.close')}</Text>
+                <Text style={{ color: BRAND.violet, fontWeight: '800' }}>
+                  {t('common.close')}
+                </Text>
               </Pressable>
             </View>
             <FlatList
@@ -692,10 +765,19 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
                     setSongs((prev) => [...prev, { songId: item.id, songTitle: item.title }]);
                     setSongPickerOpen(false);
                   }}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    paddingVertical: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
+                  }}
                 >
                   <Ionicons name="musical-notes" size={20} color={BRAND.violet} />
-                  <Text style={{ color: colors.text, flex: 1, fontWeight: '700' }}>{item.title}</Text>
+                  <Text style={{ color: colors.text, flex: 1, fontWeight: '700' }}>
+                    {item.title}
+                  </Text>
                   <Ionicons name="add-circle" size={22} color={BRAND.magenta} />
                 </Pressable>
               )}

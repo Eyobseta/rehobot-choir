@@ -43,8 +43,9 @@ import {
 } from '../leader/useLeaderSongsAndMemories';
 
 export default function MemoryReviewDetailScreen({ route, navigation }: any) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
+  const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { colors, spacing, typography } = theme;
   const { id } = route.params;
 
@@ -183,7 +184,7 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
             </Text>
 
             <View style={styles.metaRow}>
-              <DatePill text={formatEthDate(memoryToEthDate(item), 'en')} />
+              <DatePill text={formatEthDate(memoryToEthDate(item), lang)} />
               {submitter ? (
                 <View style={[styles.byChip, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={styles.avatar}>

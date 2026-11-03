@@ -28,25 +28,22 @@ router.get('/grid', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const gathering = parseGathering(req.query.gathering);
     const today = ethTodayFromInstant(new Date());
-    const threeMonthsAgo = { year: today.year, month: Math.max(1, today.month - 3), day: 1 };
+    const threeMonthsAgo = {
+      year: today.year,
+      month: Math.max(1, today.month - 3),
+      day: 1,
+    };
 
     let from = threeMonthsAgo;
     let to = today;
 
-    // FIXED: Safe parsing with try/catch
+    // reqEthDate handles JSON-object strings natively; bad input surfaces as a
+    // specific 400 instead of being silently replaced with defaults.
     if (req.query.from) {
-      try {
-        from = reqEthDate(JSON.parse(String(req.query.from)), 'from');
-      } catch {
-        // ignore
-      }
+      from = reqEthDate(req.query.from, 'from');
     }
     if (req.query.to) {
-      try {
-        to = reqEthDate(JSON.parse(String(req.query.to)), 'to');
-      } catch {
-        // ignore
-      }
+      to = reqEthDate(req.query.to, 'to');
     }
 
     const data = await getGridSummary(gathering, from, to);
@@ -59,14 +56,7 @@ router.get('/grid', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const gathering = parseGathering(req.query.gathering);
-    
-    // FIXED: Safe parsing for date
-    let date;
-    try {
-      date = reqEthDate(JSON.parse(String(req.query.date)), 'date');
-    } catch {
-      throw ApiError.badRequest('Invalid date.');
-    }
+    const date = reqEthDate(req.query.date, 'date');
 
     const data = await getAttendanceForDate(gathering, date);
     res.json(data);
@@ -109,27 +99,27 @@ router.get('/members/:id', async (req: Request, res: Response, next: NextFunctio
   }
 });
 
-// ========== NEW: Member grid for leaders ==========
+// ========== Member grid for leaders ==========
 router.get('/members/:id/grid', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id;
     if (typeof id !== 'string') throw ApiError.badRequest('Invalid id.');
 
     const today = ethTodayFromInstant(new Date());
-    const threeMonthsAgo = { year: today.year, month: Math.max(1, today.month - 3), day: 1 };
+    const threeMonthsAgo = {
+      year: today.year,
+      month: Math.max(1, today.month - 3),
+      day: 1,
+    };
 
     let from = threeMonthsAgo;
     let to = today;
 
     if (req.query.from) {
-      try {
-        from = reqEthDate(JSON.parse(String(req.query.from)), 'from');
-      } catch {}
+      from = reqEthDate(req.query.from, 'from');
     }
     if (req.query.to) {
-      try {
-        to = reqEthDate(JSON.parse(String(req.query.to)), 'to');
-      } catch {}
+      to = reqEthDate(req.query.to, 'to');
     }
 
     const data = await getMyGridSummary(id, from, to);

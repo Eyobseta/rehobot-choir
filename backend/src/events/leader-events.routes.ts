@@ -75,8 +75,10 @@ router.patch(
 
       const updated = await updateEvent(id, {
         title: title !== undefined ? String(title) : undefined,
-        description: description !== undefined ? String(description) : null,
-        location: location !== undefined ? String(location) : null,
+        // Partial-update semantics: absent fields stay untouched; an empty
+        // string explicitly clears the column (service maps '' -> null).
+        description: description !== undefined ? String(description) : undefined,
+        location: location !== undefined ? String(location) : undefined,
         date,
         publish: publish !== undefined ? String(publish) === 'true' : undefined,
         removeCover: removeCover !== undefined ? String(removeCover) === 'true' : undefined,

@@ -19,7 +19,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import type { BirthdayPerson } from '../../services/birthdays';
 import DailyQuoteCard from '../quotes/DailyQuoteCard';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
-import { utcDateToEth, formatEthDate } from '../../utils/ethiopianCalendar';
+import { EthDate, ethToUtcDate, ethTodayFromInstant, formatEthDate } from '../../utils/ethiopianCalendar';
 import {
   useBirthdaysQuery,
   useMeQuery,
@@ -52,11 +52,32 @@ function daysUntil(date: string | Date): number {
   return Math.round((a - b) / 86400000);
 }
 
+/**
+ * EventSummary from the API only carries the E.C. parts (dateEthYear/Month/Day)
+ * and the Gregorian mirror (dateGregorian) — there is no plain `date` field.
+ * Build the EthDate the display needs from the parts we actually receive.
+ */
+function ethFromSummary(s: {
+  dateEthYear?: number;
+  dateEthMonth?: number;
+  dateEthDay?: number;
+} | null | undefined): EthDate | null {
+  if (
+    s?.dateEthYear == null ||
+    s?.dateEthMonth == null ||
+    s?.dateEthDay == null
+  ) {
+    return null;
+  }
+  return { year: s.dateEthYear, month: s.dateEthMonth, day: s.dateEthDay };
+}
+
 export default function HomeScreen({ navigation }: any) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
+  const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
 
   // ---------------- Data (cached-first, always revalidating) ----------------
   const meQ = useMeQuery();
@@ -178,16 +199,15 @@ export default function HomeScreen({ navigation }: any) {
     }),
   }[part];
 
-  const dateLabel = new Date().toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
+  const dateLabel = formatEthDate(ethTodayFromInstant(new Date()), lang);
 
   const todayCount = birthdays.today.length;
   const hasBirthdays = todayCount > 0 || birthdays.tomorrow.length > 0;
 
-  const evDays = upcoming ? daysUntil(upcoming.date) : 0;
+  // The event summary has no `date` field — only the E.C. parts. Build the
+  // EthDate we need for display and for the day-countdown.
+  const upcomingEth = ethFromSummary(upcoming);
+  const evDays = upcomingEth ? daysUntil(ethToUtcDate(upcomingEth)) : 0;
   const evCountdown =
     evDays <= 0
       ? t('home.today', { defaultValue: 'Today' })
@@ -469,33 +489,28 @@ export default function HomeScreen({ navigation }: any) {
                         </View>
 
                         <View style={styles.eventGlass}>
-                          {(() => {
-                            const eth = utcDateToEth(new Date(upcoming.date));
-                            const dayNum = eth.day;
-                            const monthShort = formatEthDate(eth, 'en').split(' ')[0];
-                            return (
-                              <View style={styles.dateChip}>
-                                <Text style={styles.dateChipDay}>
-                                  {dayNum}
-                                </Text>
-                                <Text style={styles.dateChipMonth}>
-                                  {monthShort}
-                                </Text>
-                              </View>
-                            );
-                          })()}
+                          {upcomingEth ? (
+                            <View style={styles.dateChip}>
+                              <Text style={styles.dateChipDay}>
+                                {upcomingEth.day}
+                              </Text>
+                              <Text style={styles.dateChipMonth}>
+                                {formatEthDate(upcomingEth, lang).split(' ')[0]}
+                              </Text>
+                            </View>
+                          ) : null}
                           <View style={{ flex: 1 }}>
                             <Text style={styles.eventTitle} numberOfLines={2}>
                               {upcoming.title}
                             </Text>
                             <View style={styles.eventMeta}>
                               <Ionicons
-                                name="time-outline"
+                                name="calendar-outline"
                                 size={14}
                                 color="rgba(255,255,255,0.85)"
                               />
                               <Text style={styles.eventMetaText} numberOfLines={1}>
-                                {new Date(upcoming.date).toLocaleString()}
+                                {upcomingEth ? formatEthDate(upcomingEth, lang) : ''}
                               </Text>
                             </View>
                           </View>

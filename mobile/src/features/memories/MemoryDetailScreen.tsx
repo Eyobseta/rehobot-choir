@@ -40,8 +40,9 @@ import GlassBackButton from '../../components/GlassBackButton';
 import { useMemoryDetailQuery } from './useMemories';
 
 export default function MemoryDetailScreen({ route, navigation }: any) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
+  const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
   const { id, mineOnly } = route.params as { id: string; mineOnly?: boolean };
@@ -130,7 +131,7 @@ export default function MemoryDetailScreen({ route, navigation }: any) {
           <Animated.View style={fadeUp(0)}>
             <Text style={[typography.h2, { color: colors.text, fontWeight: '800' }]}>{item.title}</Text>
             <View style={styles.metaRow}>
-              <DatePill text={formatEthDate(memoryToEthDate(item), 'en')} />
+              <DatePill text={formatEthDate(memoryToEthDate(item), lang)} />
               {photos.length > 0 && <StatusPill label={String(photos.length)} color={BRAND.magenta} icon="images" />}
               {audio && <StatusPill label="" color={BRAND.violet} icon="musical-notes" />}
               {youtubes.length > 0 && <StatusPill label={String(youtubes.length)} color="#FF2D2D" icon="logo-youtube" />}

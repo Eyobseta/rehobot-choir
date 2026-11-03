@@ -36,8 +36,9 @@ import GlassBackButton from '../../components/GlassBackButton';
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 export default function SubmitMemoryScreen({ navigation }: any) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
+  const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
 
@@ -129,7 +130,7 @@ export default function SubmitMemoryScreen({ navigation }: any) {
       await submitMemory({
         title: title.trim(),
         description: description.trim() || undefined,
-        date, // Now an EthDate object
+        date,
         photoUris,
         audioUri,
         audioName,
@@ -168,7 +169,6 @@ export default function SubmitMemoryScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ---------- Full-bleed hero ---------- */}
       <Animated.View style={fadeUp(0)}>
         <LinearGradient
           colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
@@ -215,7 +215,6 @@ export default function SubmitMemoryScreen({ navigation }: any) {
         </LinearGradient>
       </Animated.View>
 
-      {/* ---------- Content ---------- */}
       <KeyboardAwareScroll
         contentContainerStyle={{
           paddingHorizontal: spacing.xl,
@@ -237,7 +236,6 @@ export default function SubmitMemoryScreen({ navigation }: any) {
             onChangeText={setTitle}
           />
 
-          {/* Date picker (Ethiopian calendar) */}
           <Text
             style={[
               typography.bodySmall,
@@ -268,7 +266,7 @@ export default function SubmitMemoryScreen({ navigation }: any) {
           >
             {fieldIcon('calendar', '#E6C779')}
             <Text style={{ color: colors.text, flex: 1, fontSize: 16 }}>
-              {formatEthDate(date, 'en')}
+              {formatEthDate(date, lang)}
             </Text>
             <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
           </Pressable>
@@ -425,7 +423,6 @@ export default function SubmitMemoryScreen({ navigation }: any) {
         </Animated.View>
       </KeyboardAwareScroll>
 
-      {/* ---------- Ethiopian date picker ---------- */}
       <EthDatePicker
         visible={pickerOpen}
         title={t('memories.dateField')}
@@ -517,7 +514,6 @@ function PickButton({
 }
 
 const styles = StyleSheet.create({
-  // Full-bleed hero
   hero: {
     paddingHorizontal: 16,
     paddingBottom: 22,
@@ -544,7 +540,6 @@ const styles = StyleSheet.create({
   },
   heroTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', marginTop: 2 },
 
-  // Content
   card: { borderWidth: 1, borderRadius: 24, padding: 16, marginTop: 16 },
   fieldIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },

@@ -178,7 +178,7 @@ export default function LeaderSongsScreen({ navigation }: any) {
               <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <View style={{ width: 4, height: 16, borderRadius: 2, backgroundColor: BRAND.violet }} />
                 <Text style={[typography.caption, { color: colors.textSecondary, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: '800', flex: 1 }]}>
-                  All songs
+                  {t('leaderSongs.allSongs', { defaultValue: 'All songs' })}
                 </Text>
                 <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: withAlpha(BRAND.violet, 0.18) }}>
                   <Text style={{ color: BRAND.violet, fontSize: 12, fontWeight: '800' }}>{items.length}</Text>

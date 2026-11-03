@@ -160,37 +160,6 @@ export default function NotificationsScreen({ navigation }: Props) {
     [navigation],
   );
 
-  // Push tap handler — unchanged.
-  useEffect(() => {
-    let sub: { remove: () => void } | null = null;
-    let cancelled = false;
-    (async () => {
-      try {
-        const Notifications = await import('expo-notifications');
-        if (cancelled) return;
-        sub = Notifications.addNotificationResponseReceivedListener((response) => {
-          const data = response?.notification?.request?.content?.data as
-            | { entityType?: string | null; entityId?: string | null }
-            | undefined;
-          if (!data) return;
-          setTimeout(() => {
-            try {
-              navigateToEntity(data);
-            } catch {
-              /* ignore */
-            }
-          }, 0);
-        });
-      } catch {
-        /* expo-notifications unavailable */
-      }
-    })();
-    return () => {
-      cancelled = true;
-      sub?.remove();
-    };
-  }, [navigateToEntity]);
-
   const onOpen = (item: NotificationItem) => {
     if (!item.readAt) {
       markRead.mutate(item.id); // fire-and-forget; invalidates on success

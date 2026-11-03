@@ -39,22 +39,56 @@ export function optBool(v: unknown, field: string): boolean | undefined {
   return v;
 }
 
+/**
+ * Ethiopian date validator.
+ *
+ * Accepts:
+ *   - JSON object string:  '{"year":2016,"month":1,"day":1}'
+ *   - Plain object:         { year: 2016, month: 1, day: 1 }
+ *
+ * Returns the parsed { year, month, day }, or throws an ApiError with one of:
+ *   - DATE_REQUIRED          — missing / null / empty string
+ *   - INVALID_DATE_FORMAT    — string that isn't a JSON object, or a non-object value
+ *   - INVALID_ETHIOPIAN_DATE — parses as an object but isn't a real Ethiopian date
+ *
+ * Deliberately does NOT accept a bare "YYYY-MM-DD" string: the server cannot
+ * tell whether the caller means Ethiopian or Gregorian parts, so accepting it
+ * silently would risk storing a Gregorian date in an Ethiopian column.
+ */
 export function reqEthDate(v: unknown, field: string): EthDate {
-  // multipart/form-data sends body fields as strings, so try to parse first.
+  if (v === undefined || v === null || v === '') {
+    throw ApiError.badRequest(`${field} is required.`, 'DATE_REQUIRED');
+  }
+
   let parsed: unknown = v;
+
   if (typeof parsed === 'string') {
+    const s = parsed.trim();
+    if (!s) throw ApiError.badRequest(`${field} is required.`, 'DATE_REQUIRED');
     try {
-      parsed = JSON.parse(parsed);
+      parsed = JSON.parse(s);
     } catch {
-      throw ApiError.badRequest(`${field} is required.`);
+      throw ApiError.badRequest(
+        `${field} must be a JSON object like {"year":2016,"month":1,"day":1}.`,
+        'INVALID_DATE_FORMAT',
+      );
     }
   }
 
   const o = parsed as Partial<EthDate> | null;
-  if (!o || typeof o !== 'object') throw ApiError.badRequest(`${field} is required.`);
+  if (!o || typeof o !== 'object') {
+    throw ApiError.badRequest(
+      `${field} must be an object with year, month, and day.`,
+      'INVALID_DATE_FORMAT',
+    );
+  }
+
   const d = { year: Number(o.year), month: Number(o.month), day: Number(o.day) };
   if (!isValidEthDate(d)) {
-    throw ApiError.badRequest(`${field} is not a valid Ethiopian calendar date.`, 'INVALID_ETHIOPIAN_DATE');
+    throw ApiError.badRequest(
+      `${field} is not a valid Ethiopian calendar date.`,
+      'INVALID_ETHIOPIAN_DATE',
+    );
   }
   return d;
 }
@@ -84,6 +118,7 @@ export function reqAmountMinor(v: unknown, field = 'Amount'): number {
   }
   return v;
 }
+
 /** Optional version of reqEthDate (returns undefined if not provided). */
 export function optEthDate(v: unknown, field: string): EthDate | undefined {
   if (v === undefined || v === null || v === '') return undefined;

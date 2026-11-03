@@ -115,8 +115,10 @@ export default function LeaderMemoriesScreen({ navigation }: any) {
   );
 }
 
-function ReviewCard({ item, index, onPress }: { item: PendingMemory; index: number; onPress: () => void }) {
+function ReviewCard({ item, index, onPress }: { item: PendingMemory; index: number; onPress: () => void; }) {
   const { theme } = useTheme();
+  const { i18n } = useTranslation();
+  const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { colors, spacing, typography } = theme;
 
   const submitter = item.submittedBy.memberProfile?.fullName ?? '';
@@ -166,7 +168,7 @@ function ReviewCard({ item, index, onPress }: { item: PendingMemory; index: numb
             {item.title}
           </Text>
           <View style={{ marginTop: 6, alignSelf: 'flex-start' }}>
-            <DatePill text={formatEthDate(memoryToEthDate(item), 'en')} />
+            <DatePill text={formatEthDate(memoryToEthDate(item), lang)} />
           </View>
           {submitter ? (
             <View style={styles.byRow}>

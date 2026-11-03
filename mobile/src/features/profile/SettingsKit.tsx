@@ -3,6 +3,7 @@ import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View 
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
@@ -74,6 +75,7 @@ export function ScreenHero({
   variant?: 'brand' | 'danger';
 }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const palette = variant === 'danger' ? DANGER_GRADIENT : HERO_GRADIENT;
 
   return (
@@ -103,7 +105,12 @@ export function ScreenHero({
           {subtitle ? <Text style={styles.heroSubtitle}>{subtitle}</Text> : null}
         </View>
 
-        {onBack ? <GlassBackButton onPress={onBack} accessibilityLabel="Back" /> : null}
+        {onBack ? (
+          <GlassBackButton
+            onPress={onBack}
+            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+          />
+        ) : null}
       </View>
     </LinearGradient>
   );

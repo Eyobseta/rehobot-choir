@@ -23,7 +23,6 @@ import GlassBackButton from '../../components/GlassBackButton';
 import {
   EthDate,
   ethTodayFromInstant,
-  ethToUtcDate,
   formatEthDate,
 } from '../../utils/ethiopianCalendar';
 import EthDatePicker from '../funding/EthDatePicker';
@@ -59,7 +58,6 @@ export default function EventEditorScreen({ route, navigation }: any) {
   const [location, setLocation] = useState('');
 
   const [ethDate, setEthDate] = useState<EthDate>(ethTodayFromInstant(new Date()));
-  const [timeText, setTimeText] = useState('10:00');
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const [coverUri, setCoverUri] = useState<string | null>(null);
@@ -75,29 +73,8 @@ export default function EventEditorScreen({ route, navigation }: any) {
     setTitle(ev.title);
     setDescription(ev.description ?? '');
     setLocation(ev.location ?? '');
-
-    try {
-      const d = new Date(ev.dateGregorian);
-      setTimeText(
-        `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(
-          2,
-          '0',
-        )}`,
-      );
-
-      const addis = new Date(d.getTime() + 3 * 3600_000);
-      const { gregorianToEthiopian } = require('../../utils/ethiopianCalendar');
-      setEthDate(
-        gregorianToEthiopian(
-          addis.getUTCFullYear(),
-          addis.getUTCMonth() + 1,
-          addis.getUTCDate(),
-        ),
-      );
-    } catch {
-      // fallback
-    }
-
+    // API already returns the date as an Ethiopian { year, month, day }.
+    setEthDate(ev.date);
     setCoverUri(ev.coverImageUrl);
   }, [editingId, eventQ.data]);
 
@@ -146,33 +123,27 @@ export default function EventEditorScreen({ route, navigation }: any) {
   };
 
   /**
-   * FIX: The backend `reqEthDate` validator accepts:
-   *   1. JSON object string: '{"year":2016,"month":1,"day":1}'
-   *   2. Plain date string: '2026-10-15'
-   * It does NOT accept ISO with time: '2026-10-15T10:00:00.000Z'
+   * The backend `reqEthDate` validator expects a JSON object string with
+   * Ethiopian Y/M/D parts:
+   *   '{"year":2016,"month":1,"day":1}'
+   * It does NOT accept a bare "2026-10-15" string (JSON.parse throws,
+   * the server responds "Date is required").
    *
-   * We send option (2) which is 100% safe and gives no validation error.
-   * Time is dropped from the payload (the backend doesn't store a time
-   * component on events anyway — only dateEthYear/Month/Day + dateGregorian).
+   * The Event model has no time column, so only the date is sent.
+   * Gregorian mirror (dateGregorian) is computed server-side from these parts.
    */
-  const buildDatePayload = (): string | null => {
-    // Sanity: validate the time string so we still catch bad input.
-    const m = timeText.trim().match(/^(\d{1,2}):(\d{2})$/);
-    if (!m) return null;
-
-    // Convert the Ethiopian date to Gregorian and emit YYYY-MM-DD.
-    const greg = ethToUtcDate(ethDate);
-    const y = greg.getUTCFullYear();
-    const mo = String(greg.getUTCMonth() + 1).padStart(2, '0');
-    const d = String(greg.getUTCDate()).padStart(2, '0');
-    return `${y}-${mo}-${d}`;
-  };
+  const buildDatePayload = (): string =>
+    JSON.stringify({
+      year: ethDate.year,
+      month: ethDate.month,
+      day: ethDate.day,
+    });
 
   const onSave = async (publish: boolean) => {
     setError(null);
-    const datePayload = buildDatePayload();
     if (!title.trim()) return setError(t('register.fieldRequired'));
-    if (!datePayload) return setError(t('register.invalidDate'));
+
+    const datePayload = buildDatePayload();
 
     try {
       if (editingId) {
@@ -467,7 +438,7 @@ export default function EventEditorScreen({ route, navigation }: any) {
               onChange={setLocation}
             />
 
-            {/* Ethiopian Date + Time */}
+            {/* Ethiopian Date — full-width picker */}
             <Text
               style={[
                 typography.bodySmall,
@@ -482,56 +453,31 @@ export default function EventEditorScreen({ route, navigation }: any) {
               {t('events.dateField')}
             </Text>
 
-            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              <Pressable
-                onPress={() => setPickerOpen(true)}
-                style={{
-                  flex: 1.5,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  backgroundColor: colors.background,
-                  borderColor: colors.border,
-                  borderWidth: 1.5,
-                  borderRadius: radius.md + 4,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.md,
-                }}
-              >
-                <Ionicons name="calendar" size={18} color={BRAND.violet} />
-                <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>
-                  {formatEthDate(ethDate, lang)}
-                </Text>
-              </Pressable>
-
-              <View
-                style={{
-                  flex: 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                  backgroundColor: colors.background,
-                  borderColor: colors.border,
-                  borderWidth: 1.5,
-                  borderRadius: radius.md + 4,
-                  paddingHorizontal: spacing.md,
-                }}
-              >
-                <Ionicons name="time" size={18} color={BRAND.violet} />
-                <TextInput
-                  value={timeText}
-                  onChangeText={setTimeText}
-                  placeholder="10:00"
-                  placeholderTextColor={colors.textSecondary}
-                  keyboardType="numbers-and-punctuation"
-                  style={{
-                    flex: 1,
-                    paddingVertical: spacing.md,
-                    color: colors.text,
-                  }}
-                />
-              </View>
-            </View>
+            <Pressable
+              onPress={() => setPickerOpen(true)}
+              accessibilityRole="button"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+                borderWidth: 1.5,
+                borderRadius: radius.md + 4,
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.md,
+              }}
+            >
+              <Ionicons name="calendar" size={18} color={BRAND.violet} />
+              <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>
+                {formatEthDate(ethDate, lang)}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={18}
+                color={colors.textSecondary}
+              />
+            </Pressable>
 
             <EditorField
               icon="reader"

@@ -52,7 +52,8 @@ const GATHERING_TINTS: Record<GatheringType, readonly [string, string]> = {
 };
 
 export default function LeaderAttendanceScreen({ navigation }: any) {
-  const { t } = useTranslation();
+   const { t, i18n } = useTranslation();
+ const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
@@ -93,10 +94,20 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
     (gridQ.error as { message?: string } | null)?.message ??
     null;
 
-  // Reset local edits when the server data reloads (e.g. after saving)
+  // A "sheet" is one (gathering, Ethiopian date) pair — the unit of work the
+  // leader is currently recording.
+  //
+  // We reset local edits only when the leader switches to a different sheet.
+  // The previous implementation reset on `[rosterQ.data]`, which fires on
+  // EVERY TanStack refetch (focus, reconnect, pull-to-refresh, mutation
+  // invalidation) — silently wiping any PRESENT/ABSENT marks the leader had
+  // toggled but not yet saved. That's a real data-loss path: glance at a
+  // notification, come back to a blank sheet.
+  const sheetKey = `${gathering}|${date.year}-${date.month}-${date.day}`;
   useEffect(() => {
     setLocalStatuses({});
-  }, [rosterQ.data]);
+    setSaved(false);
+  }, [sheetKey]);
 
   // Clear the "saved" banner after a moment
   useEffect(() => {
@@ -114,15 +125,6 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
       setDayRows([]);
       try {
         const eth = utcDateToEth(new Date(isoDate + 'T00:00:00.000Z'));
-        // We reuse the same query key → if cached, returns instantly.
-        const qc = (await import('../../services/queryClient')).queryClient;
-        const userId = (
-          await import('../chat/chatSession')
-        ).getMe();
-        void userId;
-        void qc;
-        // Simplest path: call the underlying fetcher through the query cache
-        // using the same key that `useLeaderAttendanceQuery` uses.
         const { leaderGetAttendance } = await import(
           '../../services/attendance'
         );
@@ -394,7 +396,7 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
                 ]}
               >
                 <Text style={{ color: colors.text, fontSize: 15 }}>
-                  {formatEthDate(date, 'en')}
+                  {formatEthDate(date, lang)}
                 </Text>
                 <Ionicons
                   name="calendar-outline"
@@ -548,7 +550,7 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
                   date: dayOpen
                     ? formatEthDate(
                         utcDateToEth(new Date(dayOpen + 'T00:00:00.000Z')),
-                        'en',
+                        lang,
                       )
                     : '',
                 })}
@@ -1004,6 +1006,7 @@ function SaveButton({
   onPress: () => void;
   gradient: readonly [string, string];
 }) {
+  const { t } = useTranslation();
   const { typography } = useTheme().theme;
   const scale = useRef(new Animated.Value(1)).current;
   const to = (v: number) =>
@@ -1049,7 +1052,7 @@ function SaveButton({
                   { color: '#FFFFFF', fontWeight: '800', marginLeft: 8 },
                 ]}
               >
-                {'Save attendance'}
+                {t('attendance.save', { defaultValue: 'Save attendance' })}
               </Text>
             </>
           )}

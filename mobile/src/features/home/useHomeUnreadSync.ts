@@ -12,18 +12,23 @@ import type { NotificationItem } from '../../services/notifications';
  * renders a 5-item preview but the query itself fetches 60), so the badge
  * on Home and the unread count on the Notifications screen cannot diverge.
  *
- * The ignored argument is kept so existing callers
- * (`useHomeUnreadSync(notifQ.data)`) keep working without edits.
+ * `items` is the preview slice passed by Home (`useHomeUnreadSync(notifQ.data)`).
+ * It is a dependency of the effect so the badge is recomputed when the query
+ * first resolves — otherwise the effect fires once with an empty cache, returns
+ * early, and never runs again (badge stuck at 0 until Notifications is opened).
+ *
+ * NotificationsScreen calls it with no argument and only needs the cache read,
+ * so `items` being undefined there is fine.
  */
-export function useHomeUnreadSync(_itemsIgnored?: NotificationItem[]): void {
+export function useHomeUnreadSync(items?: NotificationItem[]): void {
   const userId = useMe()?.id ?? null;
   const qc = useQueryClient();
 
   useEffect(() => {
-    const data = qc.getQueryData<NotificationItem[]>(
-      queryKeys.notifications(userId),
-    );
+    const data =
+      qc.getQueryData<NotificationItem[]>(queryKeys.notifications(userId)) ??
+      items;
     if (!data) return;
     setUnread(data.reduce((n, x) => (x.readAt ? n : n + 1), 0));
-  }, [qc, userId]);
+  }, [qc, userId, items]);
 }

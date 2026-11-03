@@ -1,7 +1,7 @@
 import { prisma } from '../db/prisma';
 import { ApiError } from '../utils/ApiError';
-import { NotificationType, UserRole } from '@prisma/client';
-import { isUserViewingConversation, sendToUsers } from '../realtime/sseHub';
+import { NotificationType } from '@prisma/client';
+
 // ---------- Delivery via Expo Push ----------
 
 type ExpoMessage = {
@@ -128,6 +128,7 @@ export type FanOutInput = {
   relatedEntityId?: string | null;
   force?: boolean;
 };
+
 /**
  * Create Notification rows for the recipients and push them via Expo.
  * Honors per-type preferences (except when force = true).
@@ -340,69 +341,4 @@ export async function registerPushToken(
 export async function unregisterPushToken(token: string) {
   await prisma.pushToken.deleteMany({ where: { token } });
   return { ok: true };
-}
-
-/**
- * Send chat notifications for a new message.
- * - Always creates in-app Notification rows for the recipients.
- * - Suppresses the *push* for recipients who currently have the
- *   conversation open on some device (SSE open-conversation tracking).
- */
-export async function notifyChatMessage(
-  recipients: string[],
-  conversationId: string,
-  senderName: string,
-  text?: string,
-): Promise<void> {
-  if (recipients.length === 0) return;
-
-  const title = `New message from ${senderName}`;
-  const body = text && text.length > 0
-    ? text.length > 120
-      ? text.slice(0, 117) + '…'
-      : text
-    : 'Sent a message';
-
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-
-  // 1) In-app rows for everyone.
-  await prisma.notification.createMany({
-    data: recipients.map((rid) => ({
-      recipientId: rid,
-      type: 'CHAT_MESSAGE',
-      title,
-      body,
-      relatedEntityType: 'ChatConversation',
-      relatedEntityId: conversationId,
-      expiresAt,
-    })),
-  });
-
-  // 2) Push — only for recipients not actively viewing this conversation.
-  const pushTargets = recipients.filter(
-    (rid) => !isUserViewingConversation(rid, conversationId),
-  );
-  if (pushTargets.length === 0) return;
-
-  const tokens = await prisma.pushToken.findMany({
-    where: { userId: { in: pushTargets } },
-    select: { token: true, userId: true, platform: true },
-  });
-  if (tokens.length === 0) return;
-
-  const messages: ExpoMessage[] = tokens.map((t) => ({
-    to: t.token,
-    title,
-    body,
-    sound: 'default',
-    priority: 'high',
-    channelId: t.platform === 'android' ? 'default' : undefined,
-    data: {
-      type: 'CHAT_MESSAGE',
-      entityType: 'ChatConversation',
-      entityId: conversationId,
-    },
-  }));
-
-  await sendExpoPush(messages);
 }
