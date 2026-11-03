@@ -1,22 +1,18 @@
 import { apiGet, apiPost, apiPatch } from './api';
-import { cachedFetch, cacheInvalidatePrefix } from './cache';
-import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
-
-export { apiGet };
+import { queryClient } from './queryClient';
+import { EthDate } from '../utils/ethiopianCalendar';
 
 /**
- * Types here mirror the backend DTOs 1:1 (funding.dto.ts, annual.service.ts, campaign.service.ts).
- * The server is authoritative for progress, canDeclare and deadlinePassed: the app never recomputes them.
+ * Types here mirror the backend DTOs 1:1. The server is authoritative for progress, 
+ * canDeclare, and deadlinePassed.
  */
 
 // ---------- Primitives ----------
 export type FundingStatus = 'UNPAID' | 'PENDING_VERIFICATION' | 'PAID' | 'REJECTED';
 export type PaymentMethod = 'BANK' | 'TELEBIRR';
 export type Money = { minor: number; label: string };
-export type EthDate = { year: number; month: number; day: number };
 export type DateDto = { iso: string; eth: EthDate; labelEn: string; labelAm: string };
 
-/** progressDto(): `paid` is VERIFIED money only. target/remaining/percent are null for open-amount. */
 export type Progress = {
   paid: Money;
   target: Money | null;
@@ -63,14 +59,12 @@ export type AnnualRecord = {
   deadline: DateDto;
   deadlinePassed: boolean;
   canDeclare: boolean;
-  /** v2.1: sum of declarations currently pending. */
   pendingCount: number;
 };
 
 export type CampaignStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'CANCELLED';
 export type DonationType = 'VOLUNTARY' | 'REQUIRED';
 
-/** One campaign as a member sees it (list + detail base). */
 export type MemberCampaign = {
   id: string;
   title: string;
@@ -82,11 +76,9 @@ export type MemberCampaign = {
   deadline: DateDto;
   deadlinePassed: boolean;
   imageUrl: string | null;
-  /** Whole campaign vs overall target (verified only). */
   campaignProgress: Progress;
   my: {
     status: FundingStatus;
-    /** target = what I owe (REQUIRED) or null (VOLUNTARY). */
     progress: Progress;
     pendingAmount: Money | null;
     rejectionReason: string | null;
@@ -125,7 +117,6 @@ export type CampaignDetail = MemberCampaign & {
   instructions: PaymentInstruction[];
   paymentInstructionsMissing: boolean;
   history: Declaration[];
-  /** Present only for leaders/admins. */
   leader?: {
     counts: Record<FundingStatus, number>;
     received: Money;
@@ -195,61 +186,52 @@ export type DeadlinePreview = {
 export type LedgerFilter = FundingStatus | 'ALL';
 
 // ---------- Helpers ----------
-/** Stable per attempt: a retried tap with the same inputs reuses it, so the server de-duplicates. */
 export const makeClientId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
-// ---------- Member ----------
 export type DeclareInput = { clientId: string; amountMinor: number; paymentMethod: PaymentMethod; reference?: string };
 
-export const getMyFunding = async () => {
-  // Use cachedFetch as the single source of truth: it returns cached instantly
-  // and, on a miss, returns the fresh value without a second network call.
-  const result = await cachedFetch<MyFunding>(
-    CACHE_KEYS.myFunding,
-    async () => apiGet<MyFunding>('/funding/me'),
-    () => {},
-  );
-  return result as MyFunding;
-};
+// ---------- Member Reads (TanStack owns cache) ----------
 
-export const getPaymentInstructions = async () => {
-  const result = await cachedFetch<{ items: PaymentInstruction[] }>(
-    CACHE_KEYS.paymentInstructions,
-    async () => apiGet<{ items: PaymentInstruction[] }>('/funding/payment-instructions'),
-    () => {},
-  );
-  return result as { items: PaymentInstruction[] };
-};
+export async function getMyFunding(): Promise<MyFunding> {
+  return apiGet<MyFunding>('/funding/me');
+}
 
-export const declareAnnualPayment = async (recordId: string, body: DeclareInput) => {
+export async function getPaymentInstructions(): Promise<{ items: PaymentInstruction[] }> {
+  return apiGet<{ items: PaymentInstruction[] }>('/funding/payment-instructions');
+}
+
+export async function getCampaignDetail(id: string): Promise<{ item: CampaignDetail }> {
+  return apiGet<{ item: CampaignDetail }>(`/funding/campaigns/${id}`);
+}
+
+// ---------- Invalidation helper ----------
+
+export function invalidateFunding(userId: string | null): Promise<void> {
+  return queryClient.invalidateQueries({ queryKey: ['funding', userId ?? 'anon'] }).then(() => undefined);
+}
+
+// ---------- Member Mutations ----------
+
+export async function declareAnnualPayment(recordId: string, body: DeclareInput, userId: string | null) {
   const res = await apiPost<{ declaration: Declaration; idempotent: boolean }>(
     `/funding/annual/${recordId}/declarations`,
     body,
   );
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(userId);
   return res;
-};
+}
 
-export const getCampaignDetail = async (id: string) => {
-  const key = CACHE_KEYS.campaignDetail(id);
-  const result = await cachedFetch<{ item: CampaignDetail }>(
-    key,
-    async () => apiGet<{ item: CampaignDetail }>(`/funding/campaigns/${id}`),
-    () => {},
-  );
-  return result as { item: CampaignDetail };
-};
-
-export const declareCampaignPayment = async (campaignId: string, body: DeclareInput) => {
+export async function declareCampaignPayment(campaignId: string, body: DeclareInput, userId: string | null) {
   const res = await apiPost<{ declaration: Declaration; idempotent: boolean }>(
     `/funding/campaigns/${campaignId}/declarations`,
     body,
   );
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(userId);
   return res;
-};
+}
 
 // ---------- Leader: verification ----------
+
 export function leaderListRecords(p: { status?: LedgerFilter; q?: string; page?: number; pageSize?: number }) {
   const qs = new URLSearchParams();
   if (p.status) qs.set('status', p.status);
@@ -274,7 +256,7 @@ export const approveRecord = async (id: string, declarationId?: string) => {
     `/funding/records/${id}/approve`,
     declarationId ? { declarationId } : {},
   );
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(null);
   return res;
 };
 
@@ -283,7 +265,7 @@ export const rejectRecord = async (id: string, reason: string, declarationId?: s
     `/funding/records/${id}/reject`,
     declarationId ? { reason, declarationId } : { reason },
   );
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(null);
   return res;
 };
 
@@ -292,7 +274,7 @@ export const approveDonation = async (id: string, declarationId?: string) => {
     `/funding/donations/${id}/approve`,
     declarationId ? { declarationId } : {},
   );
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(null);
   return res;
 };
 
@@ -301,58 +283,54 @@ export const rejectDonation = async (id: string, reason: string, declarationId?:
     `/funding/donations/${id}/reject`,
     declarationId ? { reason, declarationId } : { reason },
   );
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(null);
   return res;
 };
 
 // ---------- Leader: campaigns ----------
+
 export type CampaignInput = {
   title: string; description: string; donationType: DonationType;
   requestedAmountMinor?: number | null; targetAmountMinor?: number | null; deadline: EthDate;
 };
-/** PATCH body: any subset. A PUBLISHED campaign also needs `reason` and may not change type/amount. */
 export type CampaignPatch = Partial<CampaignInput> & { reason?: string };
 
 export const leaderListCampaigns = async () => {
-  const result = await cachedFetch<{ items: LeaderCampaign[] }>(
-    CACHE_KEYS.leaderCampaigns,
-    async () => apiGet<{ items: LeaderCampaign[] }>('/funding/leader/campaigns'),
-    () => {},
-  );
-  return result as { items: LeaderCampaign[] };
+  return apiGet<{ items: LeaderCampaign[] }>('/funding/leader/campaigns');
 };
 
 export const leaderCreateCampaign = async (body: CampaignInput) => {
   const res = await apiPost<{ id: string }>('/funding/leader/campaigns', body);
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(null);
   return res;
 };
 
 export const leaderUpdateCampaign = async (id: string, body: CampaignPatch) => {
   const res = await apiPatch<{ ok: true }>(`/funding/leader/campaigns/${id}`, body);
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(null);
   return res;
 };
 
 export const leaderPublishCampaign = async (id: string) => {
   const res = await apiPost<{ ok: true }>(`/funding/leader/campaigns/${id}/publish`, {});
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(null);
   return res;
 };
 
 export const leaderCloseCampaign = async (id: string) => {
   const res = await apiPost<{ ok: true }>(`/funding/leader/campaigns/${id}/close`, {});
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(null);
   return res;
 };
 
 export const leaderCancelCampaign = async (id: string, reason: string) => {
   const res = await apiPost<{ ok: true }>(`/funding/leader/campaigns/${id}/cancel`, { reason });
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(null);
   return res;
 };
 
 // ---------- Leader: annual configuration ----------
+
 export const leaderGetAnnualConfig = () => apiGet<{ item: AnnualConfig | null }>('/funding/leader/annual-config');
 
 export const leaderPreviewDeadline = (expiry: EthDate) =>
@@ -363,11 +341,12 @@ export const leaderUpsertAnnualConfig = async (body: {
   active: boolean; reason?: string;
 }) => {
   const res = await apiPost<{ item: AnnualConfig }>('/funding/leader/annual-config', body);
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(null);
   return res;
 };
 
-// ---------- Leader: payment instructions (set once, reused everywhere) ----------
+// ---------- Leader: payment instructions ----------
+
 export type InstructionInput = {
   method: PaymentMethod; providerName: string; accountHolderName: string;
   accountIdentifier: string; note?: string; active: boolean;
@@ -377,12 +356,12 @@ export const leaderListInstructions = () => apiGet<{ items: PaymentInstruction[]
 
 export const leaderCreateInstruction = async (b: InstructionInput) => {
   const res = await apiPost<{ item: PaymentInstruction }>('/funding/leader/payment-instructions', { ...b, confirm: true });
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(null);
   return res;
 };
 
 export const leaderUpdateInstruction = async (id: string, b: Partial<InstructionInput> & { reason: string }) => {
   const res = await apiPatch<{ item: PaymentInstruction }>(`/funding/leader/payment-instructions/${id}`, { ...b, confirm: true });
-  await cacheInvalidatePrefix(CACHE_PREFIXES.funding);
+  await invalidateFunding(null);
   return res;
 };

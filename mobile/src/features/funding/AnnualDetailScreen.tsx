@@ -1,15 +1,15 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
 import { PrimaryButton, BRAND, withAlpha } from '../auth/Auth_UI';
-import { getMyFunding, MyFunding } from '../../services/funding';
 import {
-  Card, StatusChip, useDateLabel, errorText, SectionLabel, DetailHeader, ProgressBar, Notice,
-  ErrorState, DeclarationHistory, NumberTick, AccessiblePress,
+  Card, StatusChip, useDateLabel, SectionLabel, DetailHeader, ProgressBar, Notice,
+  ErrorState, DeclarationHistory, NumberTick,
 } from './fundingKit';
 import type { PayFlowParams } from './Payflowscreen';
+import { useMyFundingQuery } from './useMemberFunding';
 
 export default function AnnualDetailScreen() {
   const { t } = useTranslation();
@@ -18,27 +18,19 @@ export default function AnnualDetailScreen() {
   const navigation = useNavigation<any>();
   const dateLabel = useDateLabel();
 
-  const [data, setData] = useState<MyFunding | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const q = useMyFundingQuery();
+  const data = q.data;
+  const firstLoad = q.isPending && q.data === undefined;
+  const error = (q.error as { message?: string } | null)?.message ?? null;
 
-  const load = useCallback(async () => {
-    try { setError(null); setData(await getMyFunding()); }
-    catch (e) { setError(errorText(e)); }
-    finally { setLoading(false); setRefreshing(false); }
-  }, []);
-
-  useFocusEffect(useCallback(() => { void load(); }, [load]));
-
-  if (loading) {
+  if (firstLoad) {
     return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>;
   }
-  if (error && !data) {
+  if (!data && error) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <DetailHeader title={t('funding.annualTitle')} onBack={() => navigation.goBack()} />
-        <ErrorState message={error} onRetry={load} />
+        <ErrorState message={error} onRetry={() => q.refetch()} />
       </View>
     );
   }
@@ -59,8 +51,6 @@ export default function AnnualDetailScreen() {
   const prog = record.progress;
   const pendingMinor = record.pendingAmount?.minor ?? 0;
 
-  // Safely calculate maxNewMinor — fall back to amountDue - paid when
-  // `prog.remaining` is null (open-amount edge case).
   const remaining = prog.remaining?.minor ?? (record.amountDue.minor - prog.paid.minor);
   const maxNewMinor = Math.max(0, remaining - pendingMinor);
 
@@ -88,7 +78,7 @@ export default function AnnualDetailScreen() {
 
       <ScrollView
         contentContainerStyle={{ padding: spacing.xl, paddingBottom: 64 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} />}
+        refreshControl={<RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} />}
       >
         {error && <Notice tone="error" text={error} />}
 

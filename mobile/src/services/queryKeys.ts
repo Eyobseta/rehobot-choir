@@ -121,4 +121,14 @@ export const queryKeys = {
 
   leaderMemoryDetail: (userId: string | null, id: string) =>
     ['leader', userId ?? 'anon', 'memories', 'detail', id] as const,
+
+    // --- FUNDING ---
+  myFunding: (userId: string | null) =>
+    ['funding', userId ?? 'anon', 'me'] as const,
+
+  fundingCampaign: (userId: string | null, id: string) =>
+    ['funding', userId ?? 'anon', 'campaign', id] as const,
+
+  paymentInstructions: (userId: string | null) =>
+    ['funding', userId ?? 'anon', 'instructions'] as const,
 } as const;

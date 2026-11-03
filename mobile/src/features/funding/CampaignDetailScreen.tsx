@@ -1,11 +1,11 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect, useRoute, useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
 import { PrimaryButton, BRAND, withAlpha } from '../auth/Auth_UI';
 import {
-  getCampaignDetail, CampaignDetail, leaderCloseCampaign, leaderCancelCampaign, leaderPublishCampaign,
+  leaderCloseCampaign, leaderCancelCampaign, leaderPublishCampaign,
   approveDonation, rejectDonation,
 } from '../../services/funding';
 import {
@@ -14,6 +14,9 @@ import {
 } from './fundingKit';
 import { getRole } from '../../services/role';
 import type { PayFlowParams } from './Payflowscreen';
+import { useCampaignDetailQuery } from './useMemberFunding';
+import { useQueryClient } from '@tanstack/react-query';
+import { useMe } from '../chat/chatSession';
 
 export default function CampaignDetailScreen() {
   const { t } = useTranslation();
@@ -23,33 +26,27 @@ export default function CampaignDetailScreen() {
   const navigation = useNavigation<any>();
   const dateLabel = useDateLabel();
   const instantLabel = useInstantLabel();
+  const userId = useMe()?.id ?? null;
+  const qc = useQueryClient();
 
-  const [c, setC] = useState<CampaignDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const q = useCampaignDetailQuery(route.params.id);
+  const c = q.data?.item ?? null;
+  const firstLoad = q.isPending && q.data === undefined;
+  const error = (q.error as { message?: string } | null)?.message ?? null;
   const [actionError, setActionError] = useState<string | null>(null);
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectDeclId, setRejectDeclId] = useState<string | null>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try { setError(null); setC((await getCampaignDetail(route.params.id)).item); }
-    catch (e) { setError(errorText(e)); }
-    finally { setLoading(false); setRefreshing(false); }
-  }, [route.params.id]);
-
-  useFocusEffect(useCallback(() => { void load(); }, [load]));
-
-  if (loading) {
+  if (firstLoad) {
     return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>;
   }
-  if (error && !c) {
+  if (!c && error) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <DetailHeader title="" onBack={() => navigation.goBack()} />
-        <ErrorState message={error} onRetry={load} />
+        <ErrorState message={error} onRetry={() => q.refetch()} />
       </View>
     );
   }
@@ -64,7 +61,6 @@ export default function CampaignDetailScreen() {
     ? Math.max(0, (mine.remaining?.minor ?? 0) - pendingMinor)
     : undefined;
 
-  // total campaign progress might be null (voluntary with no target)
   const total = c.campaignProgress.target ? c.campaignProgress : null;
 
   const draft = c.status === 'DRAFT';
@@ -87,8 +83,12 @@ export default function CampaignDetailScreen() {
   const run = async (fn: () => Promise<unknown>, id: string) => {
     if (busyId) return;
     setBusyId(id); setActionError(null);
-    try { await fn(); } catch (e) { setActionError(errorText(e)); }
-    await load();
+    try {
+      await fn();
+      await qc.invalidateQueries({ queryKey: ['funding', userId ?? 'anon'] });
+    } catch (e) {
+      setActionError(errorText(e));
+    }
     setBusyId(null);
   };
 
@@ -98,7 +98,7 @@ export default function CampaignDetailScreen() {
 
       <ScrollView
         contentContainerStyle={{ padding: spacing.xl, paddingBottom: 64 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(); }} />}
+        refreshControl={<RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} />}
       >
         {error && <Notice tone="error" text={error} />}
         {draft && <Notice tone="info" text={t('funding.draftNote')} />}
@@ -293,8 +293,8 @@ export default function CampaignDetailScreen() {
         confirmLabel={t('funding.reject')}
         onClose={() => { setRejectId(null); setRejectDeclId(null); }}
         onSubmit={async (r: string) => {
-          try { await rejectDonation(rejectId!, r, rejectDeclId ?? undefined); } catch (e) { await load(); throw e; }
-          await load();
+          try { await rejectDonation(rejectId!, r, rejectDeclId ?? undefined); } catch (e) { await q.refetch(); throw e; }
+          await q.refetch();
         }}
       />
       <ReasonModal
@@ -303,7 +303,7 @@ export default function CampaignDetailScreen() {
         message={t('funding.cancelHint')}
         confirmLabel={t('funding.cancelCampaign')}
         onClose={() => setCancelOpen(false)}
-        onSubmit={async (r: string) => { await leaderCancelCampaign(c.id, r); await load(); }}
+        onSubmit={async (r: string) => { await leaderCancelCampaign(c.id, r); await q.refetch(); }}
       />
     </View>
   );
