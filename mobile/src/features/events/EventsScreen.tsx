@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,47 +11,36 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { listEvents, EventSummary } from '../../services/events';
-import { ApiError } from '../../services/api';
+import { EventSummary } from '../../services/events';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import { EthDate, formatEthDate } from '../../utils/ethiopianCalendar';
+import { useMe } from '../chat/chatSession';
+import { useEventsQuery, warmEventDetailCache } from './useEvents';
 
 export default function EventsScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
   const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
+  const userId = useMe()?.id ?? null;
 
   const [scope, setScope] = useState<'upcoming' | 'past'>('upcoming');
-  const [items, setItems] = useState<EventSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (s: 'upcoming' | 'past') => {
-    setError(null);
-    try {
-      const fresh = await listEvents(s);
-      setItems(fresh);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const q = useEventsQuery(scope);
+  const items = q.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      void load(scope);
-    }, [load, scope]),
-  );
+  // Prefetch every event detail into cache once this list is known.
+  useEffect(() => {
+    if (!items.length) return;
+    void warmEventDetailCache(qc, userId, items.map((e) => e.id));
+  }, [items, qc, userId]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -160,7 +149,31 @@ export default function EventsScreen({ navigation }: any) {
         </View>
       </LinearGradient>
 
-      {error && (
+      {showingSavedData && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: withAlpha('#F59E0B', 0.14),
+              borderWidth: 1,
+              borderColor: withAlpha('#F59E0B', 0.4),
+            }}
+          >
+            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+              {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {q.isError && q.data === undefined && (
         <View
           style={{
             flexDirection: 'row',
@@ -176,11 +189,13 @@ export default function EventsScreen({ navigation }: any) {
           }}
         >
           <Ionicons name="alert-circle" size={18} color={colors.error} />
-          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
+          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
+            {(q.error as { message?: string })?.message ?? 'Something went wrong.'}
+          </Text>
         </View>
       )}
 
-      {loading ? (
+      {firstLoad ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={BRAND.violet} />
         </View>
@@ -196,11 +211,8 @@ export default function EventsScreen({ navigation }: any) {
           }}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                void load(scope);
-              }}
+              refreshing={q.isRefetching && !firstLoad}
+              onRefresh={() => q.refetch()}
               tintColor={BRAND.violet}
               colors={[BRAND.violet]}
             />
@@ -238,7 +250,6 @@ export default function EventsScreen({ navigation }: any) {
             </View>
           }
           renderItem={({ item }) => {
-            // FIXED: Safely extract the Ethiopian date
             let eth: EthDate = { year: 0, month: 1, day: 1 };
             if (typeof item.date === 'object' && item.date !== null) {
               eth = item.date as unknown as EthDate;

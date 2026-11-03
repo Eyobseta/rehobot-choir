@@ -4,6 +4,14 @@ export const queryKeys = {
   events: (userId: string | null, scope: 'upcoming' | 'past') =>
     ['events', userId ?? 'anon', scope] as const,
 
+  // NEW: single event detail, scoped per user
+  eventDetail: (userId: string | null, id: string) =>
+    ['events', userId ?? 'anon', 'detail', id] as const,
+
+  // NEW: leader event list (uncached before, now cached per user)
+  leaderEvents: (userId: string | null) =>
+    ['events', userId ?? 'anon', 'leader', 'list'] as const,
+
   announcements: (userId: string | null, search = '') =>
     ['announcements', userId ?? 'anon', 'list', search] as const,
 

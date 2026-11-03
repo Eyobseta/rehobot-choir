@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -10,20 +10,14 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  getEvent,
-  rsvp,
-  EventDetail,
-  RsvpResponse,
-} from '../../services/events';
-import { ApiError } from '../../services/api';
+import { RsvpResponse } from '../../services/events';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import { useMe } from '../chat/chatSession';
 import { formatEthDate } from '../../utils/ethiopianCalendar';
+import { useEventDetailQuery, useRsvpMutation } from './useEvents';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -38,50 +32,21 @@ export default function EventDetailScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { id } = route.params;
 
-  const [event, setEvent] = useState<EventDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [myUserId, setMyUserId] = useState<string>('');
+  const me = useMe();
+  const q = useEventDetailQuery(id);
+  const rsvpMut = useRsvpMutation();
 
-  const me_ = useMe();
+  const event = q.data;
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      setEvent(await getEvent(id));
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (me_) setMyUserId(me_.id);
-      void load();
-    }, [load, me_]),
-  );
-
-  const onRsvp = async (response: RsvpResponse) => {
-    if (!event) return;
-    setBusy(true);
-    try {
-      await rsvp(event.id, response);
-      await load();
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setBusy(false);
-    }
+  const onRsvp = (response: RsvpResponse) => {
+    rsvpMut.mutate({ id, response });
   };
 
-  const myRsvp = event?.rsvps.find((r) => r.userId === myUserId)?.response;
+  const myRsvp = event?.rsvps.find((r) => r.userId === me?.id)?.response;
 
-  if (loading) {
+  if (firstLoad) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={BRAND.violet} />
@@ -105,7 +70,7 @@ export default function EventDetailScreen({ route, navigation }: any) {
           <Ionicons name="calendar-clear-outline" size={32} color={colors.error} />
         </View>
         <Text style={[typography.body, { color: colors.error, textAlign: 'center' }]}>
-          {error ?? t('events.notFound')}
+          {(q.error as { message?: string })?.message ?? t('events.notFound')}
         </Text>
 
         <View style={{ position: 'absolute', top: insets.top + 12, right: 16 }}>
@@ -120,14 +85,14 @@ export default function EventDetailScreen({ route, navigation }: any) {
   const notGoing = event.rsvps.filter((r) => r.response === 'NOT_GOING').length;
   const total = event.rsvps.length;
 
-  // FIXED: The date is already an Ethiopian date object from the backend
   const ethDate = event.date;
-  // Use the Gregorian date for the time string
   const timeStr = new Date(event.dateGregorian).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
   });
   const dateLabel = `${formatEthDate(ethDate, 'en')} · ${timeStr}`;
+
+  const busy = rsvpMut.isPending;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -154,7 +119,6 @@ export default function EventDetailScreen({ route, navigation }: any) {
             colors={['rgba(10,6,30,0.35)', 'rgba(10,6,30,0.0)', 'rgba(10,6,30,0.55)']}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           />
-          {/* date badge */}
           <View
             style={{
               position: 'absolute',
@@ -199,6 +163,30 @@ export default function EventDetailScreen({ route, navigation }: any) {
             paddingTop: spacing.xl + 2,
           }}
         >
+          {showingSavedData && (
+            <View style={{ marginBottom: spacing.md }}>
+              <View
+                style={{
+                  alignSelf: 'flex-start',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  backgroundColor: withAlpha(AMBER, 0.14),
+                  borderWidth: 1,
+                  borderColor: withAlpha(AMBER, 0.4),
+                }}
+              >
+                <Ionicons name="cloud-offline" size={13} color={AMBER} />
+                <Text style={[typography.caption, { color: AMBER, fontWeight: '800' }]}>
+                  {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+                </Text>
+              </View>
+            </View>
+          )}
+
           <Text style={[typography.h2, { color: colors.text, fontWeight: '800', letterSpacing: -0.3 }]}>
             {event.title}
           </Text>
@@ -349,7 +337,7 @@ export default function EventDetailScreen({ route, navigation }: any) {
             </View>
           </View>
 
-          {error && (
+          {rsvpMut.isError && (
             <View
               style={{
                 marginTop: spacing.md,
@@ -364,13 +352,14 @@ export default function EventDetailScreen({ route, navigation }: any) {
               }}
             >
               <Ionicons name="alert-circle" size={18} color={colors.error} />
-              <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
+              <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
+                {(rsvpMut.error as { message?: string })?.message ?? 'Error'}
+              </Text>
             </View>
           )}
         </View>
       </ScrollView>
 
-      {/* Floating glass back button over the hero — right side */}
       <View
         pointerEvents="box-none"
         style={{ position: 'absolute', top: insets.top + 12, right: 16, zIndex: 10 }}

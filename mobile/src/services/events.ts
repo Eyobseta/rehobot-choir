@@ -1,13 +1,12 @@
 import { apiGet, apiPost, apiDelete, http } from './api';
-import { cachedFetch, cacheInvalidatePrefix } from './cache';
-import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
+import { queryClient } from './queryClient';
+import { queryKeys } from './queryKeys';
 
 export type EventSummary = {
   id: string;
   title: string;
   description: string | null;
   location: string | null;
-  // FIXED: Backend returns the Gregorian date string + Ethiopian integers
   date: string; 
   dateEthYear?: number;
   dateEthMonth?: number;
@@ -34,7 +33,6 @@ export type EventDetail = {
   title: string;
   description: string | null;
   location: string | null;
-  // FIXED: Detail view returns the Ethiopian date as an object
   date: { year: number; month: number; day: number };
   dateGregorian: string;
   coverImageUrl: string | null;
@@ -46,8 +44,7 @@ export type EventDetail = {
 export type LeaderEventRow = {
   id: string;
   title: string;
-  date: string; // ISO Gregorian string
-  // FIXED: Added the Ethiopian fields returned by the leader endpoint
+  date: string;
   dateEthYear: number;
   dateEthMonth: number;
   dateEthDay: number;
@@ -57,66 +54,72 @@ export type LeaderEventRow = {
   publishedAt: string | null;
 };
 
-// ---------- Member (cached) ----------
+// ---------- Member (uncached here — TanStack owns the cache) ----------
 
 export async function listEvents(
   scope: 'upcoming' | 'past',
 ): Promise<EventSummary[]> {
-  const key =
-    scope === 'upcoming' ? CACHE_KEYS.eventsUpcoming : CACHE_KEYS.eventsPast;
-  const cached = await cachedFetch<EventSummary[]>(
-    key,
-    async () => {
-      const res = await apiGet<{ items: EventSummary[] }>(
-        `/events?scope=${scope}`,
-      );
-      return res.items;
-    },
-    () => {},
-  );
-  return cached ?? [];
+  const res = await apiGet<{ items: EventSummary[] }>(`/events?scope=${scope}`);
+  return res.items;
 }
 
 export async function getEvent(id: string): Promise<EventDetail> {
-  const key = CACHE_KEYS.eventDetail(id);
-  return (
-    (await cachedFetch<EventDetail>(
-      key,
-      async () => {
-        const res = await apiGet<{ event: EventDetail }>(`/events/${id}`);
-        return res.event;
-      },
-      () => {},
-    )) ?? (await (async () => {
-      const res = await apiGet<{ event: EventDetail }>(`/events/${id}`);
-      return res.event;
-    })())
-  );
+  const res = await apiGet<{ event: EventDetail }>(`/events/${id}`);
+  return res.event;
 }
 
-export async function rsvp(id: string, response: RsvpResponse): Promise<void> {
+// ---------- Mutations (invalidate via TanStack) ----------
+
+/**
+ * Invalidate every events cache entry for the current user scope.
+ * Reads the scope from the persisted query key shape, so this works
+ * from anywhere — including outside React.
+ */
+function invalidateEvents(userId: string | null): Promise<void> {
+  // Invalidate the event detail + both scopes + the leader list in one pass.
+  return Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: ['events', userId ?? 'anon'],
+    }),
+  ]).then(() => undefined);
+}
+
+export async function rsvp(
+  id: string,
+  response: RsvpResponse,
+  userId: string | null,
+): Promise<void> {
   await apiPost(`/events/${id}/rsvp`, { response });
-  // Refresh cache for this event (the RSVP counts changed)
-  await cacheInvalidatePrefix(CACHE_PREFIXES.events);
+  await invalidateEvents(userId);
 }
 
-export async function clearRsvp(id: string): Promise<void> {
+export async function clearRsvp(id: string, userId: string | null): Promise<void> {
   await apiDelete(`/events/${id}/rsvp`);
-  await cacheInvalidatePrefix(CACHE_PREFIXES.events);
+  await invalidateEvents(userId);
 }
 
-// ---------- Leader (uncached — always fresh) ----------
+// ---------- Leader ----------
 
 export async function leaderListEvents(): Promise<LeaderEventRow[]> {
   const res = await apiGet<{ items: LeaderEventRow[] }>('/leaders/events');
   return res.items;
 }
 
+/**
+ * Leader view of an event (used by the editor when editing).
+ * Falls back to the member endpoint's data shape via `getEvent` — the leader
+ * endpoint returns the same base data plus RSVPs, which the editor does not
+ * use. To avoid a second endpoint we simply reuse `getEvent`.
+ */
+export async function leaderGetEvent(id: string): Promise<EventDetail> {
+  return getEvent(id);
+}
+
 export type CreateEventInput = {
   title: string;
   description?: string;
   location?: string;
-  date: string; // ISO
+  date: string;
   publish: boolean;
   coverUri?: string | null;
   attachmentUris?: string[];
@@ -124,6 +127,7 @@ export type CreateEventInput = {
 
 export async function leaderCreateEvent(
   input: CreateEventInput,
+  userId: string | null,
 ): Promise<{ id: string }> {
   const form = new FormData();
   form.append('title', input.title);
@@ -161,7 +165,7 @@ export async function leaderCreateEvent(
       transformRequest: (data) => data,
     },
   );
-  await cacheInvalidatePrefix(CACHE_PREFIXES.events);
+  await invalidateEvents(userId);
   return { id: res.data.event.id };
 }
 
@@ -178,6 +182,7 @@ export type UpdateEventInput = {
 export async function leaderUpdateEvent(
   id: string,
   input: UpdateEventInput,
+  userId: string | null,
 ): Promise<void> {
   const form = new FormData();
   if (input.title !== undefined) form.append('title', input.title);
@@ -204,10 +209,13 @@ export async function leaderUpdateEvent(
     timeout: 90_000,
     transformRequest: (data) => data,
   });
-  await cacheInvalidatePrefix(CACHE_PREFIXES.events);
+  await invalidateEvents(userId);
 }
 
-export async function leaderDeleteEvent(id: string): Promise<void> {
+export async function leaderDeleteEvent(
+  id: string,
+  userId: string | null,
+): Promise<void> {
   await apiDelete(`/leaders/events/${id}`);
-  await cacheInvalidatePrefix(CACHE_PREFIXES.events);
+  await invalidateEvents(userId);
 }

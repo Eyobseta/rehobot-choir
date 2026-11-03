@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { leaderListEvents, LeaderEventRow } from '../../services/events';
-import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import { EthDate, formatEthDate } from '../../utils/ethiopianCalendar';
+import { useLeaderEventsQuery } from './useEvents';
 
 export default function LeaderEventsScreen({ navigation }: any) {
   const { t } = useTranslation();
@@ -25,32 +23,12 @@ export default function LeaderEventsScreen({ navigation }: any) {
   const { colors, spacing, radius, typography } = theme;
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState<LeaderEventRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const q = useLeaderEventsQuery();
+  const items = q.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      setItems(await leaderListEvents());
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      void load();
-    }, [load]),
-  );
-
-  if (loading) {
+  if (firstLoad) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={BRAND.violet} />
@@ -60,7 +38,6 @@ export default function LeaderEventsScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ---------- Hero ---------- */}
       <LinearGradient
         colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
         start={{ x: 0, y: 0 }}
@@ -127,7 +104,31 @@ export default function LeaderEventsScreen({ navigation }: any) {
         </View>
       </LinearGradient>
 
-      {error && (
+      {showingSavedData && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: withAlpha('#F59E0B', 0.14),
+              borderWidth: 1,
+              borderColor: withAlpha('#F59E0B', 0.4),
+            }}
+          >
+            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+              {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {q.isError && q.data === undefined && (
         <View
           style={{
             marginHorizontal: spacing.lg,
@@ -143,7 +144,9 @@ export default function LeaderEventsScreen({ navigation }: any) {
           }}
         >
           <Ionicons name="alert-circle" size={18} color={colors.error} />
-          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
+          <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
+            {(q.error as { message?: string })?.message ?? 'Something went wrong.'}
+          </Text>
         </View>
       )}
 
@@ -211,11 +214,8 @@ export default function LeaderEventsScreen({ navigation }: any) {
         }}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              void load();
-            }}
+            refreshing={q.isRefetching && !firstLoad}
+            onRefresh={() => q.refetch()}
             tintColor={BRAND.violet}
             colors={[BRAND.violet]}
           />
@@ -254,9 +254,8 @@ export default function LeaderEventsScreen({ navigation }: any) {
         }
         renderItem={({ item }) => {
           const published = item.status === 'PUBLISHED';
-          const tint = published ? colors.success : '#F59E0B'; // Use warning color fallback
-          
-          // FIXED: Safely extract the Ethiopian date
+          const tint = published ? colors.success : '#F59E0B';
+
           let eth: EthDate = { year: 0, month: 1, day: 1 };
           if (typeof item.date === 'object' && item.date !== null) {
             eth = item.date as unknown as EthDate;

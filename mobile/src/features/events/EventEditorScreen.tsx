@@ -18,15 +18,14 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  getEvent,
-  leaderCreateEvent,
-  leaderUpdateEvent,
-  leaderDeleteEvent,
-} from '../../services/events';
-import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import {
+  useEventDetailQuery,
+  useCreateEventMutation,
+  useUpdateEventMutation,
+  useDeleteEventMutation,
+} from './useEvents';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -37,8 +36,15 @@ export default function EventEditorScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const editingId: string | null = route.params?.id ?? null;
 
-  const [loading, setLoading] = useState(!!editingId);
-  const [busy, setBusy] = useState(false);
+  // Query runs only when editing — React Query handles `enabled: false`.
+  const eventQ = useEventDetailQuery(editingId ?? '__new__', {
+    enabled: !!editingId,
+  });
+
+  const createMut = useCreateEventMutation();
+  const updateMut = useUpdateEventMutation();
+  const deleteMut = useDeleteEventMutation();
+
   const [error, setError] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
@@ -48,48 +54,39 @@ export default function EventEditorScreen({ route, navigation }: any) {
   const [coverUri, setCoverUri] = useState<string | null>(null);
   const [removeCover, setRemoveCover] = useState(false);
 
+  const busy =
+    createMut.isPending || updateMut.isPending || deleteMut.isPending;
+
+  // Populate fields once the edit-mode event loads.
   useEffect(() => {
     if (!editingId) return;
-    (async () => {
-      try {
-        const ev = await getEvent(editingId);
-        setTitle(ev.title);
-        setDescription(ev.description ?? '');
-        setLocation(ev.location ?? '');
-        
-        // FIXED: Safely format the Ethiopian date object back to "YYYY-MM-DD HH:mm"
-        // The backend gives us { year, month, day } as Ethiopian dates.
-        // We convert it to Gregorian for the text input the user edits.
-        try {
-          const { ethToUtcDate } = await import('../../utils/ethiopianCalendar');
-          const greg = ethToUtcDate(ev.date);
-          setDateText(
-            `${greg.getUTCFullYear()}-${String(greg.getUTCMonth() + 1).padStart(2, '0')}-${String(
-              greg.getUTCDate(),
-            ).padStart(2, '0')} 10:00`, // Defaulting time to 10:00 since only date is stored
-          );
-        } catch {
-          // Fallback if the date is somehow an ISO string
-          const d = new Date(ev.date as any);
-          if (!isNaN(d.getTime())) {
-            setDateText(
-              `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-                d.getDate(),
-              ).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(
-                d.getMinutes(),
-              ).padStart(2, '0')}`,
-            );
-          }
-        }
-        setCoverUri(ev.coverImageUrl);
-      } catch (e) {
-        const err = e as ApiError;
-        setError(`${err.message} [${err.code}]`);
-      } finally {
-        setLoading(false);
+    const ev = eventQ.data;
+    if (!ev) return;
+    setTitle(ev.title);
+    setDescription(ev.description ?? '');
+    setLocation(ev.location ?? '');
+    try {
+      const { ethToUtcDate } = require('../../utils/ethiopianCalendar');
+      const greg = ethToUtcDate(ev.date);
+      setDateText(
+        `${greg.getUTCFullYear()}-${String(greg.getUTCMonth() + 1).padStart(2, '0')}-${String(
+          greg.getUTCDate(),
+        ).padStart(2, '0')} 10:00`,
+      );
+    } catch {
+      const d = new Date(ev.date as any);
+      if (!isNaN(d.getTime())) {
+        setDateText(
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+            d.getDate(),
+          ).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(
+            d.getMinutes(),
+          ).padStart(2, '0')}`,
+        );
       }
-    })();
-  }, [editingId]);
+    }
+    setCoverUri(ev.coverImageUrl);
+  }, [editingId, eventQ.data]);
 
   const pickCover = () => {
     Alert.alert(t('events.coverImage'), undefined, [
@@ -150,20 +147,22 @@ export default function EventEditorScreen({ route, navigation }: any) {
     if (!title.trim()) return setError(t('register.fieldRequired'));
     if (!isoDate) return setError(t('events.dateField'));
 
-    setBusy(true);
     try {
       if (editingId) {
-        await leaderUpdateEvent(editingId, {
-          title: title.trim(),
-          description: description.trim(),
-          location: location.trim(),
-          date: isoDate,
-          publish,
-          removeCover,
-          coverUri: coverUri && !coverUri.startsWith('http') ? coverUri : null,
+        await updateMut.mutateAsync({
+          id: editingId,
+          input: {
+            title: title.trim(),
+            description: description.trim(),
+            location: location.trim(),
+            date: isoDate,
+            publish,
+            removeCover,
+            coverUri: coverUri && !coverUri.startsWith('http') ? coverUri : null,
+          },
         });
       } else {
-        await leaderCreateEvent({
+        await createMut.mutateAsync({
           title: title.trim(),
           description: description.trim(),
           location: location.trim(),
@@ -174,10 +173,7 @@ export default function EventEditorScreen({ route, navigation }: any) {
       }
       navigation.goBack();
     } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setBusy(false);
+      setError((e as { message?: string })?.message ?? 'Error');
     }
   };
 
@@ -189,31 +185,22 @@ export default function EventEditorScreen({ route, navigation }: any) {
         text: t('events.delete'),
         style: 'destructive',
         onPress: async () => {
-          setBusy(true);
           try {
-            await leaderDeleteEvent(editingId);
+            await deleteMut.mutateAsync(editingId);
             navigation.goBack();
           } catch (e) {
-            const err = e as ApiError;
-            setError(`${err.message} [${err.code}]`);
-          } finally {
-            setBusy(false);
+            setError((e as { message?: string })?.message ?? 'Error');
           }
         },
       },
     ]);
   };
 
-  if (loading) {
+  // First load spinner only for edit mode.
+  const firstLoad = !!editingId && eventQ.isPending && eventQ.data === undefined;
+  if (firstLoad) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.background,
-        }}
-      >
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={BRAND.violet} />
       </View>
     );
@@ -231,7 +218,6 @@ export default function EventEditorScreen({ route, navigation }: any) {
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
       >
-        {/* ---------- Hero ---------- */}
         <LinearGradient
           colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
           start={{ x: 0, y: 0 }}
@@ -455,7 +441,6 @@ export default function EventEditorScreen({ route, navigation }: any) {
         </View>
       </ScrollView>
 
-      {/* Sticky action bar */}
       <View
         style={{
           flexDirection: 'row',
