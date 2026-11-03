@@ -1,6 +1,6 @@
 import { apiGet, apiDelete, http } from './api';
-import { cachedFetch, cacheInvalidatePrefix, cacheRead, cacheWrite } from './cache';
-import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
+import { cacheInvalidatePrefix } from './cache';
+import { CACHE_PREFIXES } from './cacheKeys';
 
 export type MemoryMediaType = 'PHOTO' | 'AUDIO' | 'YOUTUBE';
 
@@ -52,89 +52,32 @@ export type MyMemoryRow = {
   createdAt: string;
 };
 
-// ---------- Member (cached) ----------
+// ---------- Member (TanStack Query manages the cache now) ----------
 
 export async function listMemories(search?: string): Promise<MemorySummary[]> {
-  const key = CACHE_KEYS.memoriesList(search ?? '');
-  const cached = await cachedFetch<MemorySummary[]>(
-    key,
-    async () => {
-      const q = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
-      const res = await apiGet<{ items: MemorySummary[] }>(`/memories${q}`);
-      return res.items;
-    },
-    () => {},
-  );
-  return cached ?? [];
+  const q = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : '';
+  const res = await apiGet<{ items: MemorySummary[] }>(`/memories${q}`);
+  return res.items;
 }
 
 export async function listMemoryYears(): Promise<MemoryYear[]> {
-  const cached = await cachedFetch<MemoryYear[]>(
-    CACHE_KEYS.memoryYears,
-    async () => {
-      const res = await apiGet<{ items: MemoryYear[] }>('/memories/years');
-      return res.items;
-    },
-    () => {},
-  );
-  return cached ?? [];
+  const res = await apiGet<{ items: MemoryYear[] }>('/memories/years');
+  return res.items;
 }
 
 export async function getMemory(id: string): Promise<MemoryDetail> {
-  const key = CACHE_KEYS.memoryDetail(id);
-  const cached = await cachedFetch<MemoryDetail>(
-    key,
-    async () => {
-      const res = await apiGet<{ item: MemoryDetail }>(`/memories/${id}`);
-      return res.item;
-    },
-    () => {},
-  );
-  if (cached) return cached;
   const res = await apiGet<{ item: MemoryDetail }>(`/memories/${id}`);
   return res.item;
 }
 
-/**
- * Own memory (may be pending/rejected). Cached under the same memoryDetail:<id>
- * key so an offline open of one's own memory works after the first online
- * visit, and so the public detail screen can reuse the cached value.
- */
 export async function getMyMemory(id: string): Promise<MemoryDetail> {
-  const key = CACHE_KEYS.memoryDetail(id);
-  const cached = await cacheRead<MemoryDetail>(key);
-  if (cached) {
-    // Best-effort refresh in background; swallow failures (offline case).
-    void (async () => {
-      try {
-        const res = await apiGet<{ item: MemoryDetail }>(`/memories/mine/${id}`);
-        await cacheWrite(key, res.item);
-      } catch {
-        /* offline or not allowed — keep cached copy */
-      }
-    })();
-    return cached;
-  }
   const res = await apiGet<{ item: MemoryDetail }>(`/memories/mine/${id}`);
-  await cacheWrite(key, res.item);
   return res.item;
 }
 
-/** Look up a single cached memory by id. Returns undefined if not cached. */
-export async function getCachedMemoryById(id: string): Promise<MemoryDetail | undefined> {
-  return cacheRead<MemoryDetail>(CACHE_KEYS.memoryDetail(id));
-}
-
 export async function listMyMemories(): Promise<MyMemoryRow[]> {
-  const cached = await cachedFetch<MyMemoryRow[]>(
-    CACHE_KEYS.myMemories,
-    async () => {
-      const res = await apiGet<{ items: MyMemoryRow[] }>('/memories/mine');
-      return res.items;
-    },
-    () => {},
-  );
-  return cached ?? [];
+  const res = await apiGet<{ items: MyMemoryRow[] }>('/memories/mine');
+  return res.items;
 }
 
 export type SubmitMemoryInput = {
@@ -180,66 +123,6 @@ export async function submitMemory(input: SubmitMemoryInput): Promise<{ id: stri
   });
   await cacheInvalidatePrefix(CACHE_PREFIXES.memories);
   return { id: res.data.memory.id };
-}
-
-// ---------- Memory warm-up (one-time per app session) ----------
-
-// Guard so the warm-up runs at most once per app process. Resets on cold
-// start (module re-evaluated) and on logout (cache cleared).
-let warmedMemoryDetailThisSession = false;
-
-/** Test/diagnostic reset — force a re-warm without a full app reload. */
-export function resetMemoryWarmGuard(): void {
-  warmedMemoryDetailThisSession = false;
-}
-
-/**
- * Prefetch the full detail of every memory into the cache, so memories
- * (title, description, media URLs) are available offline for the entire
- * library — not only for entries the member has opened while online.
- *
- * Behavior:
- *  - Runs at most once per app session.
- *  - Skips memories whose detail is already cached.
- *  - Fetches with a concurrency cap of 3 and a small pause between batches.
- *  - Never throws: failures are swallowed.
- */
-export async function warmMemoryDetailCache(): Promise<void> {
-  if (warmedMemoryDetailThisSession) return;
-  warmedMemoryDetailThisSession = true;
-
-  try {
-    const summaries = await listMemories();
-    if (summaries.length === 0) return;
-
-    const missing: string[] = [];
-    for (const s of summaries) {
-      const cached = await cacheRead<MemoryDetail>(CACHE_KEYS.memoryDetail(s.id));
-      if (!cached) missing.push(s.id);
-    }
-    if (missing.length === 0) return;
-
-    const CONCURRENCY = 3;
-    const BATCH_PAUSE_MS = 200;
-
-    for (let i = 0; i < missing.length; i += CONCURRENCY) {
-      const batch = missing.slice(i, i + CONCURRENCY);
-      await Promise.all(
-        batch.map(async (id) => {
-          try {
-            await getMemory(id);
-          } catch {
-            /* skip, try next session */
-          }
-        }),
-      );
-      if (i + CONCURRENCY < missing.length) {
-        await new Promise((r) => setTimeout(r, BATCH_PAUSE_MS));
-      }
-    }
-  } catch {
-    /* never break the UI */
-  }
 }
 
 // ---------- Leader ----------

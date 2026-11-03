@@ -34,4 +34,17 @@ export const queryKeys = {
 
   songFavorites: (userId: string | null) =>
     ['songs', userId ?? 'anon', 'favorites'] as const,
+
+  // --- MEMORIES ---
+  memoriesList: (userId: string | null, search = '') =>
+    ['memories', userId ?? 'anon', 'list', search] as const,
+
+  memoryYears: (userId: string | null) =>
+    ['memories', userId ?? 'anon', 'years'] as const,
+
+  memoryDetail: (userId: string | null, id: string) =>
+    ['memories', userId ?? 'anon', 'detail', id] as const,
+
+  myMemories: (userId: string | null) =>
+    ['memories', userId ?? 'anon', 'mine'] as const,
 } as const;

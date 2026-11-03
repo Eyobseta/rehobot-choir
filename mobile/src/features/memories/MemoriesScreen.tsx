@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -16,20 +16,19 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  listMemories,
-  listMemoryYears,
-  MemorySummary,
-  MemoryYear,
-  warmMemoryDetailCache,
-} from '../../services/memories';
-import { ApiError } from '../../services/api';
-import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
+import { MemorySummary } from '../../services/memories';
+import { BRAND, withAlpha, ErrorBanner } from '../auth/Auth_UI';
 import { formatEthDate } from '../../utils/ethiopianCalendar';
 import { DatePill, EmptyState, memoryToEthDate } from './Memorykit';
 import MemoriesHeader from './MemoriesHeader';
+import { useMe } from '../chat/chatSession';
+import {
+  useMemoriesQuery,
+  useMemoryYearsQuery,
+  warmMemoryDetailCache,
+} from './useMemories';
 
 const PLACEHOLDERS: readonly [string, string][] = [
   [BRAND.violet, BRAND.magenta],
@@ -42,51 +41,33 @@ export default function MemoriesScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing } = theme;
+  const qc = useQueryClient();
+  const userId = useMe()?.id ?? null;
 
   const [search, setSearch] = useState('');
+  const [debounced, setDebounced] = useState('');
   const [year, setYear] = useState<number | null>(null);
-  const [years, setYears] = useState<MemoryYear[]>([]);
-  const [items, setItems] = useState<MemorySummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (q: string) => {
-    setError(null);
-    try {
-      const list = await listMemories(q);
-      setItems(list);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(search.trim()), 300);
+    return () => clearTimeout(id);
+  }, [search]);
 
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      void (async () => {
-        try {
-          setYears(await listMemoryYears());
-        } catch {
-          // ignore
-        }
-        await load(search);
-        // Fire-and-forget: prefetch every memory's detail into cache once
-        // per app session. Failures are swallowed inside the helper.
-        void warmMemoryDetailCache();
-      })();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [search]),
-  );
+  const q = useMemoriesQuery(debounced);
+  const yearsQ = useMemoryYearsQuery();
 
-  // Filter by the Ethiopian year on the split fields
-  const filtered = year
-    ? items.filter((m) => m.dateEthYear === year)
-    : items;
+  const items = q.data ?? [];
+  const years = yearsQ.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
+
+  // Background prefetch all memory details
+  useEffect(() => {
+    if (!items.length) return;
+    void warmMemoryDetailCache(qc, userId, items.map((m) => m.id));
+  }, [items, qc, userId]);
+
+  const filtered = year ? items.filter((m) => m.dateEthYear === year) : items;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -97,11 +78,8 @@ export default function MemoriesScreen({ navigation }: any) {
         contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              void load(search);
-            }}
+            refreshing={q.isRefetching && !firstLoad}
+            onRefresh={() => q.refetch()}
             tintColor={BRAND.violet}
             colors={[BRAND.violet]}
           />
@@ -118,17 +96,11 @@ export default function MemoriesScreen({ navigation }: any) {
             >
               <View
                 pointerEvents="none"
-                style={[
-                  styles.blob,
-                  { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.2) },
-                ]}
+                style={[styles.blob, { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.2) }]}
               />
               <View
                 pointerEvents="none"
-                style={[
-                  styles.blob,
-                  { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.2) },
-                ]}
+                style={[styles.blob, { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.2) }]}
               />
 
               <SearchBox
@@ -178,13 +150,37 @@ export default function MemoriesScreen({ navigation }: any) {
               )}
             </LinearGradient>
 
-            {error && (
+            {showingSavedData && (
               <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-                <ErrorBanner message={error} />
+                <View
+                  style={{
+                    alignSelf: 'flex-start',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 999,
+                    backgroundColor: withAlpha('#F59E0B', 0.14),
+                    borderWidth: 1,
+                    borderColor: withAlpha('#F59E0B', 0.4),
+                  }}
+                >
+                  <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+                  <Text style={[theme.typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+                    {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+                  </Text>
+                </View>
               </View>
             )}
 
-            {loading && (
+            {q.isError && q.data === undefined && (
+              <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+                <ErrorBanner message={(q.error as any)?.message ?? 'Error'} />
+              </View>
+            )}
+
+            {firstLoad && (
               <View style={{ paddingVertical: spacing.xl * 2, alignItems: 'center' }}>
                 <ActivityIndicator size="large" color={BRAND.violet} />
               </View>
@@ -192,9 +188,7 @@ export default function MemoriesScreen({ navigation }: any) {
           </View>
         }
         ListEmptyComponent={
-          !loading ? (
-            <EmptyState icon="images-outline" text={t('memories.empty')} />
-          ) : null
+          !firstLoad ? <EmptyState icon="images-outline" text={t('memories.empty')} /> : null
         }
         renderItem={({ item, index }) => (
           <MemoryCard
@@ -208,32 +202,17 @@ export default function MemoriesScreen({ navigation }: any) {
   );
 }
 
-function SearchBox({
-  value,
-  onChangeText,
-  placeholder,
-}: {
-  value: string;
-  onChangeText: (v: string) => void;
-  placeholder: string;
-}) {
+function SearchBox({ value, onChangeText, placeholder }: { value: string; onChangeText: (v: string) => void; placeholder: string }) {
   const focus = useRef(new Animated.Value(0)).current;
-  const animate = (v: number) =>
-    Animated.timing(focus, { toValue: v, duration: 180, useNativeDriver: false }).start();
+  const animate = (v: number) => Animated.timing(focus, { toValue: v, duration: 180, useNativeDriver: false }).start();
 
   return (
     <Animated.View
       style={[
         styles.search,
         {
-          borderColor: focus.interpolate({
-            inputRange: [0, 1],
-            outputRange: ['rgba(255,255,255,0.28)', BRAND.gold],
-          }),
-          backgroundColor: focus.interpolate({
-            inputRange: [0, 1],
-            outputRange: ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.22)'],
-          }),
+          borderColor: focus.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.28)', BRAND.gold] }),
+          backgroundColor: focus.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.22)'] }),
         },
       ]}
     >
@@ -259,25 +238,9 @@ function SearchBox({
   );
 }
 
-function HeaderButton({
-  icon,
-  label,
-  onPress,
-  solid,
-}: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  onPress: () => void;
-  solid?: boolean;
-}) {
+function HeaderButton({ icon, label, onPress, solid }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; onPress: () => void; solid?: boolean; }) {
   const scale = useRef(new Animated.Value(1)).current;
-  const to = (v: number) =>
-    Animated.spring(scale, {
-      toValue: v,
-      speed: 40,
-      bounciness: 8,
-      useNativeDriver: true,
-    }).start();
+  const to = (v: number) => Animated.spring(scale, { toValue: v, speed: 40, bounciness: 8, useNativeDriver: true }).start();
   return (
     <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
       <Pressable
@@ -287,25 +250,11 @@ function HeaderButton({
         accessibilityRole="button"
         style={[
           styles.headerButton,
-          solid
-            ? { backgroundColor: BRAND.gold }
-            : {
-                backgroundColor: 'rgba(255,255,255,0.16)',
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.3)',
-              },
+          solid ? { backgroundColor: BRAND.gold } : { backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
         ]}
       >
         <Ionicons name={icon} size={18} color={solid ? BRAND.deep : '#FFFFFF'} />
-        <Text
-          numberOfLines={1}
-          style={{
-            color: solid ? BRAND.deep : '#FFFFFF',
-            fontWeight: '800',
-            fontSize: 13,
-            flexShrink: 1,
-          }}
-        >
+        <Text numberOfLines={1} style={{ color: solid ? BRAND.deep : '#FFFFFF', fontWeight: '800', fontSize: 13, flexShrink: 1 }}>
           {label}
         </Text>
       </Pressable>
@@ -313,23 +262,9 @@ function HeaderButton({
   );
 }
 
-function YearChip({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
+function YearChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   const scale = useRef(new Animated.Value(1)).current;
-  const to = (v: number) =>
-    Animated.spring(scale, {
-      toValue: v,
-      speed: 40,
-      bounciness: 8,
-      useNativeDriver: true,
-    }).start();
+  const to = (v: number) => Animated.spring(scale, { toValue: v, speed: 40, bounciness: 8, useNativeDriver: true }).start();
   return (
     <Animated.View style={{ transform: [{ scale }], marginRight: 8 }}>
       <Pressable
@@ -340,21 +275,10 @@ function YearChip({
         accessibilityState={{ selected: active }}
         style={[
           styles.chip,
-          active
-            ? { backgroundColor: BRAND.gold, borderColor: BRAND.gold }
-            : {
-                backgroundColor: 'rgba(255,255,255,0.14)',
-                borderColor: 'rgba(255,255,255,0.3)',
-              },
+          active ? { backgroundColor: BRAND.gold, borderColor: BRAND.gold } : { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.3)' },
         ]}
       >
-        <Text
-          style={{
-            color: active ? BRAND.deep : '#FFFFFF',
-            fontSize: 13,
-            fontWeight: '800',
-          }}
-        >
+        <Text style={{ color: active ? BRAND.deep : '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
           {label}
         </Text>
       </Pressable>
@@ -362,15 +286,7 @@ function YearChip({
   );
 }
 
-function MemoryCard({
-  item,
-  index,
-  onPress,
-}: {
-  item: MemorySummary;
-  index: number;
-  onPress: () => void;
-}) {
+function MemoryCard({ item, index, onPress }: { item: MemorySummary; index: number; onPress: () => void; }) {
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
 
@@ -384,36 +300,14 @@ function MemoryCard({
   const enter = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    const a = Animated.timing(enter, {
-      toValue: 1,
-      duration: 450,
-      delay: Math.min(index, 6) * 70,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    });
+    const a = Animated.timing(enter, { toValue: 1, duration: 450, delay: Math.min(index, 6) * 70, easing: Easing.out(Easing.cubic), useNativeDriver: true });
     a.start();
     return () => a.stop();
   }, [enter, index]);
-  const to = (v: number) =>
-    Animated.spring(scale, {
-      toValue: v,
-      speed: 40,
-      bounciness: 6,
-      useNativeDriver: true,
-    }).start();
+  const to = (v: number) => Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
 
   return (
-    <Animated.View
-      style={{
-        marginHorizontal: spacing.lg,
-        marginBottom: spacing.lg,
-        opacity: enter,
-        transform: [
-          { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }) },
-          { scale },
-        ],
-      }}
-    >
+    <Animated.View style={{ marginHorizontal: spacing.lg, marginBottom: spacing.lg, opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }) }, { scale }] }}>
       <Pressable
         onPress={onPress}
         onPressIn={() => to(0.98)}
@@ -426,21 +320,12 @@ function MemoryCard({
           {thumb ? (
             <Image source={{ uri: thumb }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           ) : (
-            <LinearGradient
-              colors={palette}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}
-            >
+            <LinearGradient colors={palette} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
               <Ionicons name="musical-notes" size={70} color="rgba(255,255,255,0.3)" />
             </LinearGradient>
           )}
 
-          <LinearGradient
-            pointerEvents="none"
-            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.72)']}
-            style={styles.imageFade}
-          />
+          <LinearGradient pointerEvents="none" colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.72)']} style={styles.imageFade} />
 
           <View style={styles.topRow}>
             <DatePill text={ethLabel} onDark />
@@ -464,24 +349,12 @@ function MemoryCard({
             </View>
           </View>
 
-          <Text style={styles.cardTitle} numberOfLines={2}>
-            {item.title}
-          </Text>
+          <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
         </View>
 
         {item.description ? (
-          <View
-            style={{
-              padding: spacing.md,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.sm,
-            }}
-          >
-            <Text
-              style={[typography.bodySmall, { color: colors.textSecondary, flex: 1 }]}
-              numberOfLines={2}
-            >
+          <View style={{ padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Text style={[typography.bodySmall, { color: colors.textSecondary, flex: 1 }]} numberOfLines={2}>
               {item.description}
             </Text>
             <Ionicons name="arrow-forward-circle" size={24} color={BRAND.magenta} />
@@ -493,63 +366,16 @@ function MemoryCard({
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 0,
-    paddingBottom: 18,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    overflow: 'hidden',
-  },
+  header: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 18, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' },
   blob: { position: 'absolute', width: 190, height: 190, borderRadius: 95 },
-  search: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    minHeight: 50,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    borderWidth: 1.5,
-  },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 50, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1.5 },
   searchInput: { flex: 1, color: '#FFFFFF', fontSize: 15, paddingVertical: 10 },
-  headerButton: {
-    minHeight: 46,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-  },
+  headerButton: { minHeight: 46, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 12 },
   chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
   card: { borderRadius: 24, overflow: 'hidden', borderWidth: 1 },
   imageFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 120 },
-  topRow: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    right: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
+  topRow: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.5)' },
   badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
-  cardTitle: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 14,
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-  },
+  cardTitle: { position: 'absolute', left: 16, right: 16, bottom: 14, color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
 });
