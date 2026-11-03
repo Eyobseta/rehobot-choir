@@ -1,11 +1,8 @@
 import { apiGet, apiPost } from './api';
+import { queryClient } from './queryClient';
 import { EthDate } from '../utils/ethiopianCalendar';
 
-export type GatheringType =
-  | 'TUESDAY_ZEMA'
-  | 'THURSDAY_CHOIR'
-  | 'SATURDAY_CHOIR';
-
+export type GatheringType = 'TUESDAY_ZEMA' | 'THURSDAY_CHOIR' | 'SATURDAY_CHOIR';
 export type AttendanceStatus = 'PRESENT' | 'ABSENT';
 
 export type AttendanceRow = {
@@ -61,10 +58,11 @@ export type MyGridSummary = {
   days: MyGridDay[];
 };
 
-/** Helper: EthDate → URL-safe JSON query param */
 function ethQ(d: EthDate): string {
   return encodeURIComponent(JSON.stringify(d));
 }
+
+// ---------- Reads ----------
 
 export async function leaderGetAttendance(
   gathering: GatheringType,
@@ -75,24 +73,8 @@ export async function leaderGetAttendance(
   );
 }
 
-export async function leaderRecordAttendance(
-  gathering: GatheringType,
-  date: EthDate,
-  records: { memberId: string; status: AttendanceStatus }[],
-): Promise<{ ok: true; count: number }> {
-  return apiPost<{ ok: true; count: number }>('/leaders/attendance', {
-    gathering,
-    date,
-    records,
-  });
-}
-
-export async function getMyAttendance(
-  limit = 60,
-): Promise<AttendanceHistoryItem[]> {
-  const res = await apiGet<{ items: AttendanceHistoryItem[] }>(
-    `/attendance/me?limit=${limit}`,
-  );
+export async function getMyAttendance(limit = 60): Promise<AttendanceHistoryItem[]> {
+  const res = await apiGet<{ items: AttendanceHistoryItem[] }>(`/attendance/me?limit=${limit}`);
   return res.items;
 }
 
@@ -125,13 +107,32 @@ export async function leaderGetMemberGrid(
   );
 }
 
+// ---------- Mutations (Invalidate via TanStack) ----------
+
+export async function leaderRecordAttendance(
+  gathering: GatheringType,
+  date: EthDate,
+  records: { memberId: string; status: AttendanceStatus }[],
+  userId: string | null,
+): Promise<{ ok: true; count: number }> {
+  const res = await apiPost<{ ok: true; count: number }>('/leaders/attendance', {
+    gathering,
+    date,
+    records,
+  });
+  
+  // Invalidate all attendance caches for this user
+  await queryClient.invalidateQueries({
+    queryKey: ['attendance', userId ?? 'anon'],
+  });
+  
+  return res;
+}
+
 export function gatheringLabelKey(g: GatheringType): string {
   switch (g) {
-    case 'TUESDAY_ZEMA':
-      return 'attendance.tuesdayZema';
-    case 'THURSDAY_CHOIR':
-      return 'attendance.thursdayChoir';
-    case 'SATURDAY_CHOIR':
-      return 'attendance.saturdayChoir';
+    case 'TUESDAY_ZEMA': return 'attendance.tuesdayZema';
+    case 'THURSDAY_CHOIR': return 'attendance.thursdayChoir';
+    case 'SATURDAY_CHOIR': return 'attendance.saturdayChoir';
   }
 }

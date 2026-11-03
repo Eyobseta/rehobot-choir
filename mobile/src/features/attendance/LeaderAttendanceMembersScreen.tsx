@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,14 +14,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { listMembers, DirectoryMember } from '../../services/members';
-import { ApiError } from '../../services/api';
-import { BRAND, withAlpha } from '../auth/Auth_UI';
+import { DirectoryMember } from '../../services/members';
+import { BRAND, withAlpha, ErrorBanner } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
-
+import { useDirectoryQuery } from '../directory/useDirectory';
 
 const AVATAR_PALETTE: readonly [string, string][] = [
   [BRAND.violet, BRAND.magenta],
@@ -37,32 +35,21 @@ export default function LeaderAttendanceMembersScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
 
   const [search, setSearch] = useState('');
-  const [items, setItems] = useState<DirectoryMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [debounced, setDebounced] = useState('');
 
-  const load = useCallback(async (q: string) => {
-    setError(null);
-    try {
-      setItems(await listMembers(q));
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(search.trim()), 300);
+    return () => clearTimeout(id);
+  }, [search]);
 
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      void load(search);
-    }, [search, load]),
-  );
+  const q = useDirectoryQuery(debounced);
+  const items = q.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ---------- Gradient hero ---------- */}
+      {/* Hero */}
       <LinearGradient
         colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
         start={{ x: 0, y: 0 }}
@@ -73,14 +60,22 @@ export default function LeaderAttendanceMembersScreen({ navigation }: any) {
           pointerEvents="none"
           style={[
             styles.blob,
-            { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.22) },
+            {
+              top: -60,
+              right: -40,
+              backgroundColor: withAlpha(BRAND.gold, 0.22),
+            },
           ]}
         />
         <View
           pointerEvents="none"
           style={[
             styles.blob,
-            { bottom: -70, left: -50, backgroundColor: withAlpha(BRAND.water, 0.22) },
+            {
+              bottom: -70,
+              left: -50,
+              backgroundColor: withAlpha(BRAND.water, 0.22),
+            },
           ]}
         />
 
@@ -97,14 +92,12 @@ export default function LeaderAttendanceMembersScreen({ navigation }: any) {
             </Text>
           </View>
 
-          {/* Back — right side, gap from title */}
           <GlassBackButton
-  onPress={() => navigation.goBack()}
-  accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
-/>
+            onPress={() => navigation.goBack()}
+            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+          />
         </View>
 
-        {/* Search */}
         <View style={styles.searchWrap}>
           <Ionicons name="search" size={18} color="rgba(255,255,255,0.85)" />
           <TextInput
@@ -118,20 +111,59 @@ export default function LeaderAttendanceMembersScreen({ navigation }: any) {
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch('')} hitSlop={10}>
-              <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.85)" />
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color="rgba(255,255,255,0.85)"
+              />
             </Pressable>
           )}
         </View>
       </LinearGradient>
 
-      {error && (
+      {showingSavedData && (
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-          <Text style={[typography.bodySmall, { color: colors.error }]}>{error}</Text>
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: withAlpha('#F59E0B', 0.14),
+              borderWidth: 1,
+              borderColor: withAlpha('#F59E0B', 0.4),
+            }}
+          >
+            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Text
+              style={[
+                typography.caption,
+                { color: '#F59E0B', fontWeight: '800' },
+              ]}
+            >
+              {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+            </Text>
+          </View>
         </View>
       )}
 
-      {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      {q.isError && q.data === undefined && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <ErrorBanner
+            message={
+              (q.error as { message?: string })?.message ?? 'Something went wrong.'
+            }
+          />
+        </View>
+      )}
+
+      {firstLoad ? (
+        <View
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+        >
           <ActivityIndicator size="large" color={BRAND.violet} />
         </View>
       ) : (
@@ -145,11 +177,19 @@ export default function LeaderAttendanceMembersScreen({ navigation }: any) {
           }}
           ListEmptyComponent={
             <View style={{ padding: spacing.xl, alignItems: 'center' }}>
-              <Ionicons name="person-outline" size={40} color={colors.textSecondary} />
+              <Ionicons
+                name="person-outline"
+                size={40}
+                color={colors.textSecondary}
+              />
               <Text
                 style={[
                   typography.body,
-                  { color: colors.textSecondary, marginTop: 10, textAlign: 'center' },
+                  {
+                    color: colors.textSecondary,
+                    marginTop: 10,
+                    textAlign: 'center',
+                  },
                 ]}
               >
                 {t('directory.empty', { defaultValue: 'No members found.' })}
@@ -176,8 +216,6 @@ export default function LeaderAttendanceMembersScreen({ navigation }: any) {
     </View>
   );
 }
-
-// ---------- Member card ----------
 
 function MemberCard({
   item,
@@ -225,7 +263,12 @@ function MemberCard({
         marginBottom: 12,
         opacity: enter,
         transform: [
-          { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) },
+          {
+            translateY: enter.interpolate({
+              inputRange: [0, 1],
+              outputRange: [22, 0],
+            }),
+          },
           { scale },
         ],
       }}
@@ -236,7 +279,10 @@ function MemberCard({
         onPressOut={() => to(1)}
         accessibilityRole="button"
         accessibilityLabel={item.fullName}
-        style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        style={[
+          styles.card,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
       >
         <LinearGradient
           colors={palette}
@@ -253,10 +299,20 @@ function MemberCard({
             style={styles.avatarRing}
           >
             {item.profilePhotoUrl ? (
-              <Image source={{ uri: item.profilePhotoUrl }} style={styles.avatarImage} />
+              <Image
+                source={{ uri: item.profilePhotoUrl }}
+                style={styles.avatarImage}
+              />
             ) : (
-              <View style={[styles.avatarFallback, { backgroundColor: colors.surface }]}>
-                <Text style={[styles.avatarInitial, { color: palette[0] }]}>{initial}</Text>
+              <View
+                style={[
+                  styles.avatarFallback,
+                  { backgroundColor: colors.surface },
+                ]}
+              >
+                <Text style={[styles.avatarInitial, { color: palette[0] }]}>
+                  {initial}
+                </Text>
               </View>
             )}
           </LinearGradient>
@@ -270,7 +326,10 @@ function MemberCard({
             {item.fullName}
           </Text>
           <Text
-            style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}
+            style={[
+              typography.caption,
+              { color: colors.textSecondary, marginTop: 2 },
+            ]}
             numberOfLines={1}
           >
             {chevronLabel}
@@ -310,7 +369,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  heroTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 2 },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 2,
+  },
   backBtn: {
     width: 40,
     height: 40,
@@ -332,7 +396,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.16)',
     marginTop: 18,
   },
-  searchInput: { flex: 1, color: '#FFFFFF', fontSize: 15, paddingVertical: 10 },
+  searchInput: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 15,
+    paddingVertical: 10,
+  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

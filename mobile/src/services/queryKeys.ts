@@ -74,4 +74,25 @@ export const queryKeys = {
 
   myMemories: (userId: string | null) =>
     ['memories', userId ?? 'anon', 'mine'] as const,
+
+
+   // --- ATTENDANCE ---
+  leaderAttendance: (userId: string | null, gathering: string, dateStr: string) =>
+    ['attendance', userId ?? 'anon', 'leader', gathering, dateStr] as const,
+  
+  leaderAttendanceGrid: (userId: string | null, gathering: string, from: string, to: string) =>
+    ['attendance', userId ?? 'anon', 'leader', 'grid', gathering, from, to] as const,
+    
+  myAttendance: (userId: string | null) =>
+    ['attendance', userId ?? 'anon', 'me'] as const,
+    
+  myAttendanceGrid: (userId: string | null, from: string, to: string) =>
+    ['attendance', userId ?? 'anon', 'me', 'grid', from, to] as const,
+    
+  memberAttendanceGrid: (userId: string | null, memberId: string, from: string, to: string) =>
+    ['attendance', userId ?? 'anon', 'member', memberId, from, to] as const,
+    
+  attendanceMembers: (userId: string | null) =>
+    ['attendance', userId ?? 'anon', 'members'] as const,
+
 } as const;

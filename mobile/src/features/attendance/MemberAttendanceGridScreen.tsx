@@ -1,23 +1,21 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { leaderGetMemberGrid, MyGridSummary } from '../../services/attendance';
-import { ApiError } from '../../services/api';
 import AttendanceGrid, { GridCell } from './AttendanceGrid';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
-import { EthDate, ethTodayFromInstant, addEthDays } from '../../utils/ethiopianCalendar';
+import { ethTodayFromInstant, addEthDays } from '../../utils/ethiopianCalendar';
+import { useMemberAttendanceGridQuery } from './useAttendance';
 
 export default function MemberAttendanceGridScreen({ route, navigation }: any) {
   const { t } = useTranslation();
@@ -27,28 +25,15 @@ export default function MemberAttendanceGridScreen({ route, navigation }: any) {
   const { memberId, memberName } = route.params;
 
   const today = ethTodayFromInstant(new Date());
+  const q = useMemberAttendanceGridQuery(
+    memberId,
+    addEthDays(today, -120),
+    today,
+  );
 
-  const [summary, setSummary] = useState<MyGridSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const from = addEthDays(today, -120);
-      setSummary(await leaderGetMemberGrid(memberId, from, today));
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-    }
-  }, [memberId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const summary = q.data ?? null;
+  const firstLoad = q.isPending && q.data === undefined;
+  const error = (q.error as { message?: string } | null)?.message ?? null;
 
   const cells: GridCell[] = (summary?.days ?? []).map((d) => ({
     date: d.isoDate,
@@ -67,7 +52,7 @@ export default function MemberAttendanceGridScreen({ route, navigation }: any) {
       }}
       showsVerticalScrollIndicator={false}
     >
-      {/* ---------- Gradient hero ---------- */}
+      {/* Hero */}
       <LinearGradient
         colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
         start={{ x: 0, y: 0 }}
@@ -78,14 +63,22 @@ export default function MemberAttendanceGridScreen({ route, navigation }: any) {
           pointerEvents="none"
           style={[
             styles.blob,
-            { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.22) },
+            {
+              top: -60,
+              right: -40,
+              backgroundColor: withAlpha(BRAND.gold, 0.22),
+            },
           ]}
         />
         <View
           pointerEvents="none"
           style={[
             styles.blob,
-            { bottom: -70, left: -50, backgroundColor: withAlpha(BRAND.water, 0.22) },
+            {
+              bottom: -70,
+              left: -50,
+              backgroundColor: withAlpha(BRAND.water, 0.22),
+            },
           ]}
         />
 
@@ -95,23 +88,28 @@ export default function MemberAttendanceGridScreen({ route, navigation }: any) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.heroKicker}>
-              {t('attendance.historyTitle', { defaultValue: 'Attendance history' })}
+              {t('attendance.historyTitle', {
+                defaultValue: 'Attendance history',
+              })}
             </Text>
             <Text style={styles.heroTitle} numberOfLines={1}>
               {memberName}
             </Text>
           </View>
 
-          {/* Back — right side, gap from title */}
           <GlassBackButton
             onPress={() => navigation.goBack()}
             accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
           />
         </View>
 
-        {!loading && total > 0 && (
+        {!firstLoad && total > 0 && (
           <View style={styles.heroStats}>
-            <HeroStat label={t('attendance.present')} value={present} tint="#FFFFFF" />
+            <HeroStat
+              label={t('attendance.present')}
+              value={present}
+              tint="#FFFFFF"
+            />
             <HeroStat
               label={t('attendance.rateLabel', { defaultValue: 'Rate' })}
               value={`${rate}%`}
@@ -126,7 +124,7 @@ export default function MemberAttendanceGridScreen({ route, navigation }: any) {
         )}
       </LinearGradient>
 
-      {loading ? (
+      {firstLoad ? (
         <View style={{ padding: spacing.xl * 2, alignItems: 'center' }}>
           <ActivityIndicator size="large" color={BRAND.violet} />
         </View>
@@ -156,11 +154,19 @@ export default function MemberAttendanceGridScreen({ route, navigation }: any) {
 
           {total === 0 && (
             <View style={{ alignItems: 'center', padding: spacing.xl }}>
-              <Ionicons name="calendar-outline" size={40} color={colors.textSecondary} />
+              <Ionicons
+                name="calendar-outline"
+                size={40}
+                color={colors.textSecondary}
+              />
               <Text
                 style={[
                   typography.body,
-                  { color: colors.textSecondary, marginTop: 10, textAlign: 'center' },
+                  {
+                    color: colors.textSecondary,
+                    marginTop: 10,
+                    textAlign: 'center',
+                  },
                 ]}
               >
                 {t('attendance.empty')}
@@ -217,7 +223,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  heroTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 2 },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 2,
+  },
   backBtn: {
     width: 40,
     height: 40,
@@ -227,11 +238,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 8,
   },
-  heroStats: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 18,
-  },
+  heroStats: { flexDirection: 'row', gap: 10, marginTop: 18 },
   statBox: {
     flex: 1,
     paddingVertical: 10,
@@ -247,8 +254,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 2,
   },
-  gridCard: {
-    borderRadius: 22,
-    padding: 14,
-  },
+  gridCard: { borderRadius: 22, padding: 14 },
 });

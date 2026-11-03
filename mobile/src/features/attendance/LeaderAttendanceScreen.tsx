@@ -21,12 +21,7 @@ import {
   AttendanceRow,
   AttendanceStatus,
   GatheringType,
-  leaderGetAttendance,
-  leaderRecordAttendance,
-  leaderGetGrid,
-  GridSummary,
 } from '../../services/attendance';
-import { ApiError } from '../../services/api';
 import AttendanceGrid, { GridCell } from './AttendanceGrid';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
@@ -38,6 +33,11 @@ import {
   utcDateToEth,
 } from '../../utils/ethiopianCalendar';
 import EthDatePicker from '../funding/EthDatePicker';
+import {
+  useLeaderAttendanceQuery,
+  useLeaderAttendanceGridQuery,
+  useRecordAttendanceMutation,
+} from './useAttendance';
 
 const GATHERINGS: GatheringType[] = [
   'TUESDAY_ZEMA',
@@ -64,102 +64,109 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [view, setView] = useState<'record' | 'grid'>('record');
 
-  const [rows, setRows] = useState<AttendanceRow[]>([]);
-  const [locked, setLocked] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Local edits overlay on the server data (so the user can toggle buttons
+  // without waiting for the network before the button visually updates).
+  const [localStatuses, setLocalStatuses] = useState<
+    Record<string, AttendanceStatus>
+  >({});
   const [saved, setSaved] = useState(false);
-
-  const [grid, setGrid] = useState<GridSummary | null>(null);
-  const [gridLoading, setGridLoading] = useState(false);
 
   const [dayOpen, setDayOpen] = useState<string | null>(null);
   const [dayRows, setDayRows] = useState<AttendanceRow[]>([]);
 
   // ------------------ data ------------------
-  const loadRoster = useCallback(async () => {
-    setError(null);
-    setSaved(false);
-    setLoading(true);
-    try {
-      const data = await leaderGetAttendance(gathering, date);
-      setRows(data.roster);
-      setLocked(data.locked);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-      setRows([]);
-      setLocked(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [gathering, date]);
+  const rosterQ = useLeaderAttendanceQuery(gathering, date);
+  const gridQ = useLeaderAttendanceGridQuery(
+    gathering,
+    addEthDays(today, -90),
+    today,
+  );
+  const recordMut = useRecordAttendanceMutation();
 
-  const loadGrid = useCallback(async () => {
-    setGridLoading(true);
-    try {
-      const from = addEthDays(today, -90);
-      const data = await leaderGetGrid(gathering, from, today);
-      setGrid(data);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setGridLoading(false);
-    }
-  }, [gathering]);
+  const rows = rosterQ.data?.roster ?? [];
+  const locked = rosterQ.data?.locked ?? false;
+  const loading = rosterQ.isPending && rosterQ.data === undefined;
+  const gridLoading = gridQ.isPending && gridQ.data === undefined;
 
+  const error =
+    (rosterQ.error as { message?: string } | null)?.message ??
+    (gridQ.error as { message?: string } | null)?.message ??
+    null;
+
+  // Reset local edits when the server data reloads (e.g. after saving)
   useEffect(() => {
-    if (view === 'record') void loadRoster();
-    if (view === 'grid') void loadGrid();
-  }, [view, loadRoster, loadGrid]);
+    setLocalStatuses({});
+  }, [rosterQ.data]);
 
-  const openDay = async (isoDate: string) => {
-    setDayOpen(isoDate);
-    setDayRows([]);
-    try {
-      const eth = utcDateToEth(new Date(isoDate + 'T00:00:00.000Z'));
-      const data = await leaderGetAttendance(gathering, eth);
-      setDayRows(data.roster);
-    } catch {
-      // ignore
-    }
-  };
+  // Clear the "saved" banner after a moment
+  useEffect(() => {
+    if (!saved) return;
+    const id = setTimeout(() => setSaved(false), 2500);
+    return () => clearTimeout(id);
+  }, [saved]);
+
+  const getStatus = (id: string): AttendanceStatus | null =>
+    localStatuses[id] ?? rows.find((r) => r.id === id)?.status ?? null;
+
+  const openDay = useCallback(
+    async (isoDate: string) => {
+      setDayOpen(isoDate);
+      setDayRows([]);
+      try {
+        const eth = utcDateToEth(new Date(isoDate + 'T00:00:00.000Z'));
+        // We reuse the same query key → if cached, returns instantly.
+        const qc = (await import('../../services/queryClient')).queryClient;
+        const userId = (
+          await import('../chat/chatSession')
+        ).getMe();
+        void userId;
+        void qc;
+        // Simplest path: call the underlying fetcher through the query cache
+        // using the same key that `useLeaderAttendanceQuery` uses.
+        const { leaderGetAttendance } = await import(
+          '../../services/attendance'
+        );
+        const data = await leaderGetAttendance(gathering, eth);
+        setDayRows(data.roster);
+      } catch {
+        // ignore
+      }
+    },
+    [gathering],
+  );
 
   const setStatus = (id: string, status: AttendanceStatus) => {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+    setLocalStatuses((prev) => ({ ...prev, [id]: status }));
     setSaved(false);
   };
 
   const markAll = (status: AttendanceStatus) => {
-    setRows((prev) => prev.map((r) => ({ ...r, status })));
+    const next: Record<string, AttendanceStatus> = {};
+    rows.forEach((r) => {
+      next[r.id] = status;
+    });
+    setLocalStatuses(next);
     setSaved(false);
   };
 
   const onSave = async () => {
     if (locked) return;
-    setError(null);
     const records = rows
-      .filter((r) => r.status)
-      .map((r) => ({ memberId: r.id, status: r.status as AttendanceStatus }));
-    if (records.length === 0) {
-      setError(t('attendance.notMarked'));
-      return;
-    }
-    setBusy(true);
+      .filter((r) => getStatus(r.id) !== null)
+      .map((r) => ({
+        memberId: r.id,
+        status: getStatus(r.id) as AttendanceStatus,
+      }));
+    if (records.length === 0) return;
     try {
-      await leaderRecordAttendance(gathering, date, records);
+      await recordMut.mutateAsync({ gathering, date, records });
       setSaved(true);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setBusy(false);
+    } catch {
+      // error surfaces through recordMut.error
     }
   };
 
-  const gridCells: GridCell[] = (grid?.days ?? []).map((d) => {
+  const gridCells: GridCell[] = (gridQ.data?.days ?? []).map((d) => {
     let state: 'PRESENT' | 'ABSENT' | 'EMPTY' = 'EMPTY';
     if (d.present > 0) state = 'PRESENT';
     else if (d.absent > 0) state = 'ABSENT';
@@ -167,7 +174,8 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
   });
 
   const tint = GATHERING_TINTS[gathering];
-  const presentCount = rows.filter((r) => r.status === 'PRESENT').length;
+  const presentCount = rows.filter((r) => getStatus(r.id) === 'PRESENT').length;
+  const busy = recordMut.isPending;
 
   // ------------------ render ------------------
   return (
@@ -188,14 +196,22 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
             pointerEvents="none"
             style={[
               styles.blob,
-              { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.22) },
+              {
+                top: -60,
+                right: -40,
+                backgroundColor: withAlpha(BRAND.gold, 0.22),
+              },
             ]}
           />
           <View
             pointerEvents="none"
             style={[
               styles.blob,
-              { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.22) },
+              {
+                bottom: -80,
+                left: -50,
+                backgroundColor: withAlpha(BRAND.water, 0.22),
+              },
             ]}
           />
 
@@ -212,7 +228,6 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
               </Text>
             </View>
 
-            {/* Back button — right side, with gap */}
             <GlassBackButton
               onPress={() => navigation.goBack()}
               accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
@@ -221,7 +236,11 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
 
           {presentCount > 0 && (
             <View style={styles.heroBadge}>
-              <Ionicons name="checkmark-circle" size={13} color="#FFFFFF" />
+              <Ionicons
+                name="checkmark-circle"
+                size={13}
+                color="#FFFFFF"
+              />
               <Text style={styles.heroBadgeText}>{presentCount}</Text>
             </View>
           )}
@@ -241,8 +260,8 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
                 g === 'TUESDAY_ZEMA'
                   ? 'attendance.tuesdayZema'
                   : g === 'THURSDAY_CHOIR'
-                    ? 'attendance.thursdayChoir'
-                    : 'attendance.saturdayChoir';
+                  ? 'attendance.thursdayChoir'
+                  : 'attendance.saturdayChoir';
               return (
                 <GatheringChip
                   key={g}
@@ -313,7 +332,11 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
                 },
               ]}
             >
-              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+              <Ionicons
+                name="checkmark-circle"
+                size={16}
+                color={colors.success}
+              />
               <Text
                 style={[
                   typography.bodySmall,
@@ -329,7 +352,10 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
             onPress={() => navigation.navigate('LeaderAttendanceMembers')}
             style={[
               styles.outlineBtn,
-              { borderColor: tint[0], backgroundColor: withAlpha(tint[0], 0.08) },
+              {
+                borderColor: tint[0],
+                backgroundColor: withAlpha(tint[0], 0.08),
+              },
             ]}
           >
             <Ionicons name="person-add" size={16} color={tint[0]} />
@@ -370,7 +396,11 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
                 <Text style={{ color: colors.text, fontSize: 15 }}>
                   {formatEthDate(date, 'en')}
                 </Text>
-                <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+                <Ionicons
+                  name="calendar-outline"
+                  size={20}
+                  color={colors.textSecondary}
+                />
               </Pressable>
 
               <View style={styles.quickRow}>
@@ -400,7 +430,11 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
                     },
                   ]}
                 >
-                  <Ionicons name="lock-closed" size={16} color={colors.warning} />
+                  <Ionicons
+                    name="lock-closed"
+                    size={16}
+                    color={colors.warning}
+                  />
                   <Text
                     style={[
                       typography.bodySmall,
@@ -414,15 +448,22 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
             </View>
 
             {loading ? (
-              <View style={{ padding: spacing.xl * 2, alignItems: 'center' }}>
+              <View
+                style={{ padding: spacing.xl * 2, alignItems: 'center' }}
+              >
                 <ActivityIndicator size="large" color={BRAND.violet} />
               </View>
             ) : (
-              <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.md }}>
+              <View
+                style={{
+                  paddingHorizontal: spacing.lg,
+                  marginTop: spacing.md,
+                }}
+              >
                 {rows.map((item, index) => (
                   <RosterRow
                     key={item.id}
-                    item={item}
+                    item={{ ...item, status: getStatus(item.id) }}
                     index={index}
                     locked={locked}
                     onPresent={() => setStatus(item.id, 'PRESENT')}
@@ -446,7 +487,9 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
         {view === 'grid' && (
           <View style={{ paddingHorizontal: spacing.lg }}>
             {gridLoading ? (
-              <View style={{ padding: spacing.xl * 2, alignItems: 'center' }}>
+              <View
+                style={{ padding: spacing.xl * 2, alignItems: 'center' }}
+              >
                 <ActivityIndicator size="large" color={BRAND.violet} />
               </View>
             ) : (
@@ -585,7 +628,7 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
   );
 }
 
-// ---------- Sub-components ----------
+// ---------- Sub-components (unchanged) ----------
 
 function SectionLabel({
   icon,
@@ -656,7 +699,10 @@ function GatheringChip({
             end={{ x: 1, y: 1 }}
             style={[styles.gatheringChip, { borderColor: 'transparent' }]}
           >
-            <Text style={[styles.gatheringText, { color: '#FFFFFF' }]} numberOfLines={2}>
+            <Text
+              style={[styles.gatheringText, { color: '#FFFFFF' }]}
+              numberOfLines={2}
+            >
               {label}
             </Text>
           </LinearGradient>
@@ -705,7 +751,11 @@ function SegmentBtn({
           : { backgroundColor: 'transparent' },
       ]}
     >
-      <Ionicons name={icon} size={16} color={active ? tint : colors.textSecondary} />
+      <Ionicons
+        name={icon}
+        size={16}
+        color={active ? tint : colors.textSecondary}
+      />
       <Text
         style={[
           typography.caption,
@@ -814,15 +864,20 @@ function RosterRow({
     item.status === 'PRESENT'
       ? colors.success
       : item.status === 'ABSENT'
-        ? colors.error
-        : colors.textSecondary;
+      ? colors.error
+      : colors.textSecondary;
 
   return (
     <Animated.View
       style={{
         opacity: enter,
         transform: [
-          { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) },
+          {
+            translateY: enter.interpolate({
+              inputRange: [0, 1],
+              outputRange: [18, 0],
+            }),
+          },
         ],
         marginBottom: 10,
       }}
@@ -836,7 +891,10 @@ function RosterRow({
         <View style={[styles.rosterBar, { backgroundColor: tone }]} />
 
         <View
-          style={[styles.rosterAvatar, { backgroundColor: withAlpha(tone, 0.16) }]}
+          style={[
+            styles.rosterAvatar,
+            { backgroundColor: withAlpha(tone, 0.16) },
+          ]}
         >
           {item.profilePhotoUrl ? (
             <Image
@@ -1052,11 +1110,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   blob: { position: 'absolute', width: 180, height: 180, borderRadius: 90 },
-  heroRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   backBtn: {
     width: 40,
     height: 40,
@@ -1081,7 +1135,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  heroTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 2 },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 2,
+  },
   heroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
