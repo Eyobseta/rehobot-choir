@@ -95,4 +95,10 @@ export const queryKeys = {
   attendanceMembers: (userId: string | null) =>
     ['attendance', userId ?? 'anon', 'members'] as const,
 
+    // --- PROFILE ---
+  ownProfile: (userId: string | null) =>
+    ['profile', userId ?? 'anon', 'own'] as const,
+
+  notificationPrefs: (userId: string | null) =>
+    ['notifications', userId ?? 'anon', 'prefs'] as const,
 } as const;

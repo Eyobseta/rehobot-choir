@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,15 +12,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  getPreferences,
-  updatePreferences,
-  NotificationPreferences,
-} from '../../services/notifications';
+import { NotificationPreferences } from '../../services/notifications';
 import { ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
 import { ScreenHero } from '../profile/SettingsKit';
+import {
+  useNotificationPrefsQuery,
+  useUpdateNotificationPrefsMutation,
+} from '../profile/useProfile';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -29,66 +28,32 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
   const { theme } = useTheme();
   const { colors, spacing } = theme;
 
-  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const q = useNotificationPrefsQuery();
+  const updateMut = useUpdateNotificationPrefsMutation();
 
-  const load = useCallback(async () => {
-    try {
-      const data = await getPreferences();
-      if (!mountedRef.current) return;
-      setPrefs(data);
-    } catch (e) {
-      if (!mountedRef.current) return;
-      setError(String(e));
-    } finally {
-      if (mountedRef.current) setLoading(false);
-    }
-  }, []);
+  const prefs = q.data;
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
-  // Guard against state updates after unmount
-  const mountedRef = useRef(true);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  // Keep a local mirror so switches feel instant while we PATCH.
+  const [local, setLocal] = React.useState<NotificationPreferences | null>(null);
+  React.useEffect(() => {
+    if (prefs) setLocal(prefs);
+  }, [prefs]);
 
-  useFocusEffect(
-    useCallback(() => {
-      // Only show spinner on first focus. On re-focus, refresh silently.
-      if (!prefs) setLoading(true);
-      void load();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [load]),
-  );
+  const busy = updateMut.isPending;
 
-  const onToggle = async (
+  const onToggle = (
     key: keyof Omit<NotificationPreferences, 'chatMessagesEnabled'>,
     value: boolean,
   ) => {
-    if (!prefs) return;
-    const previous = { ...prefs };
-    setPrefs({ ...prefs, [key]: value });
-    setBusy(true);
-    setError(null);
-    try {
-      const updated = await updatePreferences({ [key]: value });
-      if (!mountedRef.current) return;
-      setPrefs(updated);
-    } catch (e) {
-      if (!mountedRef.current) return;
-      setPrefs(previous);
-      setError(String(e));
-    } finally {
-      if (mountedRef.current) setBusy(false);
-    }
+    if (!local) return;
+    setLocal({ ...local, [key]: value });
+    updateMut.mutate({ [key]: value });
   };
 
   const enter = useRef(new Animated.Value(0)).current;
-  const ready = !loading && prefs !== null;
+  const ready = !firstLoad && local !== null;
   useEffect(() => {
     if (!ready) return;
     enter.setValue(0);
@@ -102,9 +67,16 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
     return () => animation.stop();
   }, [ready, enter]);
 
-  if (loading || !prefs) {
+  if (firstLoad || !local) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
         <ActivityIndicator size="large" color={BRAND.violet} />
       </View>
     );
@@ -113,7 +85,12 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
   const fadeUp = (i: number) => ({
     opacity: enter,
     transform: [
-      { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [22 + i * 8, 0] }) },
+      {
+        translateY: enter.interpolate({
+          inputRange: [0, 1],
+          outputRange: [22 + i * 8, 0],
+        }),
+      },
     ],
   });
 
@@ -128,8 +105,41 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
         onBack={() => navigation.goBack()}
       />
 
+      {showingSavedData && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: withAlpha('#F59E0B', 0.14),
+              borderWidth: 1,
+              borderColor: withAlpha('#F59E0B', 0.4),
+            }}
+          >
+            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Text
+              style={[
+                theme.typography.caption,
+                { color: '#F59E0B', fontWeight: '800' },
+              ]}
+            >
+              {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+            </Text>
+          </View>
+        </View>
+      )}
+
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl * 2 }}
+        contentContainerStyle={{
+          padding: spacing.lg,
+          paddingTop: spacing.md,
+          paddingBottom: spacing.xl * 2,
+        }}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={fadeUp(0)}>
@@ -137,8 +147,8 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
             icon="megaphone"
             tint="#B6A0FF"
             label={t('notifications.typeAnnouncements')}
-            value={prefs.announcementsEnabled}
-            onChange={(v) => void onToggle('announcementsEnabled', v)}
+            value={local.announcementsEnabled}
+            onChange={(v) => onToggle('announcementsEnabled', v)}
             disabled={busy}
           />
         </Animated.View>
@@ -147,8 +157,8 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
             icon="calendar"
             tint="#6EDBD5"
             label={t('notifications.typeEvents')}
-            value={prefs.eventRemindersEnabled}
-            onChange={(v) => void onToggle('eventRemindersEnabled', v)}
+            value={local.eventRemindersEnabled}
+            onChange={(v) => onToggle('eventRemindersEnabled', v)}
             disabled={busy}
           />
         </Animated.View>
@@ -158,7 +168,9 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
             tint="#B8E986"
             label={t('notifications.typeChat')}
             value={true}
-            onChange={() => { /* always on — SRS 16.4 */ }}
+            onChange={() => {
+              /* always on — SRS 16.4 */
+            }}
             disabled
             locked
             hint={t('notifications.chatAlwaysOn')}
@@ -169,8 +181,8 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
             icon="gift"
             tint="#EE9BBD"
             label={t('notifications.typeBirthdays')}
-            value={prefs.birthdaysEnabled}
-            onChange={(v) => void onToggle('birthdaysEnabled', v)}
+            value={local.birthdaysEnabled}
+            onChange={(v) => onToggle('birthdaysEnabled', v)}
             disabled={busy}
           />
         </Animated.View>
@@ -179,8 +191,8 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
             icon="musical-notes"
             tint="#E6C779"
             label={t('notifications.typeNewSong')}
-            value={prefs.newSongEnabled}
-            onChange={(v) => void onToggle('newSongEnabled', v)}
+            value={local.newSongEnabled}
+            onChange={(v) => onToggle('newSongEnabled', v)}
             disabled={busy}
           />
         </Animated.View>
@@ -189,8 +201,8 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
             icon="images"
             tint="#6EDBD5"
             label={t('notifications.typeNewMemory')}
-            value={prefs.newMemoryEnabled}
-            onChange={(v) => void onToggle('newMemoryEnabled', v)}
+            value={local.newMemoryEnabled}
+            onChange={(v) => onToggle('newMemoryEnabled', v)}
             disabled={busy}
           />
         </Animated.View>
@@ -199,15 +211,19 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
             icon="book"
             tint="#E6C779"
             label={t('notifications.typeDailyQuote')}
-            value={prefs.dailyQuoteEnabled}
-            onChange={(v) => void onToggle('dailyQuoteEnabled', v)}
+            value={local.dailyQuoteEnabled}
+            onChange={(v) => onToggle('dailyQuoteEnabled', v)}
             disabled={busy}
           />
         </Animated.View>
 
-        {error && (
+        {updateMut.isError && (
           <View style={{ marginTop: spacing.md }}>
-            <ErrorBanner message={error} />
+            <ErrorBanner
+              message={
+                (updateMut.error as { message?: string })?.message ?? 'Error'
+              }
+            />
           </View>
         )}
       </ScrollView>
@@ -215,10 +231,15 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
   );
 }
 
-// ---------- Row ----------
-
 function PrefRow({
-  icon, tint, label, value, onChange, disabled, locked, hint,
+  icon,
+  tint,
+  label,
+  value,
+  onChange,
+  disabled,
+  locked,
+  hint,
 }: {
   icon: IconName;
   tint: string;
@@ -245,7 +266,12 @@ function PrefRow({
   }, [value, on]);
 
   const to = (v: number) =>
-    Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
+    Animated.spring(scale, {
+      toValue: v,
+      speed: 40,
+      bounciness: 6,
+      useNativeDriver: true,
+    }).start();
 
   return (
     <Animated.View style={{ transform: [{ scale }], marginBottom: spacing.sm + 2 }}>
@@ -277,7 +303,10 @@ function PrefRow({
               {
                 backgroundColor: on.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [withAlpha(colors.textSecondary, 0.12), withAlpha(tint, 0.22)],
+                  outputRange: [
+                    withAlpha(colors.textSecondary, 0.12),
+                    withAlpha(tint, 0.22),
+                  ],
                 }),
               },
             ]}
@@ -286,11 +315,17 @@ function PrefRow({
           </Animated.View>
 
           <View style={{ flex: 1, marginLeft: spacing.md, marginRight: spacing.sm }}>
-            <Text style={[typography.body, { color: colors.text, fontWeight: '700' }]}>{label}</Text>
+            <Text style={[typography.body, { color: colors.text, fontWeight: '700' }]}>
+              {label}
+            </Text>
             {hint && (
               <View style={styles.hintRow}>
-                {locked && <Ionicons name="lock-closed" size={11} color={colors.textSecondary} />}
-                <Text style={[typography.caption, { color: colors.textSecondary, flexShrink: 1 }]}>
+                {locked && (
+                  <Ionicons name="lock-closed" size={11} color={colors.textSecondary} />
+                )}
+                <Text
+                  style={[typography.caption, { color: colors.textSecondary, flexShrink: 1 }]}
+                >
                   {hint}
                 </Text>
               </View>
@@ -319,6 +354,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1.5,
   },
-  iconTile: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  iconTile: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   hintRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
 });
