@@ -1,6 +1,5 @@
 import { apiGet, http } from './api';
-import { cachedFetch, cacheInvalidatePrefix, cacheRead, cacheWrite } from './cache';
-import { CACHE_KEYS, CACHE_PREFIXES } from './cacheKeys';
+import { queryClient } from './queryClient';
 
 export type DailyQuote = {
   id: string;
@@ -29,50 +28,13 @@ export type PublishQuoteInput = {
 };
 
 export async function getTodayQuote(): Promise<DailyQuote | null> {
-  const cached = await cachedFetch<DailyQuote | null>(
-    CACHE_KEYS.quoteToday,
-    async () => {
-      const res = await apiGet<{ item: DailyQuote | null }>('/quotes/today');
-      return res.item;
-    },
-    () => {},
-  );
-  if (cached) {
-    // Cache the individual quote too, so the detail screen can look it up by id.
-    await cacheWrite(CACHE_KEYS.quoteDetail(cached.id), cached);
-  }
-  return cached ?? null;
+  const res = await apiGet<{ item: DailyQuote | null }>('/quotes/today');
+  return res.item;
 }
 
 export async function listRecentQuotes(days = 7): Promise<DailyQuote[]> {
-  const key = CACHE_KEYS.quotesRecent(days);
-
-  const cached = await cacheRead<DailyQuote[]>(key);
-
-  const fetchFresh = async () => {
-    const res = await apiGet<{ items: DailyQuote[] }>(`/quotes/recent?days=${days}`);
-    await cacheWrite(key, res.items);
-    // Cache each quote individually too.
-    for (const q of res.items) {
-      await cacheWrite(CACHE_KEYS.quoteDetail(q.id), q);
-    }
-    return res.items;
-  };
-
-  const items = cached ?? (await fetchFresh());
-
-  // Even from cache, opportunistically populate the per-quote keys (cheap, once).
-  for (const q of items) {
-    const existing = await cacheRead<DailyQuote>(CACHE_KEYS.quoteDetail(q.id));
-    if (!existing) await cacheWrite(CACHE_KEYS.quoteDetail(q.id), q);
-  }
-
-  return items;
-}
-
-/** Look up a single cached quote by id. Returns undefined if not cached. */
-export async function getCachedQuoteById(id: string): Promise<DailyQuote | undefined> {
-  return cacheRead<DailyQuote>(CACHE_KEYS.quoteDetail(id));
+  const res = await apiGet<{ items: DailyQuote[] }>(`/quotes/recent?days=${days}`);
+  return res.items;
 }
 
 export async function getMyQuoteCount(): Promise<number> {
@@ -82,6 +44,7 @@ export async function getMyQuoteCount(): Promise<number> {
 
 export async function publishTodayQuote(
   input: PublishQuoteInput,
+  userId: string | null,
 ): Promise<DailyQuote> {
   const form = new FormData();
   form.append('quoteText', input.quoteText);
@@ -103,9 +66,10 @@ export async function publishTodayQuote(
     transformRequest: (d) => d,
   });
 
-  await cacheInvalidatePrefix(CACHE_PREFIXES.quote);
-  // Seed the caches so the UI updates immediately without a refetch.
-  await cacheWrite(CACHE_KEYS.quoteToday, res.data.quote);
-  await cacheWrite(CACHE_KEYS.quoteDetail(res.data.quote.id), res.data.quote);
+  // Invalidate TanStack cache for all quote queries
+  await queryClient.invalidateQueries({
+    queryKey: ['quotes', userId ?? 'anon'],
+  });
+
   return res.data.quote;
 }

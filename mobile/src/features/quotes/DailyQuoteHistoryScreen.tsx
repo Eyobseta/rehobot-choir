@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -11,13 +11,13 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { listRecentQuotes, DailyQuote } from '../../services/quotes';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
-import { formatEthDate } from '../../utils/ethiopianCalendar'; // NEW
+import { formatEthDate } from '../../utils/ethiopianCalendar';
+import { DailyQuote } from '../../services/quotes';
+import { useRecentQuotesQuery } from './useQuotes';
 
 const BROWN = '#9A6735';
 const CREAM = '#FFF4E0';
@@ -36,31 +36,13 @@ export default function DailyQuoteHistoryScreen({ navigation }: any) {
   const { colors, spacing, radius, typography } = theme;
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState<DailyQuote[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const load = useCallback(async () => {
-    try {
-      setItems(await listRecentQuotes(7));
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      void load();
-    }, [load]),
-  );
+  const q = useRecentQuotesQuery(7);
+  const items = q.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* ---------- Full-bleed amber hero ---------- */}
       <LinearGradient
         colors={['#C98B4A', '#A56B36', '#6E4220']}
         start={{ x: 0, y: 0 }}
@@ -142,7 +124,31 @@ export default function DailyQuoteHistoryScreen({ navigation }: any) {
         </View>
       </LinearGradient>
 
-      {loading ? (
+      {showingSavedData && (
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 999,
+              backgroundColor: withAlpha('#F59E0B', 0.14),
+              borderWidth: 1,
+              borderColor: withAlpha('#F59E0B', 0.4),
+            }}
+          >
+            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+              {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {firstLoad ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={BROWN} />
         </View>
@@ -158,11 +164,8 @@ export default function DailyQuoteHistoryScreen({ navigation }: any) {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                void load();
-              }}
+              refreshing={q.isRefetching && !firstLoad}
+              onRefresh={() => q.refetch()}
               tintColor={BROWN}
               colors={[BROWN]}
             />
@@ -210,7 +213,6 @@ export default function DailyQuoteHistoryScreen({ navigation }: any) {
 
             return (
               <View style={{ flexDirection: 'row' }}>
-                {/* timeline rail */}
                 <View style={{ width: 22, alignItems: 'center', marginRight: spacing.sm }}>
                   <View
                     style={{
@@ -236,7 +238,6 @@ export default function DailyQuoteHistoryScreen({ navigation }: any) {
                   )}
                 </View>
 
-                {/* card (tap to open detail) */}
                 <Pressable
                   onPress={() => navigation.navigate('DailyQuoteDetail', { quote: item })}
                   accessibilityRole="button"

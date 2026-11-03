@@ -26,11 +26,22 @@ export const queryKeys = {
   birthdays: (userId: string | null) =>
     ['birthdays', userId ?? 'anon', 'list'] as const,
 
+  // NEW: single birthday post detail
+  birthdayPost: (userId: string | null, id: string) =>
+    ['birthdays', userId ?? 'anon', 'detail', id] as const,
+
   notifications: (userId: string | null) =>
     ['notifications', userId ?? 'anon', 'list'] as const,
 
   quoteToday: (userId: string | null) =>
     ['quotes', userId ?? 'anon', 'today'] as const,
+
+  // NEW: quotes history and detail
+  quotesRecent: (userId: string | null, days: number) =>
+    ['quotes', userId ?? 'anon', 'recent', days] as const,
+    
+  quoteDetail: (userId: string | null, id: string) =>
+    ['quotes', userId ?? 'anon', 'detail', id] as const,
 
   directory: (userId: string | null, search = '') =>
     ['directory', userId ?? 'anon', 'list', search] as const,
