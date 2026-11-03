@@ -85,8 +85,21 @@ function AppShell() {
         const state = await refreshSessionState();
 
         if (state === 'authenticated') {
-          const { refreshRole } = await import('./src/services/role');
-          await refreshRole();
+          const { refreshRole, loadStoredRole, getStoredUserId } = await import(
+            './src/services/role'
+          );
+
+          // Load the last known role from the device first, so leader/admin
+          // screens still show when the app starts offline.
+          const storedRole = await loadStoredRole();
+          if (storedRole) {
+            // We already know the role: update it in the background
+            // without blocking startup.
+            void refreshRole();
+          } else {
+            // First run after update (nothing saved yet): wait for the server.
+            await refreshRole();
+          }
 
           const { me } = await import('./src/services/auth');
           const { setCacheScope } = await import('./src/services/cache');
@@ -98,7 +111,12 @@ function AppShell() {
             setPersisterScope(res.user.id);
             setMustChangePassword(res.user.mustChangePassword);
           } catch {
-            // Offline — fall back to token scope via role
+            // Offline: restore the cache scope from the saved user id
+            const savedId = getStoredUserId();
+            if (savedId) {
+              setCacheScope(savedId);
+              setPersisterScope(savedId);
+            }
           }
 
           const { registerDeviceWithBackend } = await import(

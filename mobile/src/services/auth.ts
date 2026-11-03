@@ -37,6 +37,19 @@ export type MeResponse = {
   };
 };
 
+/**
+ * Clears the saved role. Uses a dynamic import because role.ts imports
+ * this file (a normal import would be circular).
+ */
+async function clearStoredRole(): Promise<void> {
+  try {
+    const { setRole } = await import('./role');
+    setRole(null);
+  } catch {
+    // ignore
+  }
+}
+
 export async function login(input: LoginInput): Promise<LoginResponse> {
   // Lock the session BEFORE saving tokens
   bumpSessionVersion();
@@ -61,6 +74,9 @@ export async function logout(): Promise<void> {
   // Lock the session immediately
   bumpSessionVersion();
   setSessionState('unauthenticated');
+
+  // Forget the saved role so it can't leak to the next login.
+  await clearStoredRole();
 
   try {
     const { unregisterDeviceFromBackend } = await import('./pushTokens');
@@ -116,5 +132,6 @@ export async function deleteOwnAccount(
   setPersisterScope(null);
   await clearAllCaches();
   setSessionState('unauthenticated');
+  await clearStoredRole();
   return res.data;
 }
