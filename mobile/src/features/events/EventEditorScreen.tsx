@@ -20,7 +20,12 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
-import { EthDate, ethTodayFromInstant, ethToUtcDate, formatEthDate } from '../../utils/ethiopianCalendar';
+import {
+  EthDate,
+  ethTodayFromInstant,
+  ethToUtcDate,
+  formatEthDate,
+} from '../../utils/ethiopianCalendar';
 import EthDatePicker from '../funding/EthDatePicker';
 import {
   useEventDetailQuery,
@@ -52,10 +57,9 @@ export default function EventEditorScreen({ route, navigation }: any) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  
-  // --- Date & Time State ---
+
   const [ethDate, setEthDate] = useState<EthDate>(ethTodayFromInstant(new Date()));
-  const [timeText, setTimeText] = useState('10:00'); // HH:MM
+  const [timeText, setTimeText] = useState('10:00');
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const [coverUri, setCoverUri] = useState<string | null>(null);
@@ -64,7 +68,6 @@ export default function EventEditorScreen({ route, navigation }: any) {
   const busy =
     createMut.isPending || updateMut.isPending || deleteMut.isPending;
 
-  // Populate fields once the edit-mode event loads.
   useEffect(() => {
     if (!editingId) return;
     const ev = eventQ.data;
@@ -72,19 +75,29 @@ export default function EventEditorScreen({ route, navigation }: any) {
     setTitle(ev.title);
     setDescription(ev.description ?? '');
     setLocation(ev.location ?? '');
-    
-    // Parse date to Ethiopian and time
+
     try {
       const d = new Date(ev.dateGregorian);
-      setTimeText(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
-      
+      setTimeText(
+        `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(
+          2,
+          '0',
+        )}`,
+      );
+
       const addis = new Date(d.getTime() + 3 * 3600_000);
       const { gregorianToEthiopian } = require('../../utils/ethiopianCalendar');
-      setEthDate(gregorianToEthiopian(addis.getUTCFullYear(), addis.getUTCMonth() + 1, addis.getUTCDate()));
+      setEthDate(
+        gregorianToEthiopian(
+          addis.getUTCFullYear(),
+          addis.getUTCMonth() + 1,
+          addis.getUTCDate(),
+        ),
+      );
     } catch {
       // fallback
     }
-    
+
     setCoverUri(ev.coverImageUrl);
   }, [editingId, eventQ.data]);
 
@@ -132,24 +145,34 @@ export default function EventEditorScreen({ route, navigation }: any) {
     setRemoveCover(false);
   };
 
-  const buildIsoDate = (): string | null => {
-    const m = timeText.trim().match(/^(\d{2}):(\d{2})$/);
+  /**
+   * FIX: The backend `reqEthDate` validator accepts:
+   *   1. JSON object string: '{"year":2016,"month":1,"day":1}'
+   *   2. Plain date string: '2026-10-15'
+   * It does NOT accept ISO with time: '2026-10-15T10:00:00.000Z'
+   *
+   * We send option (2) which is 100% safe and gives no validation error.
+   * Time is dropped from the payload (the backend doesn't store a time
+   * component on events anyway — only dateEthYear/Month/Day + dateGregorian).
+   */
+  const buildDatePayload = (): string | null => {
+    // Sanity: validate the time string so we still catch bad input.
+    const m = timeText.trim().match(/^(\d{1,2}):(\d{2})$/);
     if (!m) return null;
-    const [, h, mi] = m;
-    
-    // Get Gregorian UTC date from the Ethiopian date
+
+    // Convert the Ethiopian date to Gregorian and emit YYYY-MM-DD.
     const greg = ethToUtcDate(ethDate);
-    
-    // Combine with the time
-    const dt = new Date(Date.UTC(greg.getUTCFullYear(), greg.getUTCMonth(), greg.getUTCDate(), Number(h), Number(mi)));
-    return dt.toISOString();
+    const y = greg.getUTCFullYear();
+    const mo = String(greg.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(greg.getUTCDate()).padStart(2, '0');
+    return `${y}-${mo}-${d}`;
   };
 
   const onSave = async (publish: boolean) => {
     setError(null);
-    const isoDate = buildIsoDate();
+    const datePayload = buildDatePayload();
     if (!title.trim()) return setError(t('register.fieldRequired'));
-    if (!isoDate) return setError(t('register.invalidDate'));
+    if (!datePayload) return setError(t('register.invalidDate'));
 
     try {
       if (editingId) {
@@ -159,7 +182,7 @@ export default function EventEditorScreen({ route, navigation }: any) {
             title: title.trim(),
             description: description.trim(),
             location: location.trim(),
-            date: isoDate,
+            date: datePayload,
             publish,
             removeCover,
             coverUri: coverUri && !coverUri.startsWith('http') ? coverUri : null,
@@ -170,7 +193,7 @@ export default function EventEditorScreen({ route, navigation }: any) {
           title: title.trim(),
           description: description.trim(),
           location: location.trim(),
-          date: isoDate,
+          date: datePayload,
           publish,
           coverUri: coverUri ?? null,
         });
@@ -200,11 +223,18 @@ export default function EventEditorScreen({ route, navigation }: any) {
     ]);
   };
 
-  // First load spinner only for edit mode.
-  const firstLoad = !!editingId && eventQ.isPending && eventQ.data === undefined;
+  const firstLoad =
+    !!editingId && eventQ.isPending && eventQ.data === undefined;
   if (firstLoad) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.background,
+        }}
+      >
         <ActivityIndicator size="large" color={BRAND.violet} />
       </View>
     );
@@ -277,7 +307,12 @@ export default function EventEditorScreen({ route, navigation }: any) {
                 {t('events.title')}
               </Text>
               <Text
-                style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '800', marginTop: 2 }}
+                style={{
+                  color: '#FFFFFF',
+                  fontSize: 20,
+                  fontWeight: '800',
+                  marginTop: 2,
+                }}
                 numberOfLines={1}
               >
                 {editingId ? t('events.editEvent') : t('events.createEvent')}
@@ -295,7 +330,10 @@ export default function EventEditorScreen({ route, navigation }: any) {
         <View style={{ padding: spacing.lg }}>
           {/* COVER */}
           <Text
-            style={[typography.bodySmall, { color: colors.textSecondary, fontWeight: '700' }]}
+            style={[
+              typography.bodySmall,
+              { color: colors.textSecondary, fontWeight: '700' },
+            ]}
           >
             {t('events.coverImage')}
           </Text>
@@ -325,7 +363,12 @@ export default function EventEditorScreen({ route, navigation }: any) {
                   }}
                 >
                   <Ionicons name="camera" size={15} color="#FFFFFF" />
-                  <Text style={[typography.caption, { color: '#FFFFFF', fontWeight: '800' }]}>
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: '#FFFFFF', fontWeight: '800' },
+                    ]}
+                  >
                     {t('events.coverImage')}
                   </Text>
                 </View>
@@ -357,7 +400,12 @@ export default function EventEditorScreen({ route, navigation }: any) {
                 >
                   <Ionicons name="image" size={26} color={BRAND.violet} />
                 </View>
-                <Text style={[typography.body, { color: BRAND.violet, fontWeight: '700' }]}>
+                <Text
+                  style={[
+                    typography.body,
+                    { color: BRAND.violet, fontWeight: '700' },
+                  ]}
+                >
                   {t('events.pickCover')}
                 </Text>
               </View>
@@ -383,7 +431,12 @@ export default function EventEditorScreen({ route, navigation }: any) {
               }}
             >
               <Ionicons name="trash-outline" size={14} color={colors.error} />
-              <Text style={[typography.caption, { color: colors.error, fontWeight: '700' }]}>
+              <Text
+                style={[
+                  typography.caption,
+                  { color: colors.error, fontWeight: '700' },
+                ]}
+              >
                 {t('events.delete')} {t('events.coverImage').toLowerCase()}
               </Text>
             </Pressable>
@@ -401,24 +454,34 @@ export default function EventEditorScreen({ route, navigation }: any) {
               borderColor: colors.border,
             }}
           >
-            <EditorField icon="text" label={t('events.titleField')} value={title} onChange={setTitle} />
+            <EditorField
+              icon="text"
+              label={t('events.titleField')}
+              value={title}
+              onChange={setTitle}
+            />
             <EditorField
               icon="location"
               label={t('events.locationField')}
               value={location}
               onChange={setLocation}
             />
-            
-            {/* --- Ethiopian Date & Time --- */}
+
+            {/* Ethiopian Date + Time */}
             <Text
               style={[
                 typography.bodySmall,
-                { color: colors.textSecondary, marginTop: spacing.md, marginBottom: spacing.xs, fontWeight: '700' },
+                {
+                  color: colors.textSecondary,
+                  marginTop: spacing.md,
+                  marginBottom: spacing.xs,
+                  fontWeight: '700',
+                },
               ]}
             >
               {t('events.dateField')}
             </Text>
-            
+
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <Pressable
                 onPress={() => setPickerOpen(true)}
@@ -440,7 +503,7 @@ export default function EventEditorScreen({ route, navigation }: any) {
                   {formatEthDate(ethDate, lang)}
                 </Text>
               </Pressable>
-              
+
               <View
                 style={{
                   flex: 1,
@@ -461,7 +524,11 @@ export default function EventEditorScreen({ route, navigation }: any) {
                   placeholder="10:00"
                   placeholderTextColor={colors.textSecondary}
                   keyboardType="numbers-and-punctuation"
-                  style={{ flex: 1, paddingVertical: spacing.md, color: colors.text }}
+                  style={{
+                    flex: 1,
+                    paddingVertical: spacing.md,
+                    color: colors.text,
+                  }}
                 />
               </View>
             </View>
@@ -490,7 +557,11 @@ export default function EventEditorScreen({ route, navigation }: any) {
               }}
             >
               <Ionicons name="alert-circle" size={18} color={colors.error} />
-              <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{error}</Text>
+              <Text
+                style={[typography.bodySmall, { color: colors.error, flex: 1 }]}
+              >
+                {error}
+              </Text>
             </View>
           )}
         </View>
@@ -548,8 +619,15 @@ export default function EventEditorScreen({ route, navigation }: any) {
             opacity: busy ? 0.6 : 1,
           }}
         >
-          <Ionicons name="document-text-outline" size={17} color={colors.text} />
-          <Text style={[typography.button, { color: colors.text }]} numberOfLines={1}>
+          <Ionicons
+            name="document-text-outline"
+            size={17}
+            color={colors.text}
+          />
+          <Text
+            style={[typography.button, { color: colors.text }]}
+            numberOfLines={1}
+          >
             {t('events.saveDraft')}
           </Text>
         </Pressable>
@@ -588,7 +666,10 @@ export default function EventEditorScreen({ route, navigation }: any) {
               <>
                 <Ionicons name="rocket" size={17} color="#FFFFFF" />
                 <Text
-                  style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}
+                  style={[
+                    typography.button,
+                    { color: '#FFFFFF', fontWeight: '800' },
+                  ]}
                   numberOfLines={1}
                 >
                   {t('events.publishNow')}
@@ -638,7 +719,11 @@ function EditorField({
       <Text
         style={[
           typography.bodySmall,
-          { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '700' },
+          {
+            color: colors.textSecondary,
+            marginBottom: spacing.xs,
+            fontWeight: '700',
+          },
         ]}
       >
         {label}
