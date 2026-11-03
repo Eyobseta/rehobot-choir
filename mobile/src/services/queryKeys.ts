@@ -101,4 +101,11 @@ export const queryKeys = {
 
   notificationPrefs: (userId: string | null) =>
     ['notifications', userId ?? 'anon', 'prefs'] as const,
+
+    // --- LEADER APPROVALS ---
+  pendingApprovals: (userId: string | null) =>
+    ['leader', userId ?? 'anon', 'approvals', 'list'] as const,
+
+  applicationDetail: (userId: string | null, id: string) =>
+    ['leader', userId ?? 'anon', 'approvals', 'detail', id] as const,
 } as const;

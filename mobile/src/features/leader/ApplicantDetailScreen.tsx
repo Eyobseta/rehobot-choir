@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -18,17 +18,15 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  getApplication,
-  approveApplication,
-  rejectApplication,
-  ApplicationDetail,
-} from '../../services/leaders';
-import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import type { LeaderStackParamList } from '../../navigation/LeaderStack';
 import { formatEthDate } from '../../utils/ethiopianCalendar';
+import {
+  useApplicationDetailQuery,
+  useApproveApplicationMutation,
+  useRejectApplicationMutation,
+} from './useLeaderApprovals';
 
 type Props = NativeStackScreenProps<LeaderStackParamList, 'ApplicantDetail'>;
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -41,7 +39,6 @@ const accents = {
   lime: '#B8E986', limeSoft: '#B8E98622',
 };
 
-// Safe helper to prevent crashes if dates are missing
 function getSafeEthDate(year?: number | null, month?: number | null, day?: number | null): string {
   if (!year || !month || !day) return '—';
   try {
@@ -58,31 +55,23 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { id } = route.params;
 
-  const [item, setItem] = useState<ApplicationDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const q = useApplicationDetailQuery(id);
+  const approveMut = useApproveApplicationMutation();
+  const rejectMut = useRejectApplicationMutation();
+
+  const item = q.data;
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const detail = await getApplication(id);
-        if (alive) setItem(detail);
-      } catch (e) {
-        const err = e as ApiError;
-        if (alive) setError(`${err.message} [${err.code}]`);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [id]);
+  const busy = approveMut.isPending || rejectMut.isPending;
+  const errorMsg =
+    actionError ??
+    (q.error as { message?: string; code?: string } | null)?.message ??
+    null;
 
   const onApprove = () => {
     if (!item) return;
@@ -94,16 +83,12 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
         {
           text: t('leader.approveConfirmYes'),
           onPress: async () => {
-            setBusy(true);
-            setError(null);
+            setActionError(null);
             try {
-              await approveApplication(item.id);
+              await approveMut.mutateAsync(item.id);
               navigation.goBack();
             } catch (e) {
-              const err = e as ApiError;
-              setError(`${err.message} [${err.code}]`);
-            } finally {
-              setBusy(false);
+              setActionError((e as { message?: string })?.message ?? 'Error');
             }
           },
         },
@@ -115,24 +100,20 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
     if (!item) return;
     const reason = rejectReason.trim();
     if (!reason) {
-      setError(t('leader.reasonRequired'));
+      setActionError(t('leader.reasonRequired'));
       return;
     }
-    setBusy(true);
-    setError(null);
     try {
-      await rejectApplication(item.id, reason);
+      setActionError(null);
+      await rejectMut.mutateAsync({ id: item.id, reason });
       setRejectModalOpen(false);
       navigation.goBack();
     } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setBusy(false);
+      setActionError((e as { message?: string })?.message ?? 'Error');
     }
   };
 
-  if (loading) {
+  if (firstLoad) {
     return (
       <View
         style={{
@@ -143,12 +124,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
         }}
       >
         <ActivityIndicator size="large" color={BRAND.violet} />
-        <Text
-          style={[
-            typography.bodySmall,
-            { color: colors.textSecondary, marginTop: spacing.md },
-          ]}
-        >
+        <Text style={[typography.bodySmall, { color: colors.textSecondary, marginTop: spacing.md }]}>
           {t('leader.loadingDetail')}
         </Text>
       </View>
@@ -180,7 +156,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
           <Ionicons name="person-outline" size={32} color={colors.error} />
         </View>
         <Text style={[typography.body, { color: colors.error, textAlign: 'center' }]}>
-          {error ?? 'Not found'}
+          {errorMsg ?? 'Not found'}
         </Text>
 
         <View style={{ position: 'absolute', top: insets.top + 12, right: 16 }}>
@@ -202,7 +178,6 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
         contentContainerStyle={{ paddingBottom: spacing.xxl }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ---------- Hero ---------- */}
         <LinearGradient
           colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
           start={{ x: 0, y: 0 }}
@@ -242,10 +217,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
             }}
           />
 
-          <View
-            pointerEvents="box-none"
-            style={{ alignSelf: 'flex-end', marginBottom: 8 }}
-          >
+          <View pointerEvents="box-none" style={{ alignSelf: 'flex-end', marginBottom: 8 }}>
             <GlassBackButton
               onPress={() => navigation.goBack()}
               accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
@@ -311,8 +283,31 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
           </View>
         </LinearGradient>
 
-        {/* ---------- Info card ---------- */}
         <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.lg }}>
+          {showingSavedData && (
+            <View style={{ marginBottom: spacing.md }}>
+              <View
+                style={{
+                  alignSelf: 'flex-start',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  backgroundColor: withAlpha('#F59E0B', 0.14),
+                  borderWidth: 1,
+                  borderColor: withAlpha('#F59E0B', 0.4),
+                }}
+              >
+                <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+                <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+                  {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+                </Text>
+              </View>
+            </View>
+          )}
+
           <View
             style={{
               borderRadius: 22,
@@ -326,7 +321,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
             <InfoRow icon="call" tint={accents.lime} soft={accents.limeSoft} label={t('register.phone')} value={item.phone} />
             <InfoRow icon="mail" tint={accents.cyan} soft={accents.cyanSoft} label={t('register.email')} value={item.email} />
             <InfoRow icon="male-female" tint={accents.pink} soft={accents.pinkSoft} label={t('register.gender')} value={genderLabel} />
-            
+
             <InfoRow
               icon="gift"
               tint={accents.gold}
@@ -349,7 +344,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
               label={t('register.emergencyContactPhone')}
               value={item.emergencyContactPhone}
             />
-            
+
             {item.joiningDateEthYear && (
               <InfoRow
                 icon="calendar"
@@ -359,7 +354,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
                 value={getSafeEthDate(item.joiningDateEthYear, item.joiningDateEthMonth, item.joiningDateEthDay)}
               />
             )}
-            
+
             <InfoRow
               icon="time"
               tint={accents.cyan}
@@ -370,7 +365,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
             />
           </View>
 
-          {error && (
+          {errorMsg && (
             <View
               style={{
                 marginTop: spacing.md,
@@ -386,12 +381,11 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
             >
               <Ionicons name="alert-circle" size={18} color={colors.error} />
               <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>
-                {error}
+                {errorMsg}
               </Text>
             </View>
           )}
 
-          {/* Decision buttons */}
           <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl }}>
             <Pressable
               onPress={() => setRejectModalOpen(true)}
@@ -448,7 +442,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
                   elevation: 6,
                 }}
               >
-                {busy ? (
+                {approveMut.isPending ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
                   <>
@@ -464,7 +458,6 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
         </View>
       </ScrollView>
 
-      {/* ---------- Reject modal ---------- */}
       <Modal
         visible={rejectModalOpen}
         transparent
@@ -483,13 +476,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
               padding: spacing.xl,
             }}
           >
-            <View
-              style={{
-                backgroundColor: colors.surface,
-                borderRadius: 28,
-                padding: 22,
-              }}
-            >
+            <View style={{ backgroundColor: colors.surface, borderRadius: 28, padding: 22 }}>
               <View
                 style={{
                   width: 52,
@@ -503,20 +490,10 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
                 <Ionicons name="close-circle" size={26} color={colors.error} />
               </View>
 
-              <Text
-                style={[
-                  typography.h3,
-                  { color: colors.text, marginTop: 12, fontWeight: '800' },
-                ]}
-              >
+              <Text style={[typography.h3, { color: colors.text, marginTop: 12, fontWeight: '800' }]}>
                 {t('leader.rejectReasonTitle')}
               </Text>
-              <Text
-                style={[
-                  typography.bodySmall,
-                  { color: colors.textSecondary, marginTop: 4 },
-                ]}
-              >
+              <Text style={[typography.bodySmall, { color: colors.textSecondary, marginTop: 4 }]}>
                 {t('leader.rejectReasonLabel')}
               </Text>
 
@@ -540,13 +517,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
                 }}
               />
 
-              <View
-                style={{
-                  flexDirection: 'row',
-                  gap: spacing.md,
-                  marginTop: spacing.lg,
-                }}
-              >
+              <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg }}>
                 <Pressable
                   onPress={() => {
                     setRejectModalOpen(false);
@@ -585,7 +556,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
                       gap: 6,
                     }}
                   >
-                    {busy ? (
+                    {rejectMut.isPending ? (
                       <ActivityIndicator color="#FFFFFF" />
                     ) : (
                       <>
@@ -648,10 +619,7 @@ function InfoRow({
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[typography.caption, { color: colors.textSecondary }]}>{label}</Text>
-        <Text
-          style={[typography.body, { color: colors.text, fontWeight: '600' }]}
-          numberOfLines={1}
-        >
+        <Text style={[typography.body, { color: colors.text, fontWeight: '600' }]} numberOfLines={1}>
           {value || '—'}
         </Text>
       </View>

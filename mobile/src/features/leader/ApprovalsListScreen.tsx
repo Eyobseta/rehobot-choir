@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -13,20 +13,14 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  listPendingApplications,
-  PendingApplication,
-} from '../../services/leaders';
-import { ApiError } from '../../services/api';
-import { cacheRead, cacheWrite, cacheInvalidate } from '../../services/cache';
-import { CACHE_KEYS } from '../../services/cacheKeys';
+import { PendingApplication } from '../../services/leaders';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import type { LeaderStackParamList } from '../../navigation/LeaderStack';
+import { usePendingApprovalsQuery } from './useLeaderApprovals';
 
 type Props = NativeStackScreenProps<LeaderStackParamList, 'ApprovalsList'>;
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -45,12 +39,12 @@ const TOOLS: {
   route: keyof LeaderStackParamList;
   gradient: readonly [string, string];
 }[] = [
-  { key: 'events',        icon: 'calendar',         labelKey: 'events.title',          route: 'LeaderEvents',        gradient: ['#6C3FE0', '#E0409A'] },
-  { key: 'announcements', icon: 'megaphone',        labelKey: 'announcements.title',   route: 'LeaderAnnouncements', gradient: ['#F59E0B', '#E0409A'] },
-  { key: 'attendance',    icon: 'checkbox',         labelKey: 'attendance.record',     route: 'LeaderAttendance',    gradient: ['#22C55E', '#0E7490'] },
-  { key: 'member',        icon: 'person-circle',    labelKey: 'leaderTools.manageMember', route: 'ManageMember',     gradient: ['#6EDBD5', '#6C3FE0'] },
-  { key: 'songs',         icon: 'musical-notes',    labelKey: 'leaderSongs.title',     route: 'LeaderSongs',         gradient: ['#EE9BBD', '#6C3FE0'] },
-  { key: 'memories',      icon: 'images',           labelKey: 'memories.title',        route: 'LeaderMemories',      gradient: ['#B6A0FF', '#E0409A'] },
+  { key: 'events', icon: 'calendar', labelKey: 'events.title', route: 'LeaderEvents', gradient: ['#6C3FE0', '#E0409A'] },
+  { key: 'announcements', icon: 'megaphone', labelKey: 'announcements.title', route: 'LeaderAnnouncements', gradient: ['#F59E0B', '#E0409A'] },
+  { key: 'attendance', icon: 'checkbox', labelKey: 'attendance.record', route: 'LeaderAttendance', gradient: ['#22C55E', '#0E7490'] },
+  { key: 'member', icon: 'person-circle', labelKey: 'leaderTools.manageMember', route: 'ManageMember', gradient: ['#6EDBD5', '#6C3FE0'] },
+  { key: 'songs', icon: 'musical-notes', labelKey: 'leaderSongs.title', route: 'LeaderSongs', gradient: ['#EE9BBD', '#6C3FE0'] },
+  { key: 'memories', icon: 'images', labelKey: 'memories.title', route: 'LeaderMemories', gradient: ['#B6A0FF', '#E0409A'] },
 ];
 
 export default function ApprovalsListScreen({ navigation }: Props) {
@@ -59,48 +53,14 @@ export default function ApprovalsListScreen({ navigation }: Props) {
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState<PendingApplication[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const q = usePendingApprovalsQuery();
+  const items = q.data ?? [];
+  const firstLoad = q.isPending && q.data === undefined;
+  const showingSavedData = q.isError && q.data !== undefined;
+  const error =
+    (q.error as { message?: string; code?: string } | null)?.message ?? null;
 
-  // Force fetch from server, bypassing cache
-  const fetchFresh = useCallback(async () => {
-    setError(null);
-    try {
-      const data = await listPendingApplications();
-      setItems(data);
-      await cacheWrite(CACHE_KEYS.leaderApprovals, data);
-    } catch (e) {
-      const err = e as ApiError;
-      setError(`${err.message} [${err.code}]`);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  // On mount, try cache first for fast load
-  useEffect(() => {
-    (async () => {
-      const cached = await cacheRead<PendingApplication[]>(CACHE_KEYS.leaderApprovals);
-      if (cached) {
-        setItems(cached);
-        setLoading(false);
-      }
-      // Always fetch fresh in background
-      void fetchFresh();
-    })();
-  }, [fetchFresh]);
-
-  // When screen comes into focus (e.g. returning from approve/reject), ALWAYS fetch fresh
-  useFocusEffect(
-    useCallback(() => {
-      void fetchFresh();
-    }, [fetchFresh])
-  );
-
-  if (loading && items.length === 0) {
+  if (firstLoad) {
     return (
       <View
         style={{
@@ -124,11 +84,8 @@ export default function ApprovalsListScreen({ navigation }: Props) {
         contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              void fetchFresh();
-            }}
+            refreshing={q.isRefetching && !firstLoad}
+            onRefresh={() => q.refetch()}
             tintColor={BRAND.violet}
             colors={[BRAND.violet]}
           />
@@ -296,7 +253,41 @@ export default function ApprovalsListScreen({ navigation }: Props) {
               )}
             </View>
 
-            {error && (
+            {showingSavedData && (
+              <View
+                style={{
+                  marginHorizontal: spacing.lg,
+                  marginBottom: spacing.sm,
+                }}
+              >
+                <View
+                  style={{
+                    alignSelf: 'flex-start',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 999,
+                    backgroundColor: withAlpha('#F59E0B', 0.14),
+                    borderWidth: 1,
+                    borderColor: withAlpha('#F59E0B', 0.4),
+                  }}
+                >
+                  <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: '#F59E0B', fontWeight: '800' },
+                    ]}
+                  >
+                    {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {error && q.data === undefined && (
               <View
                 style={{
                   marginHorizontal: spacing.lg,
@@ -346,9 +337,7 @@ export default function ApprovalsListScreen({ navigation }: Props) {
                 <Ionicons name="checkmark-done-outline" size={40} color={colors.textSecondary} />
               </View>
             </LinearGradient>
-            <Text
-              style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}
-            >
+            <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}>
               {t('leader.approvalsEmpty')}
             </Text>
           </View>
@@ -365,7 +354,7 @@ export default function ApprovalsListScreen({ navigation }: Props) {
   );
 }
 
-// ---------- Tool tile ----------
+// ---------- Tool tile (unchanged) ----------
 
 function ToolTile({
   label,
@@ -433,7 +422,7 @@ function ToolTile({
   );
 }
 
-// ---------- Application card ----------
+// ---------- Application card (unchanged) ----------
 
 function ApplicationCard({
   item,
