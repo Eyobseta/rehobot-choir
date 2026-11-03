@@ -1,21 +1,30 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View, Text, FlatList, Pressable, Alert, ActivityIndicator, RefreshControl, TextInput, Image, ScrollView, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import {
-  leaderListRecords, leaderListDonations, approveRecord, rejectRecord, approveDonation, rejectDonation,
-  leaderListCampaigns, LeaderCampaign, FundingStatus, LedgerFilter, Declaration,
+  FundingStatus, LedgerFilter, Declaration,
 } from '../../services/funding';
 import {
   Card, StatusChip, Pill, useDateLabel, useInstantLabel, errorText, Notice, ErrorState, ReasonModal, ProgressBar,
 } from './fundingKit';
 import { formatEtb } from '../../utils/money';
+import {
+  useLeaderRecordsQuery,
+  useLeaderDonationsQuery,
+  useLeaderCampaignsQuery,
+  useLeaderCampaignMutation,
+  useApproveRecordMutation,
+  useRejectRecordMutation,
+  useApproveDonationMutation,
+  useRejectDonationMutation,
+} from './useLeaderFunding';
 
 const AMBER = '#F59E0B';
 const CATEGORIES: LedgerFilter[] = ['PENDING_VERIFICATION', 'PAID', 'UNPAID', 'REJECTED'];
@@ -28,17 +37,6 @@ type LedgerItem = {
   pendingTotalMinor?: number | null;
 };
 
-type LedgerPage = {
-  items: LedgerItem[]; total: number;
-  counts: Partial<Record<FundingStatus, number>>;
-  totals?: { received: string; outstanding: string; expected: string } | null;
-};
-
-type LedgerLoader = (p: { status: LedgerFilter; q: string; page: number; campaignId?: string; pageSize?: number }) => Promise<LedgerPage>;
-
-// =====================================================================
-// Main Screen
-// =====================================================================
 export default function LeaderFunding() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
@@ -61,8 +59,9 @@ export default function LeaderFunding() {
 }
 
 // =====================================================================
-// Top controls (scrolls with the list).
+// Top Controls
 // =====================================================================
+
 function TopControls({ tools, navigation, tab, setTab, header }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -74,13 +73,8 @@ function TopControls({ tools, navigation, tab, setTab, header }: any) {
         {(['annual', 'campaigns'] as const).map((k) => {
           const on = tab === k;
           return (
-            <Pressable
-              key={k}
-              onPress={() => setTab(k)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44, borderRadius: 12, backgroundColor: on ? colors.surface : 'transparent' }}
-            >
+            <Pressable key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: on }}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44, borderRadius: 12, backgroundColor: on ? colors.surface : 'transparent' }}>
               <Text style={{ color: on ? BRAND.violet : colors.textSecondary, fontWeight: '800' }}>
                 {k === 'annual' ? t('funding.tabAnnual', { defaultValue: 'Annual' }) : t('funding.tabCampaigns', { defaultValue: 'Campaigns' })}
               </Text>
@@ -91,10 +85,8 @@ function TopControls({ tools, navigation, tab, setTab, header }: any) {
 
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
         {tools.map((x: any) => (
-          <Pressable
-            key={x.go} onPress={() => navigation.navigate(x.go)} accessibilityRole="button" accessibilityLabel={x.label}
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, minHeight: 48 }}
-          >
+          <Pressable key={x.go} onPress={() => navigation.navigate(x.go)} accessibilityRole="button" accessibilityLabel={x.label}
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, minHeight: 48 }}>
             <View style={{ width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: withAlpha(BRAND.violet, 0.12) }}>
               <Ionicons name={x.icon} size={16} color={BRAND.violet} />
             </View>
@@ -102,7 +94,6 @@ function TopControls({ tools, navigation, tab, setTab, header }: any) {
           </Pressable>
         ))}
       </View>
-
       {header}
     </View>
   );
@@ -111,30 +102,20 @@ function TopControls({ tools, navigation, tab, setTab, header }: any) {
 // =====================================================================
 // Annual Panel
 // =====================================================================
+
 function AnnualPanel({ tools, navigation, tab, setTab }: any) {
   const { t } = useTranslation();
-  const load: LedgerLoader = useCallback(async ({ status, q, page, pageSize = 20 }) => {
-    const res = await leaderListRecords({ status, q: q || undefined, page, pageSize });
-    return {
-      total: res.total,
-      counts: res.counts,
-      totals: res.totals ? { received: res.totals.received.label, outstanding: res.totals.outstanding.label, expected: res.totals.expected.label } : null,
-      items: res.items.map((r) => ({
-        id: r.id, name: r.participant.fullName, photoUrl: r.participant.photoUrl, role: r.participant.role,
-        sub: `${r.contributionYear} E.C.`, status: r.status, paidMinor: r.progress.paid.minor, dueMinor: r.amountDue.minor,
-        decl: r.latestDeclaration, reason: r.rejectionReason, pendingCount: r.pendingCount ?? 0, pendingTotalMinor: r.pendingTotal?.minor ?? null,
-      })),
-    };
-  }, []);
-
   const header = <TopControls tools={tools} navigation={navigation} tab={tab} setTab={setTab} />;
+
+  const approveRecordMut = useApproveRecordMutation();
+  const rejectRecordMut = useRejectRecordMutation();
 
   return (
     <LedgerPanel
       key="annual"
-      load={load}
-      onApprove={approveRecord}
-      onReject={rejectRecord}
+      mode="annual"
+      onApprove={(id, declId) => approveRecordMut.mutateAsync({ id, declId })}
+      onReject={(id, reason, declId) => rejectRecordMut.mutateAsync({ id, reason, declId })}
       contextType="annual"
       contextLabel={t('funding.annualTitle', { defaultValue: 'Annual contribution' })}
       header={header}
@@ -146,53 +127,30 @@ function AnnualPanel({ tools, navigation, tab, setTab }: any) {
 // =====================================================================
 // Campaigns Panel
 // =====================================================================
+
 function CampaignsPanel({ tools, navigation, tab, setTab }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors } = theme;
   const dateLabel = useDateLabel();
 
-  const [campaigns, setCampaigns] = useState<LeaderCampaign[]>([]);
+  const campQ = useLeaderCampaignsQuery();
+  const campaigns = campQ.data?.items ?? [];
   const [campaignId, setCampaignId] = useState<string | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
-  const [loadErr, setLoadErr] = useState<string | null>(null);
 
-  const loadCampaigns = useCallback(async () => {
-    try {
-      const res = await leaderListCampaigns();
-      setCampaigns(res.items);
-      setLoadErr(null);
-      setCampaignId((cur) => {
-        if (cur && res.items.some((c) => c.id === cur && c.status !== 'DRAFT')) return cur;
-        const first = res.items.find((c) => c.status === 'PUBLISHED') ?? res.items.find((c) => c.status !== 'DRAFT');
-        return first?.id;
-      });
-    } catch (e) {
-      setLoadErr(errorText(e));
-    } finally {
-      setLoading(false);
+  // Set default campaign if none selected
+  useMemo(() => {
+    if (campaigns.length > 0 && !campaignId) {
+      const first = campaigns.find((c) => c.status === 'PUBLISHED') ?? campaigns.find((c) => c.status !== 'DRAFT');
+      if (first) setCampaignId(first.id);
     }
-  }, []);
+  }, [campaigns, campaignId]);
 
-  useFocusEffect(useCallback(() => { void loadCampaigns(); }, [loadCampaigns]));
+  const approveDonationMut = useApproveDonationMutation();
+  const rejectDonationMut = useRejectDonationMutation();
 
-  const load: LedgerLoader = useCallback(async ({ status, q, page, pageSize = 20 }) => {
-    if (!campaignId) return { total: 0, counts: {}, items: [] };
-    const res = await leaderListDonations({ status, campaignId, q: q || undefined, page, pageSize });
-    return {
-      total: res.total,
-      counts: res.counts ?? {},
-      items: (res.items ?? []).map((r) => ({
-        id: r.id, name: r.participant.fullName, photoUrl: r.participant.photoUrl, role: 'MEMBER',
-        sub: r.campaign.title, status: r.status, paidMinor: r.progress.paid.minor, dueMinor: r.progress.target?.minor ?? null,
-        decl: r.latestDeclaration, reason: r.latestDeclaration?.status === 'REJECTED' ? r.latestDeclaration.rejectionReason : null,
-        pendingCount: r.pendingCount ?? 0, pendingTotalMinor: r.pendingTotal?.minor ?? null,
-      })),
-    };
-  }, [campaignId]);
-
-  if (loading && campaigns.length === 0) return <ActivityIndicator style={{ marginTop: 40 }} color={BRAND.violet} />;
-  if (loadErr && campaigns.length === 0) return <ErrorState message={loadErr} onRetry={loadCampaigns} />;
+  if (campQ.isPending && campQ.data === undefined) return <ActivityIndicator style={{ marginTop: 40 }} color={BRAND.violet} />;
+  if (campQ.isError && campQ.data === undefined) return <ErrorState message={errorText(campQ.error)} onRetry={() => campQ.refetch()} />;
 
   const drafts = campaigns.filter((c) => c.status === 'DRAFT');
   const live = campaigns.filter((c) => c.status !== 'DRAFT');
@@ -202,10 +160,8 @@ function CampaignsPanel({ tools, navigation, tab, setTab }: any) {
     <View style={{ marginTop: 20 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <Text style={{ color: colors.text, fontSize: 17, fontWeight: '800' }}>{t('funding.selectCampaign')}</Text>
-        <Pressable
-          onPress={() => navigation.navigate('CreateCampaign')} accessibilityRole="button" hitSlop={8}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44, paddingHorizontal: 12, borderRadius: 999, backgroundColor: withAlpha(BRAND.violet, 0.12) }}
-        >
+        <Pressable onPress={() => navigation.navigate('CreateCampaign')} accessibilityRole="button" hitSlop={8}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44, paddingHorizontal: 12, borderRadius: 999, backgroundColor: withAlpha(BRAND.violet, 0.12) }}>
           <Ionicons name="add" size={18} color={BRAND.violet} />
           <Text style={{ color: BRAND.violet, fontWeight: '800' }}>{t('funding.newCampaign')}</Text>
         </Pressable>
@@ -236,10 +192,8 @@ function CampaignsPanel({ tools, navigation, tab, setTab }: any) {
           {live.map((c) => {
             const on = campaignId === c.id;
             return (
-              <Pressable
-                key={c.id} onPress={() => setCampaignId(c.id)} accessibilityRole="tab" accessibilityState={{ selected: on }}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, borderRadius: 999, marginRight: 8, backgroundColor: on ? BRAND.violet : colors.surface, borderWidth: 1, borderColor: on ? BRAND.violet : colors.border, minHeight: 44 }}
-              >
+              <Pressable key={c.id} onPress={() => setCampaignId(c.id)} accessibilityRole="tab" accessibilityState={{ selected: on }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, borderRadius: 999, marginRight: 8, backgroundColor: on ? BRAND.violet : colors.surface, borderWidth: 1, borderColor: on ? BRAND.violet : colors.border, minHeight: 44 }}>
                 <Text style={{ color: on ? '#FFF' : colors.text, fontWeight: '700', fontSize: 13, maxWidth: 160 }} numberOfLines={1}>{c.title}</Text>
                 {c.pendingCount > 0 && (
                   <View style={{ minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: AMBER }}>
@@ -266,10 +220,8 @@ function CampaignsPanel({ tools, navigation, tab, setTab }: any) {
               {current.status !== 'PUBLISHED' && (
                 <Pill text={current.status === 'CANCELLED' ? t('funding.cancelledPill') : t('funding.closedPill')} color={colors.textSecondary} />
               )}
-              <Pressable
-                onPress={() => navigation.navigate('CampaignDetail', { id: current.id })} hitSlop={8} accessibilityRole="button"
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 36 }}
-              >
+              <Pressable onPress={() => navigation.navigate('CampaignDetail', { id: current.id })} hitSlop={8} accessibilityRole="button"
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 36 }}>
                 <Text style={{ color: BRAND.violet, fontWeight: '800' }}>{t('funding.openCampaign')}</Text>
                 <Ionicons name="chevron-forward" size={16} color={BRAND.violet} />
               </Pressable>
@@ -288,16 +240,15 @@ function CampaignsPanel({ tools, navigation, tab, setTab }: any) {
     </View>
   );
 
-  const header = (
-    <TopControls tools={tools} navigation={navigation} tab={tab} setTab={setTab} header={innerHeader} />
-  );
+  const header = <TopControls tools={tools} navigation={navigation} tab={tab} setTab={setTab} header={innerHeader} />;
 
   return (
     <LedgerPanel
       key={campaignId ? `campaign_${campaignId}` : 'campaign_none'}
-      load={load}
-      onApprove={approveDonation}
-      onReject={rejectDonation}
+      mode="campaign"
+      campaignId={campaignId}
+      onApprove={(id, declId) => approveDonationMut.mutateAsync({ id, declId })}
+      onReject={(id, reason, declId) => rejectDonationMut.mutateAsync({ id, reason, declId })}
       header={header}
       contextType="campaign"
       contextLabel={current?.title}
@@ -309,8 +260,10 @@ function CampaignsPanel({ tools, navigation, tab, setTab }: any) {
 // =====================================================================
 // Shared Ledger Component
 // =====================================================================
-function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, contextLabel }: {
-  load: LedgerLoader;
+
+function LedgerPanel({ mode, campaignId, onApprove, onReject, header, showSub, contextType, contextLabel }: {
+  mode: 'annual' | 'campaign';
+  campaignId?: string;
   onApprove: (id: string, declarationId?: string) => Promise<unknown>;
   onReject: (id: string, reason: string, declarationId?: string) => Promise<unknown>;
   header?: React.ReactNode;
@@ -327,80 +280,53 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
   const [status, setStatus] = useState<LedgerFilter>('PENDING_VERIFICATION');
   const [qInput, setQInput] = useState('');
   const [q, setQ] = useState('');
-  const [rows, setRows] = useState<LedgerItem[]>([]);
-  const [meta, setMeta] = useState<Omit<LedgerPage, 'items'> | null>(null);
+  
+  // Pagination is handled by useQuery, but we need state for page
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [more, setMore] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const annualQ = useLeaderRecordsQuery({ status, q, page, pageSize: 20 });
+  const donationQ = useLeaderDonationsQuery({ status, campaignId, q, page, pageSize: 20 });
+
+  const activeQ = mode === 'annual' ? annualQ : donationQ;
+  const meta = activeQ.data;
+  const loading = activeQ.isPending && activeQ.data === undefined;
+  const refreshing = activeQ.isRefetching && !loading;
+  const error = activeQ.isError ? errorText(activeQ.error) : null;
+
   const [actionError, setActionError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectDeclId, setRejectDeclId] = useState<string | null>(null);
 
   const [tableVisible, setTableVisible] = useState(false);
-  const [tableData, setTableData] = useState<LedgerItem[]>([]);
-  const [tableLoading, setTableLoading] = useState(false);
-  const [tableErr, setTableErr] = useState<string | null>(null);
   const [tableFilter, setTableFilter] = useState<LedgerFilter>('ALL');
 
-  const seq = useRef(0);
-
-  const fetchPage = useCallback(async (p: number, st: LedgerFilter, query: string, replace: boolean) => {
-    const my = ++seq.current;
-    try {
-      const res = await load({ status: st, q: query, page: p });
-      if (my !== seq.current) return;
-      setMeta({ total: res.total, counts: res.counts, totals: res.totals });
-      setPage(p); setError(null);
-      setRows((prev) => (replace ? res.items : [...prev, ...res.items.filter((n) => !prev.some((o) => o.id === n.id))]));
-    } catch (e) {
-      if (my === seq.current) setError(errorText(e));
-    } finally {
-      if (my === seq.current) { setLoading(false); setRefreshing(false); setMore(false); }
+  // Map API data to the flat structure the UI expects
+  const rows: LedgerItem[] = useMemo(() => {
+    if (!meta) return [];
+    if (mode === 'annual') {
+      const list = (meta as any).items as any[];
+      return list.map((r) => ({
+        id: r.id, name: r.participant.fullName, photoUrl: r.participant.photoUrl, role: r.participant.role,
+        sub: `${r.contributionYear} E.C.`, status: r.status, paidMinor: r.progress.paid.minor, dueMinor: r.amountDue.minor,
+        decl: r.latestDeclaration, reason: r.rejectionReason, pendingCount: r.pendingCount ?? 0, pendingTotalMinor: r.pendingTotal?.minor ?? null,
+      }));
+    } else {
+      const list = (meta as any).items as any[];
+      return list.map((r) => ({
+        id: r.id, name: r.participant.fullName, photoUrl: r.participant.photoUrl, role: 'MEMBER',
+        sub: r.campaign.title, status: r.status, paidMinor: r.progress.paid.minor, dueMinor: r.progress.target?.minor ?? null,
+        decl: r.latestDeclaration, reason: r.latestDeclaration?.status === 'REJECTED' ? r.latestDeclaration.rejectionReason : null,
+        pendingCount: r.pendingCount ?? 0, pendingTotalMinor: r.pendingTotal?.minor ?? null,
+      }));
     }
-  }, [load]);
-
-  useFocusEffect(useCallback(() => {
-    setLoading(true);
-    void fetchPage(1, status, q, true);
-  }, [fetchPage, status, q]));
-
-  const reload = async () => {
-    setLoading(true);
-    try {
-      await fetchPage(1, status, q, true);
-    } finally {
-      // Never leave the spinner on if the refresh failed.
-      setBusyId(null);
-    }
-  };
+  }, [meta, mode]);
 
   const act = async (id: string, fn: () => Promise<unknown>) => {
     if (busyId) return;
     setBusyId(id); setActionError(null);
     try { await fn(); } catch (e) { setActionError(errorText(e)); }
-    await reload();
-  };
-
-  const loadTable = async () => {
-    setTableLoading(true); setTableErr(null);
-    try {
-      const res = await load({ status: 'ALL', q: '', page: 1, pageSize: 1000 });
-      setTableData(res.items);
-    } catch (e) {
-      setTableErr(errorText(e));
-    } finally {
-      setTableLoading(false);
-    }
-  };
-
-  const openTableModal = () => {
-    setTableFilter('ALL');
-    setTableVisible(true);
-    void loadTable();
+    setBusyId(null);
   };
 
   const cat = (s: LedgerFilter) => {
@@ -413,39 +339,27 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
     }
   };
 
-  const countOf = (s: LedgerFilter) => (meta?.counts && meta.counts[s as FundingStatus] !== undefined ? meta.counts[s as FundingStatus] ?? 0 : 0);
-  const hasMore = meta ? rows.length < meta.total : false;
-
-  const tableCount = (s: LedgerFilter) => (s === 'ALL' ? tableData.length : tableData.filter((r) => r.status === s).length);
-  const tableRows = tableFilter === 'ALL' ? tableData : tableData.filter((r) => r.status === tableFilter);
+  const countOf = (s: LedgerFilter) => (meta?.counts && (meta.counts as any)[s] !== undefined ? (meta.counts as any)[s] ?? 0 : 0);
 
   const listHeader = (
     <View>
       {header}
-
-      {meta?.totals && (
+      {mode === 'annual' && (meta as any)?.totals && (
         <Card style={{ marginTop: 16, padding: 0, overflow: 'hidden' }}>
           <View style={{ padding: 16 }}>
-            <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>
-              {t('funding.received', { defaultValue: 'Received' })}
-            </Text>
-            <Text style={{ color: colors.success, fontWeight: '800', fontSize: 28, marginTop: 2 }}>{meta.totals.received}</Text>
+            <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>{t('funding.received', { defaultValue: 'Received' })}</Text>
+            <Text style={{ color: colors.success, fontWeight: '800', fontSize: 28, marginTop: 2 }}>{(meta as any).totals.received.label}</Text>
           </View>
           <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border }}>
             <View style={{ flex: 1, padding: 14 }}>
               <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '700' }}>{t('funding.outstanding', { defaultValue: 'Outstanding' })}</Text>
-              <Text style={{ color: colors.error, fontWeight: '800', marginTop: 2 }}>{meta.totals.outstanding}</Text>
+              <Text style={{ color: colors.error, fontWeight: '800', marginTop: 2 }}>{(meta as any).totals.outstanding.label}</Text>
             </View>
             <View style={{ width: 1, backgroundColor: colors.border }} />
             <View style={{ flex: 1, padding: 14 }}>
               <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '700' }}>{t('funding.expected', { defaultValue: 'Expected' })}</Text>
-              <Text style={{ color: colors.text, fontWeight: '800', marginTop: 2 }}>{meta.totals.expected}</Text>
+              <Text style={{ color: colors.text, fontWeight: '800', marginTop: 2 }}>{(meta as any).totals.expected.label}</Text>
             </View>
-          </View>
-          <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: withAlpha(BRAND.violet, 0.06) }}>
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-              {t('funding.verifiedOnly', { defaultValue: 'Only verified payments count as received.' })}
-            </Text>
           </View>
         </Card>
       )}
@@ -454,18 +368,8 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
         {CATEGORIES.map((s) => {
           const m = cat(s); const on = s === status;
           return (
-            <Pressable
-              key={s} accessibilityRole="tab" accessibilityState={{ selected: on }} accessibilityLabel={`${m.label}, ${countOf(s)}`}
-              onPress={() => {
-                if (s === status) return;
-                setStatus(s);
-                setRows([]);
-                // Show the loading state immediately so the empty-state
-                // does not flash before the request resolves.
-                setLoading(true);
-              }}
-              style={{ flex: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 4, borderRadius: 16, borderWidth: 1.5, borderColor: on ? m.color : colors.border, backgroundColor: on ? withAlpha(m.color, 0.14) : colors.surface, minHeight: 78 }}
-            >
+            <Pressable key={s} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => { setStatus(s); setPage(1); }}
+              style={{ flex: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 4, borderRadius: 16, borderWidth: 1.5, borderColor: on ? m.color : colors.border, backgroundColor: on ? withAlpha(m.color, 0.14) : colors.surface, minHeight: 78 }}>
               <Ionicons name={m.icon} size={16} color={m.color} />
               <Text style={{ color: colors.text, fontWeight: '800', fontSize: 20, marginTop: 4 }}>{countOf(s)}</Text>
               <Text style={{ color: m.color, fontWeight: '700', fontSize: 11, marginTop: 1 }} numberOfLines={1} adjustsFontSizeToFit>{m.label}</Text>
@@ -476,28 +380,11 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, marginTop: 16 }}>
         <Ionicons name="search" size={16} color={colors.textSecondary} />
-        <TextInput
-          value={qInput} onChangeText={setQInput} onSubmitEditing={() => { setQ(qInput.trim()); }} returnKeyType="search"
-          placeholder={t('funding.search', { defaultValue: 'Search member' })} placeholderTextColor={colors.textSecondary} accessibilityLabel={t('funding.search', { defaultValue: 'Search member' })}
-          style={{ flex: 1, paddingVertical: 10, color: colors.text, minHeight: 46 }}
-        />
+        <TextInput value={qInput} onChangeText={setQInput} onSubmitEditing={() => { setQ(qInput.trim()); setPage(1); }} returnKeyType="search" placeholder={t('funding.search')} placeholderTextColor={colors.textSecondary}
+          style={{ flex: 1, paddingVertical: 10, color: colors.text, minHeight: 46 }} />
       </View>
 
-      <Pressable
-        onPress={openTableModal}
-        accessibilityRole="button"
-        accessibilityLabel={t('funding.viewAllMembers', { defaultValue: 'View all members' })}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, paddingHorizontal: 14, minHeight: 48, borderRadius: 14, backgroundColor: withAlpha(BRAND.violet, 0.1) }}
-      >
-        <Ionicons name="people" size={18} color={BRAND.violet} />
-        <Text style={{ flex: 1, color: BRAND.violet, fontWeight: '800' }}>
-          {t('funding.viewAllMembers', { defaultValue: 'View all members' })}
-        </Text>
-        <Ionicons name="chevron-forward" size={18} color={BRAND.violet} />
-      </Pressable>
-
       {actionError && <Notice tone="error" text={actionError} />}
-
       <View style={{ height: 12 }} />
     </View>
   );
@@ -510,20 +397,24 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
         contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 96 }}
         ListHeaderComponent={listHeader}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void fetchPage(1, status, q, true); }} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => activeQ.refetch()} />}
         ListEmptyComponent={
           loading ? <ActivityIndicator style={{ marginTop: 40 }} color={BRAND.violet} />
-          : error ? <ErrorState message={error} onRetry={reload} />
+          : error ? <ErrorState message={error} onRetry={() => activeQ.refetch()} />
           : (
             <View style={{ padding: 28, alignItems: 'center', gap: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 20 }}>
               <Ionicons name="file-tray-outline" size={28} color={colors.textSecondary} />
-              <Text style={{ color: colors.textSecondary }}>{t('funding.nothingHere', { defaultValue: 'No records in this category.' })}</Text>
+              <Text style={{ color: colors.textSecondary }}>{t('funding.nothingHere')}</Text>
             </View>
           )
         }
         onEndReachedThreshold={0.4}
-        onEndReached={() => { if (hasMore && !more && !loading) { setMore(true); void fetchPage(page + 1, status, q, false); } }}
-        ListFooterComponent={more ? <ActivityIndicator style={{ marginVertical: 16 }} color={BRAND.violet} /> : null}
+        onEndReached={() => {
+          if (meta && rows.length < meta.total && !activeQ.isFetching) {
+            setPage((p) => p + 1);
+          }
+        }}
+        ListFooterComponent={activeQ.isFetching && !loading ? <ActivityIndicator style={{ marginVertical: 16 }} color={BRAND.violet} /> : null}
         renderItem={({ item: r }) => {
           const pending = r.status === 'PENDING_VERIFICATION' && (!r.decl || r.decl.status === 'PENDING');
           const busy = busyId === r.id;
@@ -537,7 +428,7 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16 }} numberOfLines={1}>{r.name}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                      {r.role === 'LEADER' && <Pill text={t('funding.leader', { defaultValue: 'Leader' })} color={BRAND.magenta} />}
+                      {r.role === 'LEADER' && <Pill text={t('funding.leader')} color={BRAND.magenta} />}
                       {showSub && !!r.sub && <Text style={{ color: colors.textSecondary, fontSize: 12, flexShrink: 1 }} numberOfLines={1}>{r.sub}</Text>}
                     </View>
                   </View>
@@ -552,54 +443,34 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
                 {r.decl && (r.status === 'PENDING_VERIFICATION' || r.status === 'REJECTED') && (
                   <View style={{ marginTop: 10, padding: 12, borderRadius: 14, backgroundColor: withAlpha(BRAND.violet, 0.08) }}>
                     <Text style={{ color: colors.text, fontWeight: '800' }}>
-                      {t('funding.declared', { defaultValue: 'Declared' })} {r.decl.amount.label}
+                      {t('funding.declared')} {r.decl.amount.label}
                       <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
-                        {'  ·  '}{r.decl.paymentMethod === 'BANK' ? t('funding.bank', { defaultValue: 'Bank' }) : r.decl.paymentMethod === 'TELEBIRR' ? 'Telebirr' : '—'}
+                        {'  ·  '}{r.decl.paymentMethod === 'BANK' ? t('funding.bank') : r.decl.paymentMethod === 'TELEBIRR' ? 'Telebirr' : '—'}
                       </Text>
                     </Text>
                     {!!r.decl.reference && <Text style={{ color: colors.textSecondary, marginTop: 2 }}>Ref: {r.decl.reference}</Text>}
                     <Text style={{ color: colors.textSecondary, marginTop: 2 }}>{instantLabel(r.decl.declaredAt)}</Text>
-                    {(r.pendingCount ?? 0) > 1 && (
-                      <Text style={{ color: '#B7791F', marginTop: 4, fontWeight: '800' }}>
-                        + {r.pendingCount! - 1} {t('funding.morePending', { defaultValue: 'more pending' })}
-                        {r.pendingTotalMinor ? ` (${formatEtb(r.pendingTotalMinor)} total)` : ''}
-                      </Text>
-                    )}
                   </View>
                 )}
-                {r.status === 'REJECTED' && !!r.reason && <Text style={{ color: colors.error, marginTop: 8 }}>{r.reason}</Text>}
 
                 {pending && (
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                    <Pressable
-                      disabled={!!busyId} accessibilityRole="button"
-                      onPress={() => Alert.alert(t('funding.approve', { defaultValue: 'Approve' }), t('funding.approveConfirm', { defaultValue: 'Confirm you have seen this money in the official account.' }), [
-                        { text: t('common.cancel'), style: 'cancel' },
-                        { text: t('funding.approve', { defaultValue: 'Approve' }), onPress: () => act(r.id, () => onApprove(r.id, r.decl?.id)) },
-                      ])}
-                      style={{ flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.success, opacity: busyId ? 0.5 : 1, minHeight: 44 }}
-                    >
+                    <Pressable disabled={!!busyId} onPress={() => Alert.alert(t('funding.approve'), t('funding.approveConfirm'), [
+                      { text: t('common.cancel'), style: 'cancel' },
+                      { text: t('funding.approve'), onPress: () => act(r.id, () => onApprove(r.id, r.decl?.id)) },
+                    ])}
+                      style={{ flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.success, opacity: busyId ? 0.5 : 1, minHeight: 44 }}>
                       {busy ? <ActivityIndicator color="#FFF" /> : (
                         <>
                           <Ionicons name="checkmark" size={16} color="#FFF" />
-                          <Text style={{ color: '#FFF', fontWeight: '800' }}>{t('funding.approve', { defaultValue: 'Approve' })}</Text>
+                          <Text style={{ color: '#FFF', fontWeight: '800' }}>{t('funding.approve')}</Text>
                         </>
                       )}
                     </Pressable>
-                    <Pressable
-                      disabled={!!busyId} accessibilityRole="button" onPress={() => { setRejectId(r.id); setRejectDeclId(r.decl?.id ?? null); }}
-                      style={{ flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1.5, borderColor: colors.error, opacity: busyId ? 0.5 : 1, minHeight: 44 }}
-                    >
+                    <Pressable disabled={!!busyId} onPress={() => { setRejectId(r.id); setRejectDeclId(r.decl?.id ?? null); }}
+                      style={{ flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1.5, borderColor: colors.error, opacity: busyId ? 0.5 : 1, minHeight: 44 }}>
                       <Ionicons name="close" size={16} color={colors.error} />
-                      <Text style={{ color: colors.error, fontWeight: '800' }}>{t('funding.reject', { defaultValue: 'Reject' })}</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={openTableModal} accessibilityRole="button"
-                      accessibilityLabel={t('funding.viewAllMembers', { defaultValue: 'View all members' })}
-                      style={{ flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: withAlpha(BRAND.violet, 0.12), minHeight: 44 }}
-                    >
-                      <Ionicons name="people" size={16} color={BRAND.violet} />
-                      <Text style={{ color: BRAND.violet, fontWeight: '800' }} numberOfLines={1}>{t('funding.members', { defaultValue: 'Members' })}</Text>
+                      <Text style={{ color: colors.error, fontWeight: '800' }}>{t('funding.reject')}</Text>
                     </Pressable>
                   </View>
                 )}
@@ -611,89 +482,16 @@ function LedgerPanel({ load, onApprove, onReject, header, showSub, contextType, 
 
       <ReasonModal
         visible={!!rejectId}
-        title={t('funding.reject', { defaultValue: 'Reject' })}
-        message={t('funding.rejectHint', { defaultValue: 'The member will see this reason and can resubmit.' })}
-        confirmLabel={t('funding.reject', { defaultValue: 'Reject' })}
+        title={t('funding.reject')}
+        message={t('funding.rejectHint')}
+        confirmLabel={t('funding.reject')}
         onClose={() => { setRejectId(null); setRejectDeclId(null); }}
         onSubmit={async (reason: string) => {
           const id = rejectId!;
           const decl = rejectDeclId ?? undefined;
-          try { await onReject(id, reason, decl); } catch (e) { await reload(); throw e; }
-          await reload();
+          try { await onReject(id, reason, decl); } catch (e) { throw e; }
         }}
       />
-
-      <Modal visible={tableVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setTableVisible(false)}>
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: Math.max(insets.top, 16), paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>
-                {t('funding.allMembersStatus', { defaultValue: 'All members' })}
-              </Text>
-              {!!contextLabel && <Text style={{ color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>{contextLabel}</Text>}
-            </View>
-            <Pressable
-              onPress={() => setTableVisible(false)} accessibilityRole="button" accessibilityLabel={t('common.close', { defaultValue: 'Close' })}
-              style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: withAlpha(colors.text, 0.08) }}
-            >
-              <Ionicons name="close" size={22} color={colors.text} />
-            </Pressable>
-          </View>
-
-          {tableLoading ? (
-            <ActivityIndicator style={{ marginTop: 40 }} color={BRAND.violet} />
-          ) : tableErr ? (
-            <ErrorState message={tableErr} onRetry={loadTable} />
-          ) : (
-            <>
-              <View style={{ flexDirection: 'row', gap: 6, padding: 16, paddingBottom: 8 }}>
-                {(['ALL', ...CATEGORIES] as LedgerFilter[]).map((s) => {
-                  const m = cat(s); const on = tableFilter === s;
-                  return (
-                    <Pressable
-                      key={s} onPress={() => setTableFilter(s)} accessibilityRole="tab" accessibilityState={{ selected: on }}
-                      style={{ flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, borderColor: on ? m.color : colors.border, backgroundColor: on ? withAlpha(m.color, 0.14) : colors.surface }}
-                    >
-                      <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16 }}>{tableCount(s)}</Text>
-                      <Text style={{ color: m.color, fontWeight: '700', fontSize: 10 }} numberOfLines={1} adjustsFontSizeToFit>{m.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <FlatList
-                data={tableRows}
-                keyExtractor={(r) => r.id}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 24 }}
-                ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-                ListEmptyComponent={
-                  <Text style={{ padding: 24, textAlign: 'center', color: colors.textSecondary }}>
-                    {t('funding.noMembers', { defaultValue: 'No members found.' })}
-                  </Text>
-                }
-                renderItem={({ item: r }) => (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-                    <Avatar name={r.name} uri={r.photoUrl} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: colors.text, fontWeight: '800', fontSize: 15 }} numberOfLines={1}>{r.name}</Text>
-                      <Text style={{ color: colors.textSecondary, marginTop: 2, fontSize: 13 }} numberOfLines={1}>
-                        <Text style={{ color: colors.text, fontWeight: '700' }}>{formatEtb(r.paidMinor)}</Text>
-                        {r.dueMinor !== null ? `  /  ${formatEtb(r.dueMinor)}` : ''}
-                      </Text>
-                      {(r.pendingCount ?? 0) > 0 && (
-                        <Text style={{ color: '#B7791F', fontSize: 11, fontWeight: '700', marginTop: 2 }}>
-                          {r.pendingCount} {t('funding.pendingLower', { defaultValue: 'pending' })}
-                        </Text>
-                      )}
-                    </View>
-                    <View style={{ alignSelf: 'center' }}><StatusChip status={r.status} /></View>
-                  </View>
-                )}
-              />
-            </>
-          )}
-        </View>
-      </Modal>
     </>
   );
 }
@@ -702,12 +500,7 @@ function Avatar({ name, uri }: { name: string; uri: string | null }) {
   const { theme } = useTheme();
   const [failed, setFailed] = useState(false);
   if (uri && !failed) {
-    return (
-      <Image
-        source={{ uri }} onError={() => setFailed(true)}
-        style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.border }}
-      />
-    );
+    return <Image source={{ uri }} onError={() => setFailed(true)} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.border }} />;
   }
   return (
     <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: withAlpha(BRAND.violet, 0.18) }}>

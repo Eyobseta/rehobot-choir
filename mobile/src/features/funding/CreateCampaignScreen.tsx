@@ -6,21 +6,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { AuthField, PrimaryButton, ErrorBanner, BRAND } from '../auth/Auth_UI';
 import { ScreenHero } from '../profile/SettingsKit';
-import {
-  leaderCreateCampaign, leaderUpdateCampaign, leaderPublishCampaign, getCampaignDetail, DonationType, CampaignStatus,
-} from '../../services/funding';
 import { parseEtbToMinor } from '../../utils/money';
 import { errorText, Notice, minorToInput } from './fundingKit';
 import { EthDate, formatEthDate, addEthDays, ethTodayFromInstant, ethDaysBetween } from '../../utils/ethiopianCalendar';
 import EthDatePicker from './EthDatePicker';
+import { CampaignStatus, DonationType } from '../../services/funding';
+import { useLeaderCampaignsQuery, useSaveCampaignMutation, useLeaderCampaignMutation } from './useLeaderFunding';
+import { useCampaignDetailQuery } from './useMemberFunding';
 
-/** Dims and blocks touches on its children (AuthField has no `editable` prop). */
 function Lockable({ locked, children, style }: { locked: boolean; children: React.ReactNode; style?: object }) {
-  return (
-    <View pointerEvents={locked ? 'none' : 'auto'} style={[{ opacity: locked ? 0.55 : 1 }, style]}>
-      {children}
-    </View>
-  );
+  return <View pointerEvents={locked ? 'none' : 'auto'} style={[{ opacity: locked ? 0.55 : 1 }, style]}>{children}</View>;
 }
 
 export default function CreateCampaignScreen({ navigation, route }: any) {
@@ -31,7 +26,10 @@ export default function CreateCampaignScreen({ navigation, route }: any) {
   const lang = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const editId: string | undefined = route?.params?.id;
 
-  const [loading, setLoading] = useState(!!editId);
+  const campQ = useCampaignDetailQuery(editId ?? '__new__');
+  const saveMut = useSaveCampaignMutation();
+  const publishMut = useLeaderCampaignMutation();
+
   const [status, setStatus] = useState<CampaignStatus | null>(editId ? null : 'DRAFT');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -41,34 +39,28 @@ export default function CreateCampaignScreen({ navigation, route }: any) {
   const [reason, setReason] = useState('');
   const [deadline, setDeadline] = useState<EthDate>(() => addEthDays(ethTodayFromInstant(new Date()), 30));
   const [pickerOpen, setPickerOpen] = useState(false);
-
-  const [busy, setBusy] = useState(false);
-  const busyRef = useRef(false);
-  const savedId = useRef<string | null>(editId ?? null);
   const [error, setError] = useState<string | null>(null);
 
+  const savedId = useRef<string | null>(editId ?? null);
+  const busy = saveMut.isPending || publishMut.isPending;
+
   useEffect(() => {
-    if (!editId) return;
-    (async () => {
-      try {
-        const { item } = await getCampaignDetail(editId);
-        setStatus(item.status);
-        setTitle(item.title);
-        setDescription(item.description);
-        setDonationType(item.donationType);
-        setAmountStr(item.requestedAmount ? minorToInput(item.requestedAmount.minor) : '');
-        setTargetStr(item.targetAmount ? minorToInput(item.targetAmount.minor) : '');
-        setDeadline(item.deadline.eth);
-      } catch (e) { setError(errorText(e)); }
-      finally { setLoading(false); }
-    })();
-  }, [editId]);
+    if (!editId || !campQ.data?.item) return;
+    const item = campQ.data.item;
+    setStatus(item.status);
+    setTitle(item.title);
+    setDescription(item.description);
+    setDonationType(item.donationType);
+    setAmountStr(item.requestedAmount ? minorToInput(item.requestedAmount.minor) : '');
+    setTargetStr(item.targetAmount ? minorToInput(item.targetAmount.minor) : '');
+    setDeadline(item.deadline.eth);
+  }, [editId, campQ.data]);
 
   const published = status === 'PUBLISHED';
   const readOnly = status === 'CLOSED' || status === 'CANCELLED';
 
   const onSave = async (publish: boolean) => {
-    if (busyRef.current || readOnly) return;
+    if (readOnly) return;
     setError(null);
     if (title.trim().length < 3) return setError(t('funding.titleTooShort'));
     if (description.trim().length < 10) return setError(t('funding.descTooShort'));
@@ -91,54 +83,33 @@ export default function CreateCampaignScreen({ navigation, route }: any) {
     if (ethDaysBetween(ethTodayFromInstant(new Date()), deadline) < 0) return setError(t('funding.deadlineInPast'));
     if (published && reason.trim().length < 3) return setError(t('funding.reasonShort', { n: 3 }));
 
-    busyRef.current = true; setBusy(true);
     try {
       if (published) {
-        // Type and per-person amount are locked after publishing; send only what may change.
-        await leaderUpdateCampaign(savedId.current!, {
-          title: title.trim(), description: description.trim(), targetAmountMinor, deadline, reason: reason.trim(),
-        });
+        await saveMut.mutateAsync({ id: savedId.current!, input: { title: title.trim(), description: description.trim(), targetAmountMinor, deadline, reason: reason.trim() } });
       } else if (!savedId.current) {
-        const res = await leaderCreateCampaign({
-          title: title.trim(), description: description.trim(), donationType,
-          requestedAmountMinor, targetAmountMinor, deadline,
-        });
-        savedId.current = res.id;
+        const res = await saveMut.mutateAsync({ input: { title: title.trim(), description: description.trim(), donationType, requestedAmountMinor, targetAmountMinor, deadline } });
+        savedId.current = (res as any).id;
       } else {
-        await leaderUpdateCampaign(savedId.current, {
-          title: title.trim(), description: description.trim(), donationType,
-          requestedAmountMinor, targetAmountMinor, deadline,
-        });
+        await saveMut.mutateAsync({ id: savedId.current, input: { title: title.trim(), description: description.trim(), donationType, requestedAmountMinor, targetAmountMinor, deadline } });
       }
-      if (publish && !published) await leaderPublishCampaign(savedId.current!);
+      if (publish && !published) await publishMut.mutateAsync({ action: 'publish', id: savedId.current! });
       navigation.goBack();
     } catch (e) {
       const msg = errorText(e);
-      setError(publish && savedId.current && !published
-        ? `${t('funding.draftSavedButFailed')}: ${msg}`
-        : msg);
-    } finally {
-      busyRef.current = false; setBusy(false);
+      setError(publish && savedId.current && !published ? `${t('funding.draftSavedButFailed')}: ${msg}` : msg);
     }
   };
 
-  if (loading) {
+  if (editId && campQ.isPending && campQ.data === undefined) {
     return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>;
   }
 
-  // published: locks type and amount
-  // readOnly (CLOSED/CANCELLED): locks everything
   const typeLocked = published || readOnly;
   const textLocked = readOnly;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScreenHero
-        icon="gift"
-        title={editId ? t('funding.editCampaign') : t('funding.newCampaign')}
-        subtitle={t('funding.campaignSubtitle')}
-        onBack={() => navigation.goBack()}
-      />
+      <ScreenHero icon="gift" title={editId ? t('funding.editCampaign') : t('funding.newCampaign')} subtitle={t('funding.campaignSubtitle')} onBack={() => navigation.goBack()} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: spacing.xl, paddingBottom: insets.bottom + 40 }}>
@@ -147,89 +118,41 @@ export default function CreateCampaignScreen({ navigation, route }: any) {
           {published && <Notice tone="info" text={t('funding.publishedEditNote')} />}
 
           <Lockable locked={textLocked}>
-            <AuthField
-              label={t('funding.campaignTitle')}
-              iconNode={<Ionicons name="text" size={18} color={BRAND.violet} />}
-              value={title} onChangeText={setTitle}
-              placeholder={t('funding.campaignTitlePlaceholder')}
-            />
+            <AuthField label={t('funding.campaignTitle')} iconNode={<Ionicons name="text" size={18} color={BRAND.violet} />} value={title} onChangeText={setTitle} placeholder={t('funding.campaignTitlePlaceholder')} />
           </Lockable>
 
           <Lockable locked={textLocked} style={{ marginTop: spacing.md }}>
-            <AuthField
-              label={t('funding.campaignDesc')}
-              iconNode={<Ionicons name="document-text" size={18} color={BRAND.violet} />}
-              value={description} onChangeText={setDescription} multiline
-              placeholder={t('funding.campaignDescPlaceholder')}
-            />
+            <AuthField label={t('funding.campaignDesc')} iconNode={<Ionicons name="document-text" size={18} color={BRAND.violet} />} value={description} onChangeText={setDescription} multiline placeholder={t('funding.campaignDescPlaceholder')} />
           </Lockable>
 
-          <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '800', marginTop: spacing.md, marginBottom: 8 }]}>
-            {t('funding.donationType')}
-          </Text>
+          <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '800', marginTop: spacing.md, marginBottom: 8 }]}>{t('funding.donationType')}</Text>
           <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
             {(['VOLUNTARY', 'REQUIRED'] as const).map((type) => (
-              <Pressable
-                key={type}
-                disabled={typeLocked}
-                onPress={() => setDonationType(type)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: donationType === type, disabled: typeLocked }}
-                style={{
-                  flex: 1, backgroundColor: donationType === type ? BRAND.violet : colors.surface,
-                  borderWidth: 1, borderColor: colors.border, paddingVertical: 12, borderRadius: 12, alignItems: 'center',
-                  opacity: typeLocked ? 0.55 : 1,
-                }}
-              >
-                <Text style={{ color: donationType === type ? '#FFF' : colors.text, fontWeight: '700' }}>
-                  {type === 'VOLUNTARY' ? t('funding.voluntary') : t('funding.required')}
-                </Text>
+              <Pressable key={type} disabled={typeLocked} onPress={() => setDonationType(type)} accessibilityRole="radio" accessibilityState={{ selected: donationType === type, disabled: typeLocked }}
+                style={{ flex: 1, backgroundColor: donationType === type ? BRAND.violet : colors.surface, borderWidth: 1, borderColor: colors.border, paddingVertical: 12, borderRadius: 12, alignItems: 'center', opacity: typeLocked ? 0.55 : 1 }}>
+                <Text style={{ color: donationType === type ? '#FFF' : colors.text, fontWeight: '700' }}>{type === 'VOLUNTARY' ? t('funding.voluntary') : t('funding.required')}</Text>
               </Pressable>
             ))}
           </View>
 
           <Lockable locked={typeLocked}>
-            <AuthField
-              label={donationType === 'REQUIRED' ? t('funding.fixedAmount') : t('funding.suggestedAmount')}
-              iconNode={<Ionicons name="cash" size={18} color={BRAND.violet} />}
-              value={amountStr} onChangeText={setAmountStr} keyboardType="phone-pad"
-              placeholder={t('funding.fixedAmountPlaceholder')}
-            />
+            <AuthField label={donationType === 'REQUIRED' ? t('funding.fixedAmount') : t('funding.suggestedAmount')} iconNode={<Ionicons name="cash" size={18} color={BRAND.violet} />} value={amountStr} onChangeText={setAmountStr} keyboardType="phone-pad" placeholder={t('funding.fixedAmountPlaceholder')} />
           </Lockable>
 
           <Lockable locked={readOnly} style={{ marginTop: spacing.md }}>
-            <AuthField
-              label={t('funding.targetAmount')}
-              iconNode={<Ionicons name="stats-chart" size={18} color={BRAND.violet} />}
-              value={targetStr} onChangeText={setTargetStr} keyboardType="phone-pad"
-              placeholder={t('funding.targetAmountPlaceholder')}
-            />
+            <AuthField label={t('funding.targetAmount')} iconNode={<Ionicons name="stats-chart" size={18} color={BRAND.violet} />} value={targetStr} onChangeText={setTargetStr} keyboardType="phone-pad" placeholder={t('funding.targetAmountPlaceholder')} />
           </Lockable>
 
-          <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '800', marginTop: spacing.md, marginBottom: 8 }]}>
-            {t('funding.deadline')}
-          </Text>
-          <Pressable
-            disabled={readOnly}
-            onPress={() => setPickerOpen(true)}
-            accessibilityRole="button"
-            style={{
-              padding: 16, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border,
-              marginBottom: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-              opacity: readOnly ? 0.55 : 1,
-            }}
-          >
+          <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '800', marginTop: spacing.md, marginBottom: 8 }]}>{t('funding.deadline')}</Text>
+          <Pressable disabled={readOnly} onPress={() => setPickerOpen(true)} accessibilityRole="button"
+            style={{ padding: 16, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', opacity: readOnly ? 0.55 : 1 }}>
             <Text style={{ color: colors.text, fontSize: 16 }}>{formatEthDate(deadline, lang)}</Text>
             <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
           </Pressable>
 
           {published && (
             <View style={{ marginBottom: spacing.md }}>
-              <AuthField
-                label={t('funding.reasonChange')}
-                iconNode={<Ionicons name="chatbox-ellipses-outline" size={18} color={BRAND.violet} />}
-                value={reason} onChangeText={setReason} multiline
-              />
+              <AuthField label={t('funding.reasonChange')} iconNode={<Ionicons name="chatbox-ellipses-outline" size={18} color={BRAND.violet} />} value={reason} onChangeText={setReason} multiline />
             </View>
           )}
 
@@ -239,10 +162,7 @@ export default function CreateCampaignScreen({ navigation, route }: any) {
                 <PrimaryButton label={t('funding.saveChanges')} onPress={() => onSave(false)} busy={busy} />
               ) : (
                 <>
-                  <Pressable
-                    onPress={() => onSave(false)} disabled={busy}
-                    style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: BRAND.violet, paddingVertical: 14, borderRadius: 14, alignItems: 'center', opacity: busy ? 0.6 : 1 }}
-                  >
+                  <Pressable onPress={() => onSave(false)} disabled={busy} style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: BRAND.violet, paddingVertical: 14, borderRadius: 14, alignItems: 'center', opacity: busy ? 0.6 : 1 }}>
                     <Text style={{ color: BRAND.violet, fontWeight: '800', fontSize: 16 }}>{busy ? t('funding.saving') : t('funding.saveDraft')}</Text>
                   </Pressable>
                   <PrimaryButton label={t('funding.publishNow')} onPress={() => onSave(true)} busy={busy} />
@@ -253,13 +173,7 @@ export default function CreateCampaignScreen({ navigation, route }: any) {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <EthDatePicker
-        visible={pickerOpen}
-        title={t('funding.selectDeadline')}
-        value={deadline}
-        onClose={() => setPickerOpen(false)}
-        onConfirm={setDeadline}
-      />
+      <EthDatePicker visible={pickerOpen} title={t('funding.selectDeadline')} value={deadline} onClose={() => setPickerOpen(false)} onConfirm={setDeadline} />
     </View>
   );
 }
