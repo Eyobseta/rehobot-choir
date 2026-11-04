@@ -1,15 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   Pressable,
   Image,
   ScrollView,
-  ActivityIndicator,
   RefreshControl,
   Animated,
   Easing,
   StyleSheet,
+  AccessibilityInfo,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -72,6 +72,25 @@ function ethFromSummary(s: {
   return { year: s.dateEthYear, month: s.dateEthMonth, day: s.dateEthDay };
 }
 
+/** "5m ago" / "3h ago" / "2d ago"; falls back to a date for older or scheduled items. */
+function timeAgo(
+  iso: string | Date,
+  t: (k: string, o?: any) => string,
+): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  const diff = Date.now() - then;
+  if (diff < 0) return new Date(iso).toLocaleString();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return t('home.justNow', { defaultValue: 'Just now' });
+  if (m < 60) return t('home.minAgo', { count: m, defaultValue: '{{count}}m ago' });
+  const h = Math.floor(m / 60);
+  if (h < 24) return t('home.hrAgo', { count: h, defaultValue: '{{count}}h ago' });
+  const d = Math.floor(h / 24);
+  if (d < 7) return t('home.dayAgo', { count: d, defaultValue: '{{count}}d ago' });
+  return new Date(iso).toLocaleDateString();
+}
+
 export default function HomeScreen({ navigation }: any) {
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
@@ -131,6 +150,8 @@ export default function HomeScreen({ navigation }: any) {
 
   // ---------------- Motion: drifting blobs + scroll parallax ----------------
   const scrollY = useRef(new Animated.Value(0)).current;
+  const [barOn, setBarOn] = useState(false);
+  const barOnRef = useRef(false);
   const drift = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -166,6 +187,18 @@ export default function HomeScreen({ navigation }: any) {
   const heroShift = scrollY.interpolate({
     inputRange: [0, 200],
     outputRange: [0, -18],
+    extrapolate: 'clamp',
+  });
+
+  // Compact sticky bar: fades in once the hero has scrolled away.
+  const barOpacity = scrollY.interpolate({
+    inputRange: [120, 210],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  const barShift = scrollY.interpolate({
+    inputRange: [120, 210],
+    outputRange: [-24, 0],
     extrapolate: 'clamp',
   });
 
@@ -222,7 +255,16 @@ export default function HomeScreen({ navigation }: any) {
         scrollEventThrottle={16}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true },
+          {
+            useNativeDriver: true,
+            listener: (e: any) => {
+              const on = e.nativeEvent.contentOffset.y > 170;
+              if (on !== barOnRef.current) {
+                barOnRef.current = on;
+                setBarOn(on);
+              }
+            },
+          },
         )}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: spacing.xl * 2 }}
         refreshControl={
@@ -315,6 +357,7 @@ export default function HomeScreen({ navigation }: any) {
                   <Text style={styles.heroKicker} numberOfLines={1}>
                     {partLabel}
                   </Text>
+                  <Equalizer />
                 </View>
                 <Text style={styles.heroTitle} numberOfLines={2}>
                   {t('home.welcome')}
@@ -337,7 +380,7 @@ export default function HomeScreen({ navigation }: any) {
             </View>
 
             {/* info chips */}
-            {(unreadCount > 0 || todayCount > 0) && (
+            {(unreadCount > 0 || todayCount > 0 || !!(upcoming && upcomingEth)) && (
               <View style={styles.chips}>
                 {unreadCount > 0 && (
                   <Chip
@@ -356,6 +399,15 @@ export default function HomeScreen({ navigation }: any) {
                       count: todayCount,
                       defaultValue: '{{count}} birthday today',
                     })}
+                  />
+                )}
+                {!!(upcoming && upcomingEth) && (
+                  <Chip
+                    icon="calendar"
+                    text={evCountdown}
+                    onPress={() =>
+                      navigation.navigate('EventDetail', { id: upcoming!.id })
+                    }
                   />
                 )}
               </View>
@@ -377,28 +429,9 @@ export default function HomeScreen({ navigation }: any) {
         <View style={{ paddingHorizontal: spacing.lg }}>
           {/* =============== SAVED-DATA NOTICE =============== */}
           {showingSavedData && (
-            <View
-              accessibilityRole="text"
-              style={{
-                marginTop: 12,
-                marginBottom: 4,
-                alignSelf: 'flex-start',
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 999,
-                backgroundColor: withAlpha(AMBER, 0.14),
-                borderWidth: 1,
-                borderColor: withAlpha(AMBER, 0.4),
-              }}
-            >
-              <Ionicons name="cloud-offline" size={13} color={AMBER} />
-              <Text style={[typography.caption, { color: AMBER, fontWeight: '800' }]}>
-                {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
-              </Text>
-            </View>
+            <SavedPill
+              label={t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
+            />
           )}
 
           {/* =============== DAILY QUOTE (overlaps hero) =============== */}
@@ -407,6 +440,9 @@ export default function HomeScreen({ navigation }: any) {
               <DailyQuoteCard />
             </View>
           </Reveal>
+
+          {/* =============== FIRST-LOAD SKELETON =============== */}
+          {firstLoad && <HomeSkeleton />}
 
           {/* =============== UPCOMING EVENT =============== */}
           {upcoming && (
@@ -591,6 +627,7 @@ export default function HomeScreen({ navigation }: any) {
                     end={{ x: 1, y: 1 }}
                     style={ABS_FILL}
                   />
+                  {todayCount > 0 && <Confetti />}
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -819,7 +856,7 @@ export default function HomeScreen({ navigation }: any) {
                                 ]}
                                 numberOfLines={1}
                               >
-                                {new Date(a.publishAt).toLocaleString()}
+                                {timeAgo(a.publishAt, t)}
                               </Text>
                             </View>
                           </View>
@@ -877,16 +914,19 @@ export default function HomeScreen({ navigation }: any) {
               </View>
             </LinearGradient>
           </Reveal>
-
-          {/* First-load spinner (only when nothing is cached) */}
-          {firstLoad && (
-            <ActivityIndicator
-              style={{ marginTop: spacing.lg }}
-              color={BRAND.violet}
-            />
-          )}
         </View>
       </Animated.ScrollView>
+
+      <StickyBar
+        top={insets.top}
+        opacity={barOpacity}
+        shift={barShift}
+        on={barOn}
+        count={unreadCount}
+        onBell={goNotifications}
+        dateLabel={dateLabel}
+        bellLabel={t('notifications.title')}
+      />
     </View>
   );
 }
@@ -980,8 +1020,10 @@ function Sparkle({
   delay?: number;
   color?: string;
 }) {
+  const reduce = useReduceMotion();
   const v = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    if (reduce) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.delay(delay),
@@ -1001,8 +1043,9 @@ function Sparkle({
     );
     loop.start();
     return () => loop.stop();
-  }, [v, delay]);
+  }, [v, delay, reduce]);
 
+  if (reduce) return null;
   return (
     <Animated.View
       pointerEvents="none"
@@ -1532,6 +1575,415 @@ function BirthdayBubble({
         </Text>
       </View>
     </PressScale>
+  );
+}
+
+/* =====================================================================
+ * New UI pieces (all pure JS / Animated — safe for OTA updates)
+ * ===================================================================== */
+
+/** Respects the OS "reduce motion" setting for purely decorative loops. */
+function useReduceMotion(): boolean {
+  const [reduce, setReduce] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((v) => {
+        if (alive) setReduce(v);
+      })
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduce);
+    return () => {
+      alive = false;
+      sub?.remove?.();
+    };
+  }, []);
+  return reduce;
+}
+
+/** Tiny animated music equalizer — a choir wink in the greeting pill. */
+const EQ_H = 14;
+const EQ_BARS: [number, number][] = [
+  [520, 0],
+  [380, 120],
+  [640, 60],
+  [450, 200],
+];
+
+function EqBar({ dur, delay }: { dur: number; delay: number }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(v, {
+          toValue: 1,
+          duration: dur,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(v, {
+          toValue: 0,
+          duration: dur,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [v, dur, delay]);
+
+  return (
+    <Animated.View
+      style={{
+        width: 3,
+        height: EQ_H,
+        borderRadius: 2,
+        backgroundColor: BRAND.gold,
+        transform: [
+          { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [EQ_H * 0.35, 0] }) },
+          { scaleY: v.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) },
+        ],
+      }}
+    />
+  );
+}
+
+function Equalizer() {
+  const reduce = useReduceMotion();
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: EQ_H, marginLeft: 2 }}
+    >
+      {EQ_BARS.map(([d, l], i) =>
+        reduce ? (
+          <View
+            key={i}
+            style={{
+              width: 3,
+              height: EQ_H * (0.5 + 0.15 * i),
+              borderRadius: 2,
+              backgroundColor: BRAND.gold,
+            }}
+          />
+        ) : (
+          <EqBar key={i} dur={d} delay={l} />
+        ),
+      )}
+    </View>
+  );
+}
+
+/** "Showing saved data" pill (was repeated inline). */
+function SavedPill({ label }: { label: string }) {
+  const { theme } = useTheme();
+  const { typography } = theme;
+  return (
+    <View
+      accessibilityRole="text"
+      style={{
+        marginTop: 12,
+        marginBottom: 4,
+        alignSelf: 'flex-start',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
+        backgroundColor: withAlpha(AMBER, 0.14),
+        borderWidth: 1,
+        borderColor: withAlpha(AMBER, 0.4),
+      }}
+    >
+      <Ionicons name="cloud-offline" size={13} color={AMBER} />
+      <Text style={[typography.caption, { color: AMBER, fontWeight: '800' }]}>{label}</Text>
+    </View>
+  );
+}
+
+/** Falling confetti inside the birthday card when someone has a birthday today. */
+const CONFETTI = [
+  { x: 0.05, c: BRAND.gold, d: 3400, l: 0 },
+  { x: 0.16, c: BRAND.magenta, d: 4200, l: 600 },
+  { x: 0.27, c: BRAND.water, d: 3800, l: 1300 },
+  { x: 0.38, c: BRAND.violet, d: 4600, l: 300 },
+  { x: 0.49, c: BRAND.gold, d: 3600, l: 1700 },
+  { x: 0.6, c: BRAND.magenta, d: 4000, l: 900 },
+  { x: 0.71, c: BRAND.water, d: 4400, l: 200 },
+  { x: 0.82, c: BRAND.gold, d: 3500, l: 1100 },
+  { x: 0.92, c: BRAND.violet, d: 4100, l: 500 },
+];
+
+function ConfettiPiece({
+  x,
+  c,
+  d,
+  l,
+  w,
+  h,
+}: (typeof CONFETTI)[number] & { w: number; h: number }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(l),
+        Animated.timing(v, {
+          toValue: 1,
+          duration: d,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [v, d, l]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: x * w,
+        top: -14,
+        width: 6,
+        height: 10,
+        borderRadius: 2,
+        backgroundColor: c,
+        opacity: v.interpolate({ inputRange: [0, 0.1, 0.85, 1], outputRange: [0, 0.9, 0.9, 0] }),
+        transform: [
+          { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, h + 16] }) },
+          {
+            translateX: v.interpolate({
+              inputRange: [0, 0.25, 0.5, 0.75, 1],
+              outputRange: [0, 8, 0, -8, 0],
+            }),
+          },
+          { rotate: v.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '540deg'] }) },
+        ],
+      }}
+    />
+  );
+}
+
+function Confetti() {
+  const reduce = useReduceMotion();
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  if (reduce) return null;
+  return (
+    <View
+      pointerEvents="none"
+      onLayout={(e) =>
+        setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })
+      }
+      style={[ABS_FILL, { overflow: 'hidden' }]}
+    >
+      {size.w > 0 &&
+        CONFETTI.map((p, i) => <ConfettiPiece key={i} {...p} w={size.w} h={size.h} />)}
+    </View>
+  );
+}
+
+/** Shimmering placeholders shown only on a true first load (nothing cached). */
+function SkelBlock({
+  h,
+  w,
+  r = 16,
+  op,
+  color,
+  style,
+}: {
+  h: number;
+  w?: number | string;
+  r?: number;
+  op: Animated.AnimatedInterpolation<number>;
+  color: string;
+  style?: any;
+}) {
+  return (
+    <Animated.View
+      style={[
+        { height: h, width: (w ?? '100%') as any, borderRadius: r, backgroundColor: color, opacity: op },
+        style,
+      ]}
+    />
+  );
+}
+
+function HomeSkeleton() {
+  const { theme } = useTheme();
+  const { colors, spacing } = theme;
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(v, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(v, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [v]);
+
+  const op = v.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.85] });
+  const c = colors.border;
+
+  return (
+    <View accessibilityState={{ busy: true }} style={{ marginBottom: spacing.lg }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 12 }}>
+        <SkelBlock h={28} w={28} r={10} op={op} color={c} />
+        <SkelBlock h={16} w={170} r={8} op={op} color={c} />
+      </View>
+      <SkelBlock h={200} r={30} op={op} color={c} />
+      <View style={{ height: spacing.lg }} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 12 }}>
+        <SkelBlock h={28} w={28} r={10} op={op} color={c} />
+        <SkelBlock h={16} w={130} r={8} op={op} color={c} />
+      </View>
+      <SkelBlock h={64} r={22} op={op} color={c} style={{ marginBottom: 10 }} />
+      <SkelBlock h={64} r={22} op={op} color={c} />
+    </View>
+  );
+}
+
+/** Compact bar that slides in when the big hero has scrolled out of view. */
+function StickyBar({
+  top,
+  opacity,
+  shift,
+  on,
+  count,
+  onBell,
+  dateLabel,
+  bellLabel,
+}: {
+  top: number;
+  opacity: Animated.AnimatedInterpolation<number>;
+  shift: Animated.AnimatedInterpolation<number>;
+  on: boolean;
+  count: number;
+  onBell: () => void;
+  dateLabel: string;
+  bellLabel: string;
+}) {
+  return (
+    <Animated.View
+      pointerEvents={on ? 'auto' : 'none'}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        opacity,
+        transform: [{ translateY: shift }],
+        shadowColor: BRAND.deep,
+        shadowOpacity: 0.35,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 6 },
+        elevation: 10,
+      }}
+    >
+      <LinearGradient
+        colors={[BRAND.deep, BRAND.violet]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{
+          paddingTop: top + 8,
+          paddingBottom: 10,
+          paddingHorizontal: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          borderBottomLeftRadius: 22,
+          borderBottomRightRadius: 22,
+        }}
+      >
+        <View
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 17,
+            backgroundColor: BRAND.gold,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="musical-notes" size={17} color={BRAND.deep} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800', letterSpacing: 2 }}
+            numberOfLines={1}
+          >
+            REHOBOT
+          </Text>
+          <Text
+            style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '700' }}
+            numberOfLines={1}
+          >
+            {dateLabel}
+          </Text>
+        </View>
+        <Pressable
+          onPress={onBell}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={bellLabel}
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 13,
+            backgroundColor: 'rgba(255,255,255,0.18)',
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.3)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons
+            name={count > 0 ? 'notifications' : 'notifications-outline'}
+            size={19}
+            color="#FFFFFF"
+          />
+          {count > 0 && (
+            <View
+              style={{
+                position: 'absolute',
+                top: -5,
+                right: -5,
+                minWidth: 18,
+                height: 18,
+                paddingHorizontal: 4,
+                borderRadius: 9,
+                backgroundColor: '#EF4444',
+                borderWidth: 2,
+                borderColor: BRAND.violet,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '800' }}>
+                {count > 99 ? '99+' : count}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      </LinearGradient>
+    </Animated.View>
   );
 }
 
