@@ -12,3 +12,14 @@ export async function runNotificationCleanupJob(): Promise<{
   });
   return { deleted: result.count };
 }
+
+/**
+ * SRS Help module — query logs are retained for 90 days.
+ */
+export async function runHelpCleanupJob(): Promise<{ deleted: number }> {
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const result = await prisma.helpQueryLog.deleteMany({
+    where: { createdAt: { lt: cutoff } },
+  });
+  return { deleted: result.count };
+}

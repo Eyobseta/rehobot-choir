@@ -3,7 +3,7 @@ import { authenticate, authorize } from '../auth/middleware';
 import { env } from '../config/env';
 import { runBirthdayJob } from './birthdays.job';
 import { runEventRemindersJob } from './eventReminders.job';
-import { runNotificationCleanupJob } from './cleanup.job';
+import { runNotificationCleanupJob, runHelpCleanupJob } from './cleanup.job';
 import { ApiError } from '../utils/ApiError';
 import { runFundingReminderJob } from '../funding/funding.job';
 
@@ -51,4 +51,11 @@ router.post('/funding-reminders', async (_req, res, next) => {
   try { res.json(await runFundingReminderJob()); } catch (e) { next(e); }
 });
 
+router.post('/help-cleanup', async (_req, res, next) => {
+  try {
+    res.json(await runHelpCleanupJob());
+  } catch (e) {
+    next(e);
+  }
+});
 export default router;

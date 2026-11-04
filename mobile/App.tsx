@@ -28,6 +28,7 @@ import ChangePasswordScreen from './src/features/profile/ChangePasswordScreen';
 import { queryClient } from './src/services/queryClient';
 import { makePersistOptions } from './src/services/queryPersister';
 import { clearAllCaches } from './src/services/cacheWipe';
+import HelpRoot from './src/features/help/HelpRoot';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -284,22 +285,25 @@ function AppShell() {
     },
   };
 
-  return (
-    <NavigationContainer
-      ref={navigationRef}
-      theme={navTheme}
-      onReady={() => {
-        // Flush a push tap that was buffered while the navigator was not
-        // ready yet (cold start, or while forced-password was blocking the UI).
-        if (pendingPush.current) {
-          const data = pendingPush.current;
-          pendingPush.current = null;
-          navigateFromRoot(navigationRef, data);
-        }
-      }}
-    >
-      {authenticated ? <RootTabs /> : <AuthNavigator />}
-    </NavigationContainer>
+    return (
+    <View style={{ flex: 1 }}>
+      <NavigationContainer
+        ref={navigationRef}
+        theme={navTheme}
+        onReady={() => {
+          // (your existing onReady body — leave untouched)
+          if (pendingPush.current) {
+            const data = pendingPush.current;
+            pendingPush.current = null;
+            navigateFromRoot(navigationRef, data);
+          }
+        }}
+      >
+        {authenticated ? <RootTabs /> : <AuthNavigator />}
+      </NavigationContainer>
+
+      {authenticated && <HelpRoot navigationRef={navigationRef} />}
+    </View>
   );
 }
 

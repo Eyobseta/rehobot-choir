@@ -28,6 +28,7 @@ import {
   formatEthDate,
 } from '../src/utils/ethiopianCalendar'; // Import from src to keep consistent
 import { ethFields } from '../src/utils/eth-fields';
+import { seedHelpEntries } from './help.seed';
 
 const prisma = new PrismaClient();
 
@@ -636,6 +637,10 @@ async function main() {
       deviceLabel: 'Pixel 7',
     },
   });
+
+  // ---- Help / in-app assistant KB ----
+  const helpCount = await seedHelpEntries(prisma);
+  console.log(`[seed] help entries upserted: ${helpCount}`);
 
   console.log('[seed] Done.');
   console.log('[seed] Ethiopian "today":', formatEthDate(todayEth, 'en'));

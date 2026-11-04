@@ -32,6 +32,8 @@ import chatStreamRoutes from './chat/chat.stream.routes';
 import fundingRoutes from './funding/funding.routes';
 import donationRoutes from './funding/donation.routes';
 import fundingAdminRoutes from './funding/funding-admin.routes';
+import helpRoutes from './help/help.routes';
+
 
 export function createApp(): Application {
   const app = express();
@@ -93,6 +95,7 @@ export function createApp(): Application {
   api.use('/funding', fundingRoutes);
   api.use('/funding', donationRoutes);
   api.use('/admin/funding', fundingAdminRoutes);
+  api.use('/help', helpRoutes);
 
   app.use('/api/v1', api);
 

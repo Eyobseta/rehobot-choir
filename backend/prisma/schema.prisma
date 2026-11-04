@@ -76,6 +76,7 @@ model User {
   chatReadStates       ChatReadState[]
   chatGroupsManaged    ChatGroup[]          @relation("GroupManager")
   chatGroupsCreated    ChatGroup[]          @relation("GroupCreatedBy")
+    helpQueryLogs  HelpQueryLog[] @relation("HelpQueryLogUser")
 
   birthdayPosts         BirthdayPost[]         @relation("BirthdayPosts")
   birthdayComments      BirthdayComment[]      @relation("BirthdayComments")
@@ -1309,4 +1310,73 @@ model FundingReminderLog {
 
   @@unique([recipientId, recordType, recordId, kind, periodKey])
   @@map("funding_reminder_logs")
+}
+
+// ============================================================
+// HELP / IN-APP ASSISTANT
+// ============================================================
+
+enum HelpFeedback {
+  NONE
+  UP
+  DOWN
+}
+
+model HelpEntry {
+  id                 String         @id @default(cuid())
+  slug               String         @unique
+  category           String
+
+  intentsEn          String[]
+  intentsAm          String[]
+  questionVariantsEn String[]
+  questionVariantsAm String[]
+  answerEn           String
+  answerAm           String         @default("")
+
+  // Semantic key: HOME | SONGS | MEMORIES | CHAT | PROFILE | FUNDING
+  deepLink           String?
+
+  // Who can see this entry. Uses the existing UserRole enum.
+  visibleToRoles     UserRole[]
+
+  // React Navigation route names to boost, e.g. ["Profile", "Funding"]
+  screenHints        String[]
+
+  active             Boolean        @default(true)
+  sortOrder          Int            @default(0)
+
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  queryLogs          HelpQueryLog[] @relation("HelpMatchedEntry")
+
+  @@index([category])
+  @@index([active])
+  @@map("help_entries")
+}
+
+model HelpQueryLog {
+  id             String        @id @default(cuid())
+
+  userId         String?
+  user           User?         @relation("HelpQueryLogUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  roleAtQuery    UserRole?
+  screen         String?
+  language       String
+  rawQuery       String?       // PII-redacted by the service before insert
+  matchedEntryId String?
+  matchedEntry   HelpEntry?    @relation("HelpMatchedEntry", fields: [matchedEntryId], references: [id], onDelete: SetNull)
+  matchScore     Float?
+
+  feedback       HelpFeedback  @default(NONE)
+  feedbackNote   String?
+
+  createdAt      DateTime      @default(now())
+
+  @@index([createdAt])
+  @@index([matchedEntryId])
+  @@index([userId])
+  @@map("help_query_logs")
 }

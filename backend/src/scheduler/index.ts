@@ -2,8 +2,9 @@ import cron from 'node-cron';
 import { env } from '../config/env';
 import { runBirthdayJob } from './birthdays.job';
 import { runEventRemindersJob } from './eventReminders.job';
-import { runNotificationCleanupJob } from './cleanup.job';
 import { runFundingReminderJob } from '../funding/funding.job';
+import { runNotificationCleanupJob, runHelpCleanupJob } from './cleanup.job';
+
 
 let started = false;
 
@@ -13,12 +14,12 @@ export function startScheduler(): void {
 
   // eslint-disable-next-line no-console
   console.log('[scheduler] starting cron jobs...');
-
   // 03:00 server-local every day — cleanup
   cron.schedule('0 3 * * *', async () => {
     try {
-      const result = await runNotificationCleanupJob();
-      console.log(`[scheduler] cleanup deleted ${result.deleted} rows`);
+      const n = await runNotificationCleanupJob();
+      const h = await runHelpCleanupJob();
+      console.log(`[scheduler] cleanup deleted ${n.deleted} notifications, ${h.deleted} help logs`);
     } catch (e) {
       console.warn('[scheduler] cleanup failed', e);
     }
