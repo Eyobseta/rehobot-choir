@@ -1,5 +1,6 @@
-import React, { useLayoutEffect, useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import { View, Text, Animated, TextInput } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
@@ -8,24 +9,30 @@ import { ApiError } from '../../services/api';
 import { setSessionState } from '../../services/session';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { registerDeviceWithBackend } from '../../services/pushTokens';
+import { AuthScreen, AuthField, PrimaryButton, ErrorBanner } from './Auth_UI';
 import {
-  AuthScreen,
-  AuthField,
-  PrimaryButton,
-  ErrorBanner,
-} from './Auth_UI';
+  ActionTile,
+  FadeInUp,
+  LabeledDivider,
+  fieldIcon,
+  useShake,
+} from './Auth_kit';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
 
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showMissing, setShowMissing] = useState(false);
+
+  const passwordRef = useRef<TextInput>(null);
+  const { shakeStyle, shake } = useShake();
 
   // Use our own branded header instead of the native one.
   useLayoutEffect(() => {
@@ -33,6 +40,17 @@ export default function LoginScreen({ navigation }: Props) {
   }, [navigation]);
 
   const onLogin = async () => {
+    if (busy) return;
+
+    // Friendly guard: highlight what's missing instead of hitting the API.
+    if (!phone.trim() || !password) {
+      setShowMissing(true);
+      setError(t('register.fieldRequired'));
+      shake();
+      return;
+    }
+
+    setShowMissing(false);
     setError(null);
     setBusy(true);
     try {
@@ -43,7 +61,7 @@ export default function LoginScreen({ navigation }: Props) {
         : `Emulator (${Platform.OS})`;
 
       await login({ phone: phone.trim(), password, deviceLabel });
-      
+
       const { refreshRole } = await import('../../services/role');
       await refreshRole();
       setSessionState('authenticated');
@@ -56,12 +74,14 @@ export default function LoginScreen({ navigation }: Props) {
       if (err.code === 'ACCOUNT_LOCKED') {
         setError(
           t('auth.accountLocked', {
-            defaultValue: 'Your account is locked. Please contact a choir leader to unlock it.',
-          })
+            defaultValue:
+              'Your account is locked. Please contact a choir leader to unlock it.',
+          }),
         );
       } else {
         setError(`${err.message} [${err.code}]`);
       }
+      shake();
     } finally {
       setBusy(false);
     }
@@ -71,75 +91,77 @@ export default function LoginScreen({ navigation }: Props) {
     <AuthScreen
       subtitle={t('auth.tagline', { defaultValue: 'Sing together, grow together' })}
     >
-      <Text style={[typography.h2, { color: colors.text }]}>
-        {t('auth.loginTitle')}
-      </Text>
-      <Text
-        style={[
-          typography.bodySmall,
-          { color: colors.textSecondary, marginTop: spacing.xs, marginBottom: spacing.xl },
-        ]}
-      >
-        {t('auth.loginSubtitle', { defaultValue: 'Welcome back! Sign in to continue.' })}
-      </Text>
-
-      <AuthField
-        label={t('auth.phone')}
-        icon="📞"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-        autoCapitalize="none"
-        returnKeyType="next"
-      />
-      <AuthField
-        label={t('auth.password')}
-        icon="🔒"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoCapitalize="none"
-        returnKeyType="go"
-        onSubmitEditing={onLogin}
-      />
-
-      {error && <ErrorBanner message={error} />}
-
-      <View style={{ marginTop: spacing.sm }}>
-        <PrimaryButton label={t('auth.login')} onPress={onLogin} busy={busy} icon="🎶" />
-      </View>
-
-      <View style={{ marginTop: spacing.xl, gap: spacing.md, alignItems: 'center' }}>
-        <Pressable onPress={() => navigation.navigate('Register')} hitSlop={8}>
-          <Text style={[typography.body, { color: colors.text, textAlign: 'center' }]}>
-            {t('auth.dontHaveAccount')}{' '}
-            <Text style={{ color: colors.primary, fontWeight: '700' }}>
-              {t('auth.register')}
-            </Text>
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => navigation.navigate('Status')}
-          style={{
-            paddingHorizontal: spacing.lg,
-            paddingVertical: spacing.sm,
-            borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: colors.border,
-            backgroundColor: colors.surface,
-          }}
+      <FadeInUp index={0}>
+        <Text style={[typography.h1, { color: colors.text }]}>{t('auth.loginTitle')}</Text>
+        <Text
+          style={[
+            typography.body,
+            { color: colors.textSecondary, marginTop: spacing.xs, marginBottom: spacing.xl },
+          ]}
         >
-          <Text
-            style={[
-              typography.bodySmall,
-              { color: colors.textSecondary, textAlign: 'center' },
-            ]}
-          >
-            {t('auth.checkStatus')}
-          </Text>
-        </Pressable>
-      </View>
+          {t('auth.loginSubtitle', { defaultValue: 'Welcome back! Sign in to continue.' })}
+        </Text>
+      </FadeInUp>
+
+      <FadeInUp index={1}>
+        <AuthField
+          label={t('auth.phone')}
+          iconNode={fieldIcon('call-outline')}
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          autoCapitalize="none"
+          autoComplete="tel"
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          error={showMissing && !phone.trim()}
+        />
+        <AuthField
+          label={t('auth.password')}
+          iconNode={fieldIcon('lock-closed-outline')}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoComplete="password"
+          returnKeyType="go"
+          onSubmitEditing={onLogin}
+          inputRef={passwordRef}
+          error={showMissing && !password}
+        />
+      </FadeInUp>
+
+      {error ? (
+        <Animated.View style={[{ marginTop: spacing.xs }, shakeStyle]}>
+          <ErrorBanner message={error} />
+        </Animated.View>
+      ) : null}
+
+      <FadeInUp index={2} style={{ marginTop: spacing.sm }}>
+        <PrimaryButton
+          label={t('auth.login')}
+          onPress={onLogin}
+          busy={busy}
+          iconNode={<Ionicons name="musical-notes" size={20} color="#FFFFFF" />}
+        />
+      </FadeInUp>
+
+      <FadeInUp index={3} style={{ marginTop: spacing.xxl }}>
+        <LabeledDivider text={t('auth.dontHaveAccount')} />
+        <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg }}>
+          <ActionTile
+            icon="person-add-outline"
+            label={t('auth.register')}
+            onPress={() => navigation.navigate('Register')}
+          />
+          <ActionTile
+            icon="search-outline"
+            label={t('auth.checkStatus')}
+            tint={colors.accent}
+            onPress={() => navigation.navigate('Status')}
+          />
+        </View>
+      </FadeInUp>
     </AuthScreen>
   );
 }

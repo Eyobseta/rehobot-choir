@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { View, Text, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
@@ -17,6 +18,7 @@ import {
   ErrorBanner,
   withAlpha,
 } from './Auth_UI';
+import { FadeInUp, StatusBadge, StatusTimeline, fieldIcon, useShake } from './Auth_kit';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Status'>;
 
@@ -31,6 +33,7 @@ export default function RegistrationStatusScreen({ route, navigation }: Props) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<RegistrationStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { shakeStyle, shake } = useShake();
 
   // Use our own branded header instead of the native one.
   useLayoutEffect(() => {
@@ -65,6 +68,7 @@ export default function RegistrationStatusScreen({ route, navigation }: Props) {
     } catch (e) {
       const err = e as ApiError;
       setError(`${err.message} [${err.code}]`);
+      shake();
     } finally {
       setBusy(false);
     }
@@ -72,10 +76,10 @@ export default function RegistrationStatusScreen({ route, navigation }: Props) {
 
   const tone =
     status?.status === 'APPROVED'
-      ? { color: colors.success, icon: '✓' }
+      ? { color: colors.success }
       : status?.status === 'REJECTED'
-        ? { color: colors.error, icon: '✕' }
-        : { color: PENDING_COLOR, icon: '⏳' };
+        ? { color: colors.error }
+        : { color: PENDING_COLOR };
 
   const badgeLabel =
     status?.status === 'APPROVED'
@@ -86,46 +90,53 @@ export default function RegistrationStatusScreen({ route, navigation }: Props) {
 
   return (
     <AuthScreen compact>
-      <Text style={[typography.h2, { color: colors.text }]}>{t('status.title')}</Text>
-      <Text
-        style={[
-          typography.bodySmall,
-          { color: colors.textSecondary, marginTop: spacing.xs, marginBottom: spacing.xl },
-        ]}
-      >
-        {t('status.checkSubtitle')}
-      </Text>
+      <FadeInUp index={0}>
+        <Text style={[typography.h1, { color: colors.text }]}>{t('status.title')}</Text>
+        <Text
+          style={[
+            typography.body,
+            { color: colors.textSecondary, marginTop: spacing.xs, marginBottom: spacing.xl },
+          ]}
+        >
+          {t('status.checkSubtitle')}
+        </Text>
+      </FadeInUp>
 
-      <AuthField
-        label={t('status.phone')}
-        icon="📞"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-        autoCapitalize="none"
-        returnKeyType="go"
-        onSubmitEditing={() => query(phone)}
-      />
+      <FadeInUp index={1}>
+        <AuthField
+          label={t('status.phone')}
+          iconNode={fieldIcon('call-outline')}
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          autoCapitalize="none"
+          autoComplete="tel"
+          returnKeyType="go"
+          onSubmitEditing={() => query(phone)}
+        />
 
-      <PrimaryButton
-        label={t('status.check')}
-        onPress={() => query(phone)}
-        busy={busy}
-        icon="🔍"
-      />
+        <PrimaryButton
+          label={t('status.check')}
+          onPress={() => query(phone)}
+          busy={busy}
+          iconNode={<Ionicons name="search" size={18} color="#FFFFFF" />}
+        />
+      </FadeInUp>
 
-      {error && (
-        <View style={{ marginTop: spacing.md }}>
+      {error ? (
+        <Animated.View style={[{ marginTop: spacing.md }, shakeStyle]}>
           <ErrorBanner message={error} />
-        </View>
-      )}
+        </Animated.View>
+      ) : null}
 
       {status && (
         <Animated.View
           style={{
             marginTop: spacing.xl,
-            padding: spacing.lg,
-            borderRadius: radius.md,
+            paddingHorizontal: spacing.lg,
+            paddingBottom: spacing.lg,
+            paddingTop: spacing.sm,
+            borderRadius: radius.lg,
             borderWidth: 1.5,
             borderColor: withAlpha(tone.color, 0.5),
             backgroundColor: colors.surface,
@@ -136,25 +147,18 @@ export default function RegistrationStatusScreen({ route, navigation }: Props) {
             ],
           }}
         >
-          <View
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 32,
-              backgroundColor: withAlpha(tone.color, 0.15),
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: spacing.md,
-            }}
-          >
-            <Text style={{ fontSize: 28, color: tone.color, fontWeight: '800' }}>
-              {tone.icon}
-            </Text>
+          <View style={{ marginVertical: -spacing.xl }}>
+            <StatusBadge kind={status.status} color={tone.color} />
           </View>
 
           {status.status === 'PENDING' && (
             <>
-              <Text style={[typography.h3, { color: tone.color, textAlign: 'center' }]}>
+              <Text
+                style={[
+                  typography.h2,
+                  { color: tone.color, textAlign: 'center', marginTop: spacing.md },
+                ]}
+              >
                 {badgeLabel}
               </Text>
               <Text
@@ -170,7 +174,12 @@ export default function RegistrationStatusScreen({ route, navigation }: Props) {
 
           {status.status === 'APPROVED' && (
             <>
-              <Text style={[typography.h3, { color: tone.color, textAlign: 'center' }]}>
+              <Text
+                style={[
+                  typography.h2,
+                  { color: tone.color, textAlign: 'center', marginTop: spacing.md },
+                ]}
+              >
                 {badgeLabel}
               </Text>
               <Text
@@ -186,44 +195,93 @@ export default function RegistrationStatusScreen({ route, navigation }: Props) {
 
           {status.status === 'REJECTED' && (
             <>
-              <Text style={[typography.h3, { color: colors.error, textAlign: 'center' }]}>
+              <Text
+                style={[
+                  typography.h2,
+                  { color: colors.error, textAlign: 'center', marginTop: spacing.md },
+                ]}
+              >
                 {t('status.rejected')}
               </Text>
               {status.rejectionReason && (
-                <Text
-                  style={[
-                    typography.body,
-                    { color: colors.text, marginTop: spacing.sm, textAlign: 'center' },
-                  ]}
+                <View
+                  style={{
+                    alignSelf: 'stretch',
+                    marginTop: spacing.md,
+                    padding: spacing.md,
+                    borderRadius: radius.md,
+                    borderLeftWidth: 4,
+                    borderLeftColor: colors.error,
+                    backgroundColor: withAlpha(colors.error, 0.1),
+                  }}
                 >
-                  {t('status.rejectionReason')}: {status.rejectionReason}
-                </Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                    {t('status.rejectionReason')}
+                  </Text>
+                  <Text style={[typography.body, { color: colors.text, marginTop: 2 }]}>
+                    {status.rejectionReason}
+                  </Text>
+                </View>
               )}
-              <View style={{ alignSelf: 'stretch', marginTop: spacing.lg }}>
-                <PrimaryButton
-                  label={t('status.createNew')}
-                  onPress={() => navigation.navigate('Register')}
-                />
-              </View>
             </>
           )}
 
-          <View style={{ alignSelf: 'stretch', marginTop: spacing.md }}>
-            <SecondaryButton
-              label={t('status.backToLogin')}
-              onPress={() => navigation.navigate('Login')}
+          <View style={{ alignSelf: 'stretch', marginTop: spacing.xl }}>
+            <StatusTimeline
+              status={status.status}
+              decisionColor={tone.color}
+              pendingColor={PENDING_COLOR}
             />
+          </View>
+
+          {/* Actions depend on the outcome */}
+          <View style={{ alignSelf: 'stretch', marginTop: spacing.xl, gap: spacing.md }}>
+            {status.status === 'APPROVED' && (
+              <PrimaryButton
+                label={t('auth.login')}
+                onPress={() => navigation.navigate('Login')}
+                iconNode={<Ionicons name="log-in-outline" size={20} color="#FFFFFF" />}
+              />
+            )}
+
+            {status.status === 'REJECTED' && (
+              <PrimaryButton
+                label={t('status.createNew')}
+                onPress={() => navigation.navigate('Register')}
+                iconNode={<Ionicons name="refresh" size={18} color="#FFFFFF" />}
+              />
+            )}
+
+            {status.status === 'PENDING' ? (
+              <View style={{ flexDirection: 'row', gap: spacing.md }}>
+                <SecondaryButton
+                  label={t('status.refresh', { defaultValue: 'Refresh' })}
+                  onPress={() => query(phone)}
+                  flex={1}
+                />
+                <SecondaryButton
+                  label={t('status.backToLogin')}
+                  onPress={() => navigation.navigate('Login')}
+                  flex={1}
+                />
+              </View>
+            ) : status.status === 'REJECTED' ? (
+              <SecondaryButton
+                label={t('status.backToLogin')}
+                onPress={() => navigation.navigate('Login')}
+              />
+            ) : null}
           </View>
         </Animated.View>
       )}
 
       {!status && (
-        <View style={{ marginTop: spacing.xl }}>
+        <FadeInUp index={2} style={{ marginTop: spacing.xl }}>
           <SecondaryButton
             label={t('status.backToLogin')}
             onPress={() => navigation.navigate('Login')}
           />
-        </View>
+        </FadeInUp>
       )}
     </AuthScreen>
   );

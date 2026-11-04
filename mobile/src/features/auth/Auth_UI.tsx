@@ -325,6 +325,35 @@ export function LanguageToggle({ top }: { top: number }) {
   );
 }
 
+/** Sun/moon button, top-left of the brand header. Uses ThemeContext. */
+export function ThemeToggle({ top }: { top: number }) {
+  const { mode, toggleTheme } = useTheme();
+  return (
+    <Pressable
+      onPress={toggleTheme}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Toggle theme"
+      style={{
+        position: 'absolute',
+        top,
+        left: 16,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.35)',
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        zIndex: 10,
+      }}
+    >
+      <Ionicons name={mode === 'dark' ? 'sunny' : 'moon'} size={17} color={BRAND.gold} />
+    </Pressable>
+  );
+}
+
 export function BrandHeader({
   subtitle,
   compact,
@@ -425,6 +454,7 @@ export function BrandHeader({
         )}
 
         <LanguageToggle top={insets.top + 8} />
+        <ThemeToggle top={insets.top + 8} />
       </View>
     </View>
   );
@@ -661,6 +691,11 @@ export function AuthField({
   multiline,
   returnKeyType,
   onSubmitEditing,
+  inputRef,
+  error,
+  helper,
+  maxLength,
+  autoComplete,
 }: {
   label: string;
   value: string;
@@ -675,6 +710,14 @@ export function AuthField({
   multiline?: boolean;
   returnKeyType?: 'done' | 'next' | 'go';
   onSubmitEditing?: () => void;
+  /** Pass a ref to focus this field from the previous one. */
+  inputRef?: React.Ref<TextInput>;
+  /** Red state (invalid). */
+  error?: boolean;
+  /** Small hint text under the field. */
+  helper?: string;
+  maxLength?: number;
+  autoComplete?: React.ComponentProps<typeof TextInput>['autoComplete'];
 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -725,7 +768,7 @@ export function AuthField({
           style={[
             typography.bodySmall,
             {
-              color: focused ? BRAND.violet : colors.textSecondary,
+              color: error ? colors.error : focused ? BRAND.violet : colors.textSecondary,
               marginBottom: spacing.xs,
               fontWeight: '600',
             },
@@ -737,7 +780,7 @@ export function AuthField({
 
       <View
         onLayout={(e) => setW(e.nativeEvent.layout.width)}
-        style={{ borderRadius: r, overflow: 'hidden', backgroundColor: colors.border }}
+        style={{ borderRadius: r, overflow: 'hidden', backgroundColor: error ? colors.error : colors.border }}
       >
         {w > 0 && (
           <Animated.View
@@ -778,6 +821,10 @@ export function AuthField({
             <Text style={{ fontSize: 16, marginRight: spacing.sm, marginTop: multiline ? 14 : 0 }}>{icon}</Text>
           ) : null}
           <TextInput
+            ref={inputRef}
+            maxLength={maxLength}
+            autoComplete={autoComplete}
+            blurOnSubmit={returnKeyType !== 'next'}
             value={value}
             onChangeText={onChangeText}
             keyboardType={keyboardType ?? 'default'}
@@ -812,6 +859,16 @@ export function AuthField({
           ) : null}
         </View>
       </View>
+      {helper ? (
+        <Text
+          style={[
+            typography.caption,
+            { color: error ? colors.error : colors.textSecondary, marginTop: spacing.xs },
+          ]}
+        >
+          {helper}
+        </Text>
+      ) : null}
     </View>
   );
 }
