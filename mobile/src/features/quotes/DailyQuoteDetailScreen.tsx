@@ -8,6 +8,9 @@ import {
   Alert,
   Animated,
   Easing,
+  Platform,
+  Share,
+  AccessibilityInfo,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,33 +27,52 @@ import {
   getCurrentKey,
   SimpleStatus,
 } from '../../services/audioPlayer';
-import { BRAND } from '../auth/Auth_UI';
+import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import { formatEthDate, isValidEthDate } from '../../utils/ethiopianCalendar';
 
 const CREAM = '#FFF4E0';
 const SAND = '#F3DDB8';
+const INK = '#7A4B22';
 const YT = '#FF0000';
+const GRADIENT = ['#2E1A12', '#6E3B1C', '#A2601F'] as const;
+const SERIF = Platform.select({ ios: 'Georgia', android: 'serif', default: undefined });
+
+// Reader text-size steps (Aa button cycles through them).
+const SIZE_STEPS = [0.88, 1, 1.15, 1.3];
+
+function useReduceMotion(): boolean {
+  const [reduce, setReduce] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((v) => alive && setReduce(v))
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduce);
+    return () => {
+      alive = false;
+      sub?.remove?.();
+    };
+  }, []);
+  return reduce;
+}
 
 /**
  * Route params:
  *   { quote: DailyQuote }  — required (every caller already passes this)
- *
- * The previous `{ id }` fallback path was removed — it referenced
- * `getCachedQuoteById`, which does not exist in services/quotes.ts, and no
- * caller ever passed `{ id }`. Deep-linking to a specific quote is not
- * currently implemented; if it ever is, it should pass `{ quote }` too.
  */
 export default function DailyQuoteDetailScreen({ route, navigation }: any) {
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const { spacing, typography } = theme;
   const insets = useSafeAreaInsets();
+  const reduce = useReduceMotion();
   const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
 
   const quote: DailyQuote | undefined = route.params?.quote;
 
   const [playerStatus, setPlayerStatus] = useState<SimpleStatus>(getSnapshot());
+  const [sizeStep, setSizeStep] = useState(1);
 
   // Same subscription pattern as SongDetailScreen
   useEffect(() => {
@@ -86,13 +108,30 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
   if (!quote) {
     return (
       <LinearGradient
-        colors={['#C98B4A', '#A56B36', '#6E4220']}
+        colors={GRADIENT}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0.9, y: 1 }}
         style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl }}
       >
-        <Ionicons name="leaf-outline" size={40} color={SAND} />
-        <Text style={[typography.body, { color: '#FFFFFF', marginTop: spacing.md, textAlign: 'center' }]}>
+        <SunGlow reduce={reduce} top={-50} right={-40} />
+        <View
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: 24,
+            backgroundColor: 'rgba(255,255,255,0.14)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="leaf-outline" size={34} color={SAND} />
+        </View>
+        <Text
+          style={[
+            typography.body,
+            { color: '#FFFFFF', marginTop: spacing.md, textAlign: 'center' },
+          ]}
+        >
           {t('quote.empty')}
         </Text>
         <View style={{ position: 'absolute', top: insets.top + 12, right: 16 }}>
@@ -154,29 +193,36 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
     });
   };
 
-  // Shrink the type a little for long quotes so it always reads well.
+  const onShare = () => {
+    Share.share({ message: `“${quote.quoteText}”\n— ${quote.source}` }).catch(() => {});
+  };
+
+  // Base size shrinks for long quotes; the reader can also scale it with "Aa".
   const long = quote.quoteText.length > 180;
-  const quoteFont = long ? 21 : 27;
-  const quoteLine = long ? 33 : 42;
+  const mult = SIZE_STEPS[sizeStep];
+  const quoteFont = Math.round((long ? 21 : 27) * mult);
+  const quoteLine = Math.round(quoteFont * 1.55);
 
   return (
     <LinearGradient
-      colors={['#C98B4A', '#A56B36', '#6E4220']}
+      colors={GRADIENT}
       start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      end={{ x: 0.9, y: 1 }}
       style={{ flex: 1 }}
     >
-      {/* decorative layers */}
+      {/* ---------- decoration ---------- */}
+      <SunGlow reduce={reduce} top={-60} right={-50} />
       <Text
         pointerEvents="none"
         style={{
           position: 'absolute',
-          top: insets.top + 40,
-          left: 14,
+          top: insets.top + 50,
+          left: 10,
           fontSize: 260,
           lineHeight: 280,
           fontWeight: '800',
-          color: 'rgba(255,255,255,0.10)',
+          fontFamily: SERIF,
+          color: 'rgba(255,255,255,0.07)',
         }}
       >
         “
@@ -185,24 +231,12 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
         pointerEvents="none"
         style={{
           position: 'absolute',
-          top: -60,
-          right: -50,
-          width: 220,
-          height: 220,
-          borderRadius: 110,
-          backgroundColor: 'rgba(255,215,140,0.16)',
-        }}
-      />
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          bottom: -90,
-          left: -70,
-          width: 260,
-          height: 260,
-          borderRadius: 130,
-          backgroundColor: 'rgba(255,232,180,0.14)',
+          bottom: -100,
+          left: -80,
+          width: 280,
+          height: 280,
+          borderRadius: 140,
+          backgroundColor: 'rgba(255,214,150,0.12)',
         }}
       />
 
@@ -221,21 +255,26 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
           style={{
             width: 50,
             height: 50,
-            borderRadius: 16,
-            backgroundColor: 'rgba(255,255,255,0.24)',
+            borderRadius: 17,
+            backgroundColor: BRAND.gold,
             alignItems: 'center',
             justifyContent: 'center',
+            shadowColor: BRAND.gold,
+            shadowOpacity: 0.5,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 5 },
+            elevation: 5,
           }}
         >
-          <Ionicons name="sunny" size={22} color={CREAM} />
+          <Ionicons name="sunny" size={24} color={INK} />
         </View>
         <View style={{ flex: 1 }}>
           <Text
             style={{
-              color: 'rgba(255,255,255,0.78)',
+              color: SAND,
               fontSize: 11,
               fontWeight: '800',
-              letterSpacing: 1,
+              letterSpacing: 1.4,
               textTransform: 'uppercase',
             }}
             numberOfLines={1}
@@ -243,7 +282,7 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
             {t('quote.title')}
           </Text>
           <Text
-            style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '800', marginTop: 2 }}
+            style={{ color: '#FFFFFF', fontSize: 19, fontWeight: '800', marginTop: 2 }}
             numberOfLines={1}
           >
             {dateLabel}
@@ -268,37 +307,33 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={fadeUp(0)}>
-          {/* date pill */}
-          <View
+          <Text
             style={{
-              alignSelf: 'flex-start',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 12,
-              backgroundColor: 'rgba(255,255,255,0.18)',
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.24)',
+              color: BRAND.gold,
+              fontSize: 70,
+              lineHeight: 64,
+              height: 38,
+              fontFamily: SERIF,
+              fontWeight: '800',
             }}
           >
-            <Ionicons name="calendar-outline" size={13} color={CREAM} />
-            <Text style={[typography.caption, { color: CREAM, fontWeight: '800' }]}>
-              {dateLabel}
-            </Text>
-          </View>
+            “
+          </Text>
 
           <Text
             selectable
             style={{
-              marginTop: spacing.lg,
+              marginTop: spacing.sm,
               color: '#FFFFFF',
               fontSize: quoteFont,
               lineHeight: quoteLine,
+              fontFamily: SERIF,
               fontStyle: 'italic',
               fontWeight: '500',
               letterSpacing: 0.2,
+              textShadowColor: 'rgba(0,0,0,0.28)',
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 5,
             }}
           >
             {quote.quoteText}
@@ -313,7 +348,7 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
               marginTop: spacing.lg,
             }}
           >
-            <View style={{ width: 30, height: 2, borderRadius: 1, backgroundColor: SAND }} />
+            <View style={{ width: 34, height: 2, borderRadius: 1, backgroundColor: BRAND.gold }} />
             <Text
               style={[
                 typography.body,
@@ -324,14 +359,30 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
             </Text>
           </View>
 
+          {/* reader tools */}
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: spacing.xl }}>
+            <ToolPill
+              icon="share-social"
+              label={t('quote.share', { defaultValue: 'Share' })}
+              onPress={onShare}
+            />
+            <ToolPill
+              text="Aa"
+              label={t('quote.textSize', { defaultValue: 'Text size' })}
+              onPress={() => setSizeStep((s) => (s + 1) % SIZE_STEPS.length)}
+              dots={SIZE_STEPS.length}
+              active={sizeStep}
+            />
+          </View>
+
           {/* ---------- YouTube ---------- */}
           {hasVideo && (
             <Pressable
               onPress={onPlayVideo}
               accessibilityRole="button"
               style={{
-                marginTop: spacing.xl,
-                borderRadius: 18,
+                marginTop: spacing.lg,
+                borderRadius: 20,
                 overflow: 'hidden',
                 shadowColor: YT,
                 shadowOpacity: 0.35,
@@ -350,7 +401,7 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
                   justifyContent: 'center',
                   gap: 10,
                   paddingVertical: 16,
-                  borderRadius: 18,
+                  borderRadius: 20,
                 }}
               >
                 <Ionicons name="logo-youtube" size={22} color="#FFFFFF" />
@@ -374,57 +425,57 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
           fadeUp(1),
         ]}
       >
-        {/* Audio: same design + logic as SongDetailScreen */}
         {hasAudio && (
           <Pressable
             onPress={onTogglePlay}
-            style={{
-              marginBottom: 14,
-              borderRadius: 18,
-              overflow: 'hidden',
-              shadowColor: BRAND.violet,
-              shadowOpacity: 0.35,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 6 },
-              elevation: 5,
-            }}
             accessibilityRole="button"
+            accessibilityLabel={isThisPlaying ? t('songs.pause') : t('songs.playAudio')}
+            style={({ pressed }) => ({
+              marginBottom: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 14,
+              padding: 12,
+              borderRadius: 24,
+              backgroundColor: pressed ? 'rgba(0,0,0,0.34)' : 'rgba(0,0,0,0.24)',
+              borderWidth: 1,
+              borderColor: isThisPlaying ? withAlpha(BRAND.gold, 0.7) : 'rgba(255,255,255,0.2)',
+            })}
           >
-            <LinearGradient
-              colors={[BRAND.violet, BRAND.magenta]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <View
               style={{
-                flexDirection: 'row',
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: BRAND.gold,
                 alignItems: 'center',
-                justifyContent: 'flex-start',
-                gap: 12,
-                paddingVertical: 16,
-                paddingHorizontal: 20,
-                borderRadius: 18,
+                justifyContent: 'center',
+                shadowColor: BRAND.gold,
+                shadowOpacity: isThisPlaying ? 0.6 : 0.3,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 4 },
+                elevation: 4,
               }}
             >
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: '#FFFFFF',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons
-                  name={isThisPlaying ? 'pause' : 'play'}
-                  size={20}
-                  color={BRAND.violet}
-                  style={{ marginLeft: isThisPlaying ? 0 : 2 }}
-                />
-              </View>
+              <Ionicons
+                name={isThisPlaying ? 'pause' : 'play'}
+                size={22}
+                color={INK}
+                style={{ marginLeft: isThisPlaying ? 0 : 3 }}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
               <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}>
                 {isThisPlaying ? t('songs.pause') : t('songs.playAudio')}
               </Text>
-            </LinearGradient>
+              <Text
+                style={{ color: SAND, fontSize: 12, fontWeight: '600', marginTop: 2 }}
+                numberOfLines={1}
+              >
+                {mediaTitle}
+              </Text>
+            </View>
+            <EqBars active={isThisPlaying && !reduce} />
           </Pressable>
         )}
 
@@ -435,16 +486,16 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
             alignItems: 'center',
             gap: spacing.sm + 2,
             padding: spacing.md,
-            borderRadius: 18,
-            backgroundColor: 'rgba(255,255,255,0.14)',
+            borderRadius: 20,
+            backgroundColor: 'rgba(255,255,255,0.12)',
             borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.22)',
+            borderColor: 'rgba(255,255,255,0.2)',
           }}
         >
           {publisherPhoto ? (
             <Image
               source={{ uri: publisherPhoto }}
-              style={{ width: 36, height: 36, borderRadius: 18 }}
+              style={{ width: 38, height: 38, borderRadius: 19 }}
             />
           ) : (
             <LinearGradient
@@ -452,14 +503,14 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
+                width: 38,
+                height: 38,
+                borderRadius: 19,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '800' }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>
                 {publisherName.charAt(0).toUpperCase()}
               </Text>
             </LinearGradient>
@@ -476,5 +527,212 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
         </View>
       </Animated.View>
     </LinearGradient>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Small pieces (module scope)
+// ---------------------------------------------------------------------------
+
+/** Softly pulsing "rising sun" in the corner. */
+function SunGlow({
+  top,
+  right,
+  reduce,
+}: {
+  top: number;
+  right: number;
+  reduce: boolean;
+}) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (reduce) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(v, {
+          toValue: 1,
+          duration: 2800,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(v, {
+          toValue: 0,
+          duration: 2800,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [v, reduce]);
+
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top,
+        right,
+        width: 260,
+        height: 260,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Animated.View
+        style={{
+          position: 'absolute',
+          width: 260,
+          height: 260,
+          borderRadius: 130,
+          backgroundColor: withAlpha(BRAND.gold, 0.09),
+          transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] }) }],
+        }}
+      />
+      <Animated.View
+        style={{
+          position: 'absolute',
+          width: 180,
+          height: 180,
+          borderRadius: 90,
+          backgroundColor: withAlpha(BRAND.gold, 0.14),
+          transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1.08, 1] }) }],
+        }}
+      />
+      <View
+        style={{
+          width: 100,
+          height: 100,
+          borderRadius: 50,
+          backgroundColor: withAlpha(BRAND.gold, 0.42),
+        }}
+      />
+    </View>
+  );
+}
+
+/** Glass pill button used for Share / text-size. */
+function ToolPill({
+  icon,
+  text,
+  label,
+  onPress,
+  dots,
+  active,
+}: {
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
+  text?: string;
+  label: string;
+  onPress: () => void;
+  dots?: number;
+  active?: number;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 16,
+        backgroundColor: pressed ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.24)',
+      })}
+    >
+      {icon ? (
+        <Ionicons name={icon} size={16} color={CREAM} />
+      ) : (
+        <Text style={{ color: CREAM, fontSize: 15, fontWeight: '800', fontFamily: SERIF }}>
+          {text}
+        </Text>
+      )}
+      <Text style={{ color: CREAM, fontSize: 12.5, fontWeight: '800' }}>{label}</Text>
+      {dots ? (
+        <View style={{ flexDirection: 'row', gap: 3 }}>
+          {Array.from({ length: dots }).map((_, i) => (
+            <View
+              key={i}
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: 3,
+                backgroundColor: i <= (active ?? 0) ? BRAND.gold : 'rgba(255,255,255,0.3)',
+              }}
+            />
+          ))}
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
+/** Tiny equalizer shown while audio plays. */
+const EQ_H = 20;
+function EqBar({ dur, delay, active }: { dur: number; delay: number; active: boolean }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!active) {
+      v.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(v, {
+          toValue: 1,
+          duration: dur,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(v, {
+          toValue: 0,
+          duration: dur,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [v, dur, delay, active]);
+
+  return (
+    <Animated.View
+      style={{
+        width: 4,
+        height: EQ_H,
+        borderRadius: 2,
+        backgroundColor: BRAND.gold,
+        transform: [
+          { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [EQ_H * 0.4, 0] }) },
+          { scaleY: v.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }) },
+        ],
+      }}
+    />
+  );
+}
+
+function EqBars({ active }: { active: boolean }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: EQ_H, paddingRight: 6 }}
+    >
+      {[
+        [520, 0],
+        [380, 120],
+        [640, 60],
+        [450, 200],
+      ].map(([d, l], i) => (
+        <EqBar key={i} dur={d} delay={l} active={active} />
+      ))}
+    </View>
   );
 }
