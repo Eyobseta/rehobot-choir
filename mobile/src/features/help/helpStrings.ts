@@ -40,7 +40,7 @@ export const helpAm: typeof helpEn = {
   emptyHint: 'ከእነዚህ ይሞክሩ ወይም ጥያቄዎን ይጻፉ።',
   suggestion1: 'Funding የሚገኘው የት ነው?',
   suggestion2: 'መዋጮዬን እንዴት እከፍላለሁ?',
-  suggestion3: 'ዘፈን እንዴት አስገባለሁ?',
+  suggestion3: 'መዝሙር እንዴት አስገባለሁ?',
   suggestion4: 'የይለፍ ቃሌን እንዴት እቀይራለሁ?',
   suggestion5: 'ለክስተት እንዴት RSVP አደርጋለሁ?',
   fallbackTitle: 'ያንን ማግኘት አልቻልኩም',
