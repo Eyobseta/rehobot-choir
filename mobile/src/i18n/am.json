@@ -396,7 +396,9 @@
     "noAudioBody": "ይህ መዝሙር ከመስመር ውጭ ለመጠቀም የሚሆን የድምፅ ፋይል የለውም።",
     "videoUnavailable": "ቪዲዮው አይገኝም።",
     "playbackSpeed": "የማጫወቻ ፍጥነት",
-    "fullscreenHint": "ለማስፋት በቪዲዮ ማጫወቻው ውስጥ ያለውን የሙሉ ማያ ቁልፍ ይንኩ።"
+    "fullscreenHint": "ለማስፋት በቪዲዮ ማጫወቻው ውስጥ ያለውን የሙሉ ማያ ቁልፍ ይንኩ።",
+    "count": "{{count}} ዘፈኖች",
+    "savedCount": "{{count}} ተቀምጠዋል"
   },
   "leaderSongs": {
     "title": "መዝሙሮች",
@@ -483,7 +485,12 @@
     "empty": "እስካሁን ያቀረቡት መዝሙር የለም።",
     "notFound": "ያቀረቡት መዝሙር አልተገኘም።",
     "lockedPending": "ይህ በግምገማ ላይ ስለሆነ ማስተካከል አይቻልም።",
-    "lockedApproved": "ይህ ጸድቆ ታትሟል።"
+    "lockedApproved": "ይህ ጸድቆ ታትሟል።",
+    "sectionBasics": "መሠረታዊ",
+    "sectionMedia": "ሚዲያ",
+    "sectionLyrics": "ግጥም",
+    "lineCount": "{{count}} መስመሮች",
+    "filterAll": "ሁሉም"
   },
   "memories": {
     "title": "ትዝታዎች",

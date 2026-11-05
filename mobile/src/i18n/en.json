@@ -396,7 +396,9 @@
     "videoUnavailable": "Video unavailable.",
     "playbackSpeed": "Playback speed",
     "fullscreenHint": "Tap the fullscreen button in the video player to expand.",
-    "noAudioBody": "This song doesn't have an audio file for offline use yet."
+    "noAudioBody": "This song doesn't have an audio file for offline use yet.",
+    "count": "{{count}} songs",
+    "savedCount": "{{count}} saved"
   },
   "leaderSongs": {
     "title": "Songs",
@@ -483,7 +485,12 @@
     "empty": "No submissions yet.",
     "notFound": "Submission not found.",
     "lockedPending": "This submission is under review and can't be edited.",
-    "lockedApproved": "This submission has been approved and published."
+    "lockedApproved": "This submission has been approved and published.",
+    "sectionBasics": "Basics",
+    "sectionMedia": "Media",
+    "sectionLyrics": "Lyrics",
+    "lineCount": "{{count}} lines",
+    "filterAll": "All"
   },
   "memories": {
     "title": "Memories",

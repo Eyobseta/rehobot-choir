@@ -1,19 +1,9 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Easing,
-} from 'react-native';
+import { View, Text, FlatList, Pressable, Alert, Animated, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   listOffline,
@@ -31,13 +21,12 @@ import {
   SimpleStatus,
 } from '../../services/audioPlayer';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
-import GlassBackButton from '../../components/GlassBackButton';
+import { EmptyState, EqBars, HeroPill, ListSkeleton, ScreenHero } from './Songs_Kit';
 
 export default function OfflineSongsScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, typography } = theme;
-  const insets = useSafeAreaInsets();
+  const { colors, spacing } = theme;
 
   const [items, setItems] = useState<OfflineEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +63,7 @@ export default function OfflineSongsScreen({ navigation }: any) {
     await playTrack({ key: entry.songId, uri: entry.fileUri, title: entry.title });
   };
 
-  // FIXED: Navigate to SongDetail instead of Player
+  // Navigate to SongDetail instead of Player
   const openSong = (entry: OfflineEntry) => {
     navigation.navigate('SongDetail', { id: entry.songId });
   };
@@ -94,157 +83,63 @@ export default function OfflineSongsScreen({ navigation }: any) {
     ]);
   };
 
+  // Only show the skeleton when there is nothing to show yet (avoids a
+  // flicker every time the screen regains focus).
+  const showSkeleton = loading && items.length === 0;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        colors={[BRAND.deep, BRAND.water, BRAND.violet]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
-          paddingHorizontal: 16,
-          paddingTop: insets.top + 16,
-          paddingBottom: 22,
-          borderBottomLeftRadius: 28,
-          borderBottomRightRadius: 28,
-          overflow: 'hidden',
-        }}
+      <ScreenHero
+        gradient={[BRAND.deep, BRAND.water, BRAND.violet]}
+        icon="cloud-download"
+        overline={t('tabs.songs', { defaultValue: 'Songs' })}
+        title={t('songs.offline')}
+        onBack={() => navigation.goBack()}
       >
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: -60,
-            right: -40,
-            width: 180,
-            height: 180,
-            borderRadius: 90,
-            backgroundColor: withAlpha(BRAND.gold, 0.24),
-          }}
-        />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <View
-            style={{
-              width: 50,
-              height: 50,
-              borderRadius: 16,
-              backgroundColor: BRAND.gold,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Ionicons name="cloud-download" size={22} color={BRAND.deep} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: 'rgba(255,255,255,0.75)',
-                fontSize: 11,
-                fontWeight: '800',
-                letterSpacing: 1,
-                textTransform: 'uppercase',
-              }}
-            >
-              {t('tabs.songs', { defaultValue: 'Songs' })}
-            </Text>
-            <Text
-              style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 2 }}
-              numberOfLines={1}
-            >
-              {t('songs.offline')}
-            </Text>
-          </View>
-          <GlassBackButton onPress={() => navigation.goBack()} size={44} />
-        </View>
         {!loading && items.length > 0 && (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              marginTop: 14,
-              alignSelf: 'flex-start',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 999,
-              backgroundColor: 'rgba(255,255,255,0.18)',
-            }}
-          >
-            <Ionicons name="download" size={13} color="#FFFFFF" />
-            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
-              {items.length} saved
-            </Text>
-          </View>
+          <HeroPill
+            icon="download"
+            text={t('songs.savedCount', { count: items.length, defaultValue: '{{count}} saved' })}
+          />
         )}
-      </LinearGradient>
+      </ScreenHero>
 
-      {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={BRAND.violet} />
-        </View>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.songId}
-          contentContainerStyle={{
-            paddingHorizontal: spacing.lg,
-            paddingTop: spacing.md,
-            paddingBottom: spacing.xl,
-          }}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
-              <LinearGradient
-                colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: 112,
-                  height: 112,
-                  borderRadius: 56,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <View
-                  style={{
-                    width: 104,
-                    height: 104,
-                    borderRadius: 52,
-                    backgroundColor: colors.background,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Ionicons
-                    name="cloud-offline-outline"
-                    size={40}
-                    color={colors.textSecondary}
-                  />
-                </View>
-              </LinearGradient>
-              <Text
-                style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}
-              >
-                {t('songs.emptyOffline')}
-              </Text>
-            </View>
-          }
-          renderItem={({ item, index }) => {
-            const isThis = getCurrentKey() === item.songId;
-            const isPlaying = isThis && status.isLoaded && status.isPlaying;
-            return (
-              <OfflineCard
-                item={item}
-                index={index}
-                isPlaying={isPlaying}
-                onPress={() => openSong(item)}
-                onToggle={() => onToggle(item)}
-                onRemove={() => onRemove(item.songId)}
-              />
-            );
-          }}
-        />
-      )}
+      <FlatList
+        data={showSkeleton ? [] : items}
+        keyExtractor={(item) => item.songId}
+        contentContainerStyle={{
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.md,
+          paddingBottom: spacing.xl,
+          flexGrow: 1,
+        }}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          showSkeleton ? (
+            <ListSkeleton rows={4} />
+          ) : (
+            <EmptyState
+              icon="cloud-offline-outline"
+              text={t('songs.emptyOffline')}
+              ring={[BRAND.water, BRAND.violet, BRAND.gold]}
+            />
+          )
+        }
+        renderItem={({ item, index }) => {
+          const isThis = getCurrentKey() === item.songId;
+          const isPlaying = isThis && status.isLoaded && status.isPlaying;
+          return (
+            <OfflineCard
+              item={item}
+              index={index}
+              isPlaying={isPlaying}
+              onPress={() => openSong(item)}
+              onToggle={() => onToggle(item)}
+              onRemove={() => onRemove(item.songId)}
+            />
+          );
+        }}
+      />
     </View>
   );
 }
@@ -283,12 +178,7 @@ function OfflineCard({
   }, [enter, index]);
 
   const to = (v: number) =>
-    Animated.spring(scale, {
-      toValue: v,
-      speed: 40,
-      bounciness: 6,
-      useNativeDriver: true,
-    }).start();
+    Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
 
   return (
     <Animated.View
@@ -305,15 +195,17 @@ function OfflineCard({
         onPress={onPress}
         onPressIn={() => to(0.98)}
         onPressOut={() => to(1)}
+        accessibilityRole="button"
+        accessibilityLabel={item.title}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
           padding: 12,
           paddingLeft: 16,
-          borderRadius: 20,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.surface,
+          borderRadius: 22,
+          borderWidth: isPlaying ? 1.5 : 1,
+          borderColor: isPlaying ? withAlpha(BRAND.magenta, 0.7) : colors.border,
+          backgroundColor: isPlaying ? withAlpha(BRAND.magenta, 0.07) : colors.surface,
           overflow: 'hidden',
         }}
       >
@@ -324,17 +216,27 @@ function OfflineCard({
           style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }}
         />
 
-        <Pressable onPress={onToggle} accessibilityRole="button">
+        <Pressable
+          onPress={onToggle}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={isPlaying ? t('songs.pause') : t('songs.playAudio')}
+        >
           <LinearGradient
             colors={[BRAND.violet, BRAND.magenta]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{
-              width: 50,
-              height: 50,
-              borderRadius: 25,
+              width: 52,
+              height: 52,
+              borderRadius: 26,
               alignItems: 'center',
               justifyContent: 'center',
+              shadowColor: BRAND.magenta,
+              shadowOpacity: isPlaying ? 0.55 : 0.25,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 4,
             }}
           >
             <Ionicons
@@ -353,24 +255,40 @@ function OfflineCard({
           >
             {item.title}
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}>
-            <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
-            <Text
-              style={[typography.caption, { color: colors.textSecondary }]}
-              numberOfLines={1}
-            >
-              {t('songs.savedOfflineAt')} {new Date(item.savedAt).toLocaleDateString()}
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            {isPlaying ? (
+              <>
+                <EqBars active color={BRAND.magenta} height={12} />
+                <Text
+                  style={[typography.caption, { color: BRAND.magenta, fontWeight: '800' }]}
+                  numberOfLines={1}
+                >
+                  {t('songs.nowPlaying')}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={13} color={colors.success} />
+                <Text
+                  style={[typography.caption, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {t('songs.savedOfflineAt')} {new Date(item.savedAt).toLocaleDateString()}
+                </Text>
+              </>
+            )}
           </View>
         </View>
 
         <Pressable
           onPress={onRemove}
           hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t('songs.removeOffline')}
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
+            width: 38,
+            height: 38,
+            borderRadius: 19,
             backgroundColor: withAlpha(colors.error, 0.12),
             alignItems: 'center',
             justifyContent: 'center',

@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { ScreenHero } from './Songs_Kit';
 
 function extractYouTubeId(url: string): string | null {
   try {
@@ -34,11 +35,13 @@ function extractYouTubeId(url: string): string | null {
 }
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const YT = '#FF0000';
+const SIDE = 16;
 
 export default function SongVideoScreen({ route, navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { youtubeUrl, title } = route.params ?? {};
@@ -47,7 +50,6 @@ export default function SongVideoScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState<number>(1);
-  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
 
   const videoId = youtubeUrl ? extractYouTubeId(youtubeUrl) : null;
   const onReady = useCallback(() => setLoading(false), []);
@@ -57,7 +59,6 @@ export default function SongVideoScreen({ route, navigation }: any) {
 
   const applySpeed = async (s: number) => {
     setSpeed(s);
-    setShowSpeedMenu(false);
     try {
       const anyRef = playerRef.current as unknown as {
         setPlaybackRate?: (rate: number) => Promise<void>;
@@ -101,7 +102,18 @@ export default function SongVideoScreen({ route, navigation }: any) {
           padding: spacing.xl,
         }}
       >
-        <Ionicons name="logo-youtube" size={48} color={colors.error} />
+        <View
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: 26,
+            backgroundColor: withAlpha(YT, 0.12),
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="logo-youtube" size={42} color={YT} />
+        </View>
         <Text
           style={[
             typography.body,
@@ -117,230 +129,181 @@ export default function SongVideoScreen({ route, navigation }: any) {
     );
   }
 
-  const videoHeight = Math.round((width * 9) / 16);
+  const playerWidth = width - SIDE * 2;
+  const videoHeight = Math.round((playerWidth * 9) / 16);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        colors={['#0B0A1F', BRAND.deep, BRAND.violet]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + 8 }]}
-      >
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: -60,
-            right: -40,
-            width: 180,
-            height: 180,
-            borderRadius: 90,
-            backgroundColor: withAlpha(BRAND.gold, 0.22),
-          }}
-        />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <View
-            style={{
-              width: 50,
-              height: 50,
-              borderRadius: 16,
-              backgroundColor: BRAND.gold,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Ionicons name="logo-youtube" size={22} color={BRAND.deep} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: 'rgba(255,255,255,0.75)',
-                fontSize: 11,
-                fontWeight: '800',
-                letterSpacing: 1,
-                textTransform: 'uppercase',
-              }}
-              numberOfLines={1}
-            >
-              {t('songs.watchOnYoutube')}
-            </Text>
-            <Text
-              style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '800', marginTop: 2 }}
-              numberOfLines={1}
-            >
-              {title ?? ''}
-            </Text>
-          </View>
-          <GlassBackButton onPress={() => navigation.goBack()} size={44} />
-        </View>
-      </LinearGradient>
-
-      <Animated.View style={[{ marginTop: -8 }, fadeUp(0)]}>
-        <View
-          style={[
-            styles.playerWrap,
-            {
-              backgroundColor: '#000',
-              height: videoHeight,
-              borderBottomLeftRadius: radius.lg,
-              borderBottomRightRadius: radius.lg,
-            },
-          ]}
-        >
-          <YoutubePlayer
-            ref={playerRef}
-            height={videoHeight}
-            width={width}
-            videoId={videoId}
-            play={playing}
-            onReady={onReady}
-            onChangeState={onChangeState}
-            initialPlayerParams={{
-              modestbranding: true,
-              rel: false,
-              controls: true,
-              preventFullScreen: false,
-            }}
-            webViewProps={{
-              allowsFullscreenVideo: true,
-              androidLayerType: 'hardware',
-            }}
-          />
-          {loading && (
-            <View pointerEvents="none" style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color="#FFFFFF" />
-            </View>
-          )}
-        </View>
-      </Animated.View>
+      <ScreenHero
+        gradient={['#0B0A1F', BRAND.deep, BRAND.violet]}
+        icon="logo-youtube"
+        overline={t('songs.watchOnYoutube')}
+        title={title ?? ''}
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView
         contentContainerStyle={{
-          padding: spacing.xl,
+          padding: SIDE,
           paddingBottom: insets.bottom + spacing.xl * 2,
         }}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View style={[{ marginTop: spacing.sm }, fadeUp(1)]}>
-          <Text
-            style={[
-              typography.caption,
-              {
-                color: colors.textSecondary,
-                fontWeight: '800',
-                letterSpacing: 0.6,
-                textTransform: 'uppercase',
-                marginBottom: spacing.sm,
-              },
-            ]}
-          >
-            {t('songs.playbackSpeed')}
-          </Text>
-          <Pressable
-            onPress={() => setShowSpeedMenu((s) => !s)}
+        {/* Player card */}
+        <Animated.View style={fadeUp(0)}>
+          <View
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingVertical: 12,
-              paddingHorizontal: 14,
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.surface,
-              borderRadius: radius.md,
+              borderRadius: 22,
+              backgroundColor: '#000',
+              height: videoHeight,
+              overflow: 'hidden',
+              shadowColor: BRAND.deep,
+              shadowOpacity: 0.4,
+              shadowRadius: 18,
+              shadowOffset: { width: 0, height: 10 },
+              elevation: 10,
             }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <View
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 10,
-                  backgroundColor: withAlpha(BRAND.violet, 0.16),
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="speedometer-outline" size={18} color={BRAND.violet} />
-              </View>
-              <Text style={[typography.body, { color: colors.text, fontWeight: '700' }]}>
-                {speed}x
-              </Text>
-            </View>
-            <Ionicons
-              name={showSpeedMenu ? 'chevron-up' : 'chevron-down'}
-              size={18}
-              color={colors.textSecondary}
-            />
-          </Pressable>
-
-          {showSpeedMenu && (
-            <View
-              style={{
-                marginTop: 8,
-                borderWidth: 1,
-                borderColor: colors.border,
-                backgroundColor: colors.surface,
-                borderRadius: radius.md,
-                overflow: 'hidden',
+            <YoutubePlayer
+              ref={playerRef}
+              height={videoHeight}
+              width={playerWidth}
+              videoId={videoId}
+              play={playing}
+              onReady={onReady}
+              onChangeState={onChangeState}
+              initialPlayerParams={{
+                modestbranding: true,
+                rel: false,
+                controls: true,
+                preventFullScreen: false,
               }}
-            >
-              {SPEEDS.map((s, i) => {
-                const active = s === speed;
-                return (
-                  <Pressable
-                    key={s}
-                    onPress={() => void applySpeed(s)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      paddingVertical: 12,
-                      paddingHorizontal: 16,
-                      borderBottomWidth: i === SPEEDS.length - 1 ? 0 : 1,
-                      borderBottomColor: colors.border,
-                      backgroundColor: active ? withAlpha(BRAND.violet, 0.12) : 'transparent',
-                    }}
-                  >
-                    <Text
-                      style={[
-                        typography.body,
-                        {
-                          color: active ? BRAND.violet : colors.text,
-                          fontWeight: active ? '800' : '500',
-                        },
-                      ]}
-                    >
-                      {s}x
-                    </Text>
-                    {active && (
-                      <Ionicons name="checkmark-circle" size={18} color={BRAND.violet} />
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
+              webViewProps={{
+                allowsFullscreenVideo: true,
+                androidLayerType: 'hardware',
+              }}
+            />
+            {loading && (
+              <View pointerEvents="none" style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color="#FFFFFF" />
+              </View>
+            )}
+          </View>
         </Animated.View>
 
+        {/* Title row */}
+        {title ? (
+          <Animated.View
+            style={[
+              {
+                marginTop: spacing.lg,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+              },
+              fadeUp(1),
+            ]}
+          >
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                backgroundColor: YT,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="play" size={20} color="#FFFFFF" style={{ marginLeft: 2 }} />
+            </View>
+            <Text
+              style={[typography.h3, { color: colors.text, flex: 1, fontWeight: '800' }]}
+              numberOfLines={2}
+            >
+              {title}
+            </Text>
+          </Animated.View>
+        ) : null}
+
+        {/* Speed chips (same applySpeed logic; replaces the dropdown) */}
         <Animated.View style={[{ marginTop: spacing.xl }, fadeUp(2)]}>
+          <View
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm }}
+          >
+            <Ionicons name="speedometer-outline" size={16} color={BRAND.violet} />
+            <Text
+              style={[
+                typography.caption,
+                {
+                  color: colors.textSecondary,
+                  fontWeight: '800',
+                  letterSpacing: 0.6,
+                  textTransform: 'uppercase',
+                },
+              ]}
+            >
+              {t('songs.playbackSpeed')}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {SPEEDS.map((s) => {
+              const active = s === speed;
+              return (
+                <Pressable
+                  key={s}
+                  onPress={() => void applySpeed(s)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={{ borderRadius: 16, overflow: 'hidden' }}
+                >
+                  {active ? (
+                    <LinearGradient
+                      colors={[BRAND.violet, BRAND.magenta]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{ paddingHorizontal: 18, paddingVertical: 11 }}
+                    >
+                      <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }}>
+                        {s}x
+                      </Text>
+                    </LinearGradient>
+                  ) : (
+                    <View
+                      style={{
+                        paddingHorizontal: 18,
+                        paddingVertical: 11,
+                        borderRadius: 16,
+                        borderWidth: 1.5,
+                        borderColor: colors.border,
+                        backgroundColor: colors.surface,
+                      }}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 14, fontWeight: '700' }}>
+                        {s}x
+                      </Text>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Animated.View>
+
+        <Animated.View style={[{ marginTop: spacing.xl }, fadeUp(3)]}>
           <View
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               gap: 10,
-              padding: 12,
-              borderRadius: 14,
+              padding: 14,
+              borderRadius: 16,
               backgroundColor: withAlpha(BRAND.gold, 0.12),
               borderWidth: 1,
               borderColor: withAlpha(BRAND.gold, 0.4),
             }}
           >
             <Ionicons name="expand-outline" size={18} color={BRAND.gold} />
-            <Text
-              style={[typography.caption, { color: colors.text, flex: 1, lineHeight: 18 }]}
-            >
+            <Text style={[typography.caption, { color: colors.text, flex: 1, lineHeight: 18 }]}>
               {t('songs.fullscreenHint')}
             </Text>
           </View>
@@ -351,16 +314,12 @@ export default function SongVideoScreen({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: 'hidden',
-  },
-  playerWrap: { overflow: 'hidden' },
   loadingOverlay: {
-    ...StyleSheet.absoluteFill,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.35)',

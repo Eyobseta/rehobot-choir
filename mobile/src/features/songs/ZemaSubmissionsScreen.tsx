@@ -1,30 +1,46 @@
-import React, { useRef } from 'react';
-import { View, Text, FlatList, Pressable, ActivityIndicator, RefreshControl, Animated, Easing } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Animated,
+  Easing,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '../../theme/ThemeContext';
 import { zemaListMySubmissions, MySubmission, SubmissionStatus } from '../../services/songs';
 import { queryKeys } from '../../services/queryKeys';
 import { useMe } from '../chat/chatSession';
 import { BRAND, withAlpha, ErrorBanner } from '../auth/Auth_UI';
-import GlassBackButton from '../../components/GlassBackButton';
+import {
+  AMBER,
+  EmptyState,
+  IconName,
+  ListSkeleton,
+  PALETTES,
+  SavedPill,
+  ScreenHero,
+} from './Songs_Kit';
 
-const PALETTES: readonly [string, string][] = [
-  [BRAND.violet, BRAND.magenta],
-  [BRAND.water, BRAND.violet],
-  [BRAND.magenta, '#F59E0B'],
-  [BRAND.deep, BRAND.violet],
-];
+type Bucket = 'DRAFT' | 'PENDING_REVIEW' | 'RETURNED' | 'APPROVED';
+type Filter = 'ALL' | Bucket;
+
+const bucketOf = (s: SubmissionStatus): Bucket =>
+  s === 'APPROVED' ? 'APPROVED' : s === 'PENDING_REVIEW' ? 'PENDING_REVIEW' : s === 'RETURNED' ? 'RETURNED' : 'DRAFT';
 
 export default function ZemaSubmissionsScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, typography } = theme;
-  const insets = useSafeAreaInsets();
+  const { colors, spacing } = theme;
   const userId = useMe()?.id ?? null;
+
+  const [filter, setFilter] = useState<Filter>('ALL');
 
   const q = useQuery({
     queryKey: [...queryKeys.songsList(userId), 'zema-submissions'],
@@ -36,45 +52,161 @@ export default function ZemaSubmissionsScreen({ navigation }: any) {
   const showingSavedData = q.isError && q.data !== undefined;
 
   const statusTint = (s: SubmissionStatus) =>
-    s === 'APPROVED' ? colors.success : s === 'PENDING_REVIEW' ? BRAND.violet : s === 'RETURNED' ? '#F59E0B' : colors.textSecondary;
-  const statusIcon = (s: SubmissionStatus): React.ComponentProps<typeof Ionicons>['name'] =>
-    s === 'APPROVED' ? 'checkmark-circle' : s === 'PENDING_REVIEW' ? 'time' : s === 'RETURNED' ? 'return-down-back' : 'document-text';
+    s === 'APPROVED'
+      ? colors.success
+      : s === 'PENDING_REVIEW'
+        ? BRAND.violet
+        : s === 'RETURNED'
+          ? AMBER
+          : colors.textSecondary;
+  const statusIcon = (s: SubmissionStatus): IconName =>
+    s === 'APPROVED'
+      ? 'checkmark-circle'
+      : s === 'PENDING_REVIEW'
+        ? 'time'
+        : s === 'RETURNED'
+          ? 'return-down-back'
+          : 'document-text';
   const statusLabel = (s: SubmissionStatus) =>
-    s === 'APPROVED' ? t('zema.statusApproved') : s === 'PENDING_REVIEW' ? t('zema.statusPending') : s === 'RETURNED' ? t('zema.statusReturned') : t('zema.statusDraft');
+    s === 'APPROVED'
+      ? t('zema.statusApproved')
+      : s === 'PENDING_REVIEW'
+        ? t('zema.statusPending')
+        : s === 'RETURNED'
+          ? t('zema.statusReturned')
+          : t('zema.statusDraft');
+
+  // counts per bucket (UI-only filter)
+  const counts: Record<Bucket, number> = { DRAFT: 0, PENDING_REVIEW: 0, RETURNED: 0, APPROVED: 0 };
+  items.forEach((s) => (counts[bucketOf(s.status)] += 1));
+  const visible = filter === 'ALL' ? items : items.filter((s) => bucketOf(s.status) === filter);
+
+  // if the active filter becomes empty (e.g. after a refresh), fall back to All
+  useEffect(() => {
+    if (filter !== 'ALL' && counts[filter] === 0) setFilter('ALL');
+  }, [filter, counts.DRAFT, counts.PENDING_REVIEW, counts.RETURNED, counts.APPROVED]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const chips: { key: Filter; label: string; icon: IconName; tint: string; count: number }[] = [
+    { key: 'ALL', label: t('zema.filterAll', { defaultValue: 'All' }), icon: 'albums', tint: BRAND.violet, count: items.length },
+    { key: 'DRAFT', label: t('zema.statusDraft'), icon: 'document-text', tint: colors.textSecondary, count: counts.DRAFT },
+    { key: 'PENDING_REVIEW', label: t('zema.statusPending'), icon: 'time', tint: BRAND.violet, count: counts.PENDING_REVIEW },
+    { key: 'RETURNED', label: t('zema.statusReturned'), icon: 'return-down-back', tint: AMBER, count: counts.RETURNED },
+    { key: 'APPROVED', label: t('zema.statusApproved'), icon: 'checkmark-circle', tint: colors.success, count: counts.APPROVED },
+  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient colors={[BRAND.deep, BRAND.violet, BRAND.magenta]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={{ paddingHorizontal: 16, paddingTop: insets.top + 16, paddingBottom: 22, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' }}>
-        <View pointerEvents="none" style={{ position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.gold, 0.22) }} />
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="musical-note" size={22} color={BRAND.deep} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>{t('leaderSongs.zemaTeam')}</Text>
-            <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 2 }} numberOfLines={1}>{t('zema.team')}</Text>
-          </View>
-          <GlassBackButton onPress={() => navigation.goBack()} size={44} />
-        </View>
-
-        <Pressable onPress={() => navigation.navigate('ZemaEditor', { id: null })}
-          style={{ marginTop: 18, borderRadius: 18, overflow: 'hidden', shadowColor: BRAND.gold, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 5 }}>
-          <LinearGradient colors={[BRAND.gold, '#FFA94D']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 18 }}>
-            <Ionicons name="add-circle" size={20} color={BRAND.deep} />
-            <Text style={{ color: BRAND.deep, fontWeight: '800', fontSize: 14 }}>{t('zema.newSubmission')}</Text>
+      <ScreenHero
+        icon="musical-note"
+        overline={t('leaderSongs.zemaTeam')}
+        title={t('zema.team')}
+        onBack={() => navigation.goBack()}
+      >
+        <Pressable
+          onPress={() => navigation.navigate('ZemaEditor', { id: null })}
+          accessibilityRole="button"
+          style={{
+            marginTop: 18,
+            borderRadius: 18,
+            overflow: 'hidden',
+            shadowColor: BRAND.gold,
+            shadowOpacity: 0.4,
+            shadowRadius: 14,
+            shadowOffset: { width: 0, height: 6 },
+            elevation: 6,
+          }}
+        >
+          <LinearGradient
+            colors={[BRAND.gold, '#FFA94D']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              paddingVertical: 14,
+              borderRadius: 18,
+            }}
+          >
+            <Ionicons name="add-circle" size={21} color={BRAND.deep} />
+            <Text style={{ color: BRAND.deep, fontWeight: '800', fontSize: 14 }}>
+              {t('zema.newSubmission')}
+            </Text>
           </LinearGradient>
         </Pressable>
-      </LinearGradient>
+      </ScreenHero>
+
+      {/* status filters */}
+      {!firstLoad && items.length > 0 && (
+        <View style={{ paddingTop: spacing.md }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: 8 }}
+          >
+            {chips
+              .filter((c) => c.key === 'ALL' || c.count > 0)
+              .map((c) => {
+                const active = filter === c.key;
+                return (
+                  <Pressable
+                    key={c.key}
+                    onPress={() => setFilter(c.key)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      paddingHorizontal: 13,
+                      paddingVertical: 8,
+                      borderRadius: 999,
+                      borderWidth: 1.5,
+                      borderColor: active ? c.tint : colors.border,
+                      backgroundColor: active ? withAlpha(c.tint, 0.14) : colors.surface,
+                    }}
+                  >
+                    <Ionicons name={c.icon} size={14} color={c.tint} />
+                    <Text
+                      style={{
+                        color: active ? c.tint : colors.text,
+                        fontSize: 12.5,
+                        fontWeight: '800',
+                      }}
+                    >
+                      {c.label}
+                    </Text>
+                    <View
+                      style={{
+                        minWidth: 20,
+                        paddingHorizontal: 6,
+                        paddingVertical: 1,
+                        borderRadius: 10,
+                        backgroundColor: active ? c.tint : withAlpha(colors.textSecondary, 0.16),
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: active ? '#FFFFFF' : colors.textSecondary,
+                          fontSize: 11,
+                          fontWeight: '800',
+                        }}
+                      >
+                        {c.count}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+          </ScrollView>
+        </View>
+      )}
 
       {showingSavedData && (
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-          <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#F59E0B', 0.14), borderWidth: 1, borderColor: withAlpha('#F59E0B', 0.4) }}>
-            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
-            <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>{t('home.showingSavedData', { defaultValue: 'Showing saved data' })}</Text>
-          </View>
+          <SavedPill />
         </View>
       )}
 
@@ -84,78 +216,185 @@ export default function ZemaSubmissionsScreen({ navigation }: any) {
         </View>
       )}
 
-      {firstLoad ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl }}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} tintColor={BRAND.violet} colors={[BRAND.violet]} />}
-          ListEmptyComponent={
-            <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
-              <LinearGradient colors={[BRAND.violet, BRAND.magenta, BRAND.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' }}>
-                <View style={{ width: 104, height: 104, borderRadius: 52, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="musical-notes-outline" size={40} color={colors.textSecondary} />
-                </View>
-              </LinearGradient>
-              <Text style={[typography.body, { color: colors.textSecondary, textAlign: 'center' }]}>{t('zema.empty')}</Text>
-            </View>
-          }
-          renderItem={({ item, index }) => (
-            <SubmissionCard
-              item={item}
-              index={index}
-              palette={PALETTES[index % PALETTES.length]}
-              tint={statusTint(item.status)}
-              icon={statusIcon(item.status)}
-              label={statusLabel(item.status)}
-              returnReasonLabel={t('zema.returnReason')}
-              onPress={() => navigation.navigate('ZemaEditor', { id: item.id })}
-            />
-          )}
-        />
-      )}
+      <FlatList
+        data={firstLoad ? [] : visible}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.md,
+          paddingBottom: spacing.xl,
+          flexGrow: 1,
+        }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={q.isRefetching && !firstLoad}
+            onRefresh={() => q.refetch()}
+            tintColor={BRAND.violet}
+            colors={[BRAND.violet]}
+          />
+        }
+        ListEmptyComponent={
+          firstLoad ? (
+            <ListSkeleton rows={4} />
+          ) : (
+            <EmptyState icon="musical-notes-outline" text={t('zema.empty')} />
+          )
+        }
+        renderItem={({ item, index }) => (
+          <SubmissionCard
+            item={item}
+            index={index}
+            palette={PALETTES[index % PALETTES.length]}
+            tint={statusTint(item.status)}
+            icon={statusIcon(item.status)}
+            label={statusLabel(item.status)}
+            returnReasonLabel={t('zema.returnReason')}
+            onPress={() => navigation.navigate('ZemaEditor', { id: item.id })}
+          />
+        )}
+      />
     </View>
   );
 }
 
-function SubmissionCard({ item, index, palette, tint, icon, label, returnReasonLabel, onPress }: {
-  item: MySubmission; index: number; palette: readonly [string, string]; tint: string;
-  icon: React.ComponentProps<typeof Ionicons>['name']; label: string; returnReasonLabel: string; onPress: () => void;
+function SubmissionCard({
+  item,
+  index,
+  palette,
+  tint,
+  icon,
+  label,
+  returnReasonLabel,
+  onPress,
+}: {
+  item: MySubmission;
+  index: number;
+  palette: readonly [string, string];
+  tint: string;
+  icon: IconName;
+  label: string;
+  returnReasonLabel: string;
+  onPress: () => void;
 }) {
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
   const enter = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
-  React.useEffect(() => {
-    const a = Animated.timing(enter, { toValue: 1, duration: 420, delay: Math.min(index, 8) * 55, easing: Easing.out(Easing.cubic), useNativeDriver: true });
+  const returned = item.status === 'RETURNED';
+
+  useEffect(() => {
+    const a = Animated.timing(enter, {
+      toValue: 1,
+      duration: 420,
+      delay: Math.min(index, 8) * 55,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
     a.start();
     return () => a.stop();
   }, [enter, index]);
-  const to = (v: number) => Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
+
+  const to = (v: number) =>
+    Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
+
   return (
-    <Animated.View style={{ marginBottom: spacing.sm + 4, opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) }, { scale }] }}>
-      <Pressable onPress={onPress} onPressIn={() => to(0.98)} onPressOut={() => to(1)}
-        style={{ padding: 14, paddingLeft: 18, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, overflow: 'hidden' }}>
-        <LinearGradient colors={palette} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+    <Animated.View
+      style={{
+        marginBottom: spacing.sm + 4,
+        opacity: enter,
+        transform: [
+          { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) },
+          { scale },
+        ],
+      }}
+    >
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => to(0.98)}
+        onPressOut={() => to(1)}
+        accessibilityRole="button"
+        accessibilityLabel={item.song.title}
+        style={{
+          padding: 14,
+          paddingLeft: 18,
+          borderRadius: 22,
+          borderWidth: returned ? 1.5 : 1,
+          borderColor: returned ? withAlpha(AMBER, 0.6) : colors.border,
+          backgroundColor: colors.surface,
+          overflow: 'hidden',
+        }}
+      >
+        <LinearGradient
+          colors={returned ? [AMBER, BRAND.magenta] : palette}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }}
+        />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View
+            style={{
+              width: 46,
+              height: 46,
+              borderRadius: 15,
+              backgroundColor: withAlpha(tint, 0.14),
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name={icon} size={22} color={tint} />
+          </View>
           <View style={{ flex: 1 }}>
-            <Text style={[typography.body, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>{item.song.title}</Text>
+            <Text
+              style={[typography.body, { color: colors.text, fontWeight: '800' }]}
+              numberOfLines={1}
+            >
+              {item.song.title}
+            </Text>
             {item.song.category && (
-              <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]} numberOfLines={1}>{item.song.category.name}</Text>
+              <Text
+                style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}
+                numberOfLines={1}
+              >
+                {item.song.category.name}
+              </Text>
             )}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5,
+                alignSelf: 'flex-start',
+                marginTop: 6,
+                paddingHorizontal: 9,
+                paddingVertical: 3,
+                borderRadius: 999,
+                backgroundColor: withAlpha(tint, 0.14),
+              }}
+            >
+              <Text style={{ color: tint, fontSize: 11, fontWeight: '800' }}>{label}</Text>
+            </View>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: withAlpha(tint, 0.14) }}>
-            <Ionicons name={icon} size={13} color={tint} />
-            <Text style={{ color: tint, fontSize: 11, fontWeight: '800' }}>{label}</Text>
-          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
         </View>
-        {item.status === 'RETURNED' && item.returnReason && (
-          <View style={{ marginTop: 12, padding: 12, borderRadius: 12, borderLeftWidth: 4, borderLeftColor: '#F59E0B', backgroundColor: withAlpha('#F59E0B', 0.1) }}>
-            <Text style={[typography.caption, { color: '#B45309', fontWeight: '800' }]}>{returnReasonLabel}</Text>
-            <Text style={[typography.bodySmall, { color: colors.text, marginTop: 3 }]}>{item.returnReason}</Text>
+
+        {returned && item.returnReason && (
+          <View
+            style={{
+              marginTop: 12,
+              padding: 12,
+              borderRadius: 14,
+              borderLeftWidth: 4,
+              borderLeftColor: AMBER,
+              backgroundColor: withAlpha(AMBER, 0.1),
+            }}
+          >
+            <Text style={[typography.caption, { color: '#B45309', fontWeight: '800' }]}>
+              {returnReasonLabel}
+            </Text>
+            <Text style={[typography.bodySmall, { color: colors.text, marginTop: 3 }]}>
+              {item.returnReason}
+            </Text>
           </View>
         )}
       </Pressable>
