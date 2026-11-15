@@ -1,21 +1,21 @@
-// Modern "wine & sunset" palette (replaces the old SRS 20.3 green/brown palette).
+// "Cobalt & saffron" palette: deep navy ink, electric cobalt, warm saffron, teal.
 // These brand colors do NOT change between light and dark mode.
 export const brand = {
-  rose: '#FF4D6D',
-  amber: '#FFB84D',
-  orchid: '#C77DFF',
-  wine: '#2A0F1E',
-  cream: '#FFF1E6',
+  cobalt: '#3D5AFE',
+  saffron: '#FFB400',
+  teal: '#0E9F95',
+  navy: '#0B1236',
+  mist: '#EEF1FF',
 
   // Legacy aliases so existing imports like `brand.primaryGreen` keep compiling.
   // They now point at the new palette. Migrate usages, then delete these.
-  primaryGreen: '#FF4D6D',
-  brown: '#FFB84D',
-  lightGreen: '#FFE9DE',
-  darkGreen: '#D6264A',
+  primaryGreen: '#7B93FF',
+  brown: '#FFB400',
+  lightGreen: '#E8ECFF',
+  darkGreen: '#3D5AFE',
 } as const;
 
-// Semantic colors — these differ between light and dark.
+// Semantic colors: these differ between light and dark.
 export type ThemeColors = {
   background: string;
   surface: string;
@@ -40,47 +40,47 @@ export type ThemeColors = {
 };
 
 export const lightColors: ThemeColors = {
-  background: '#FFF8F3',
+  background: '#F5F7FF',
   surface: '#FFFFFF',
-  surfaceAlt: '#FFE9DE',
-  border: '#F2D5C8',
+  surfaceAlt: '#E8ECFF',
+  border: '#D5DCF5',
 
-  text: '#2A0F1E',
-  textSecondary: '#6B4A5A',
+  text: '#0B1236',
+  textSecondary: '#515C85',
   textInverse: '#FFFFFF',
 
-  primary: '#D6264A',
+  primary: brand.cobalt,
   primaryText: '#FFFFFF',
 
-  accent: '#B26A00',
+  accent: '#B87F00',
 
-  success: '#1F9D6B',
-  warning: '#B7791F',
-  error: '#C53030',
+  success: '#0E9F6E',
+  warning: '#B87F00',
+  error: '#D92D4A',
 
-  disabled: '#D9C3BA',
-  overlay: 'rgba(42, 15, 30, 0.4)',
+  disabled: '#C3CBE6',
+  overlay: 'rgba(11, 18, 54, 0.4)',
 };
 
 export const darkColors: ThemeColors = {
-  background: '#16080F',
-  surface: '#22101A',
-  surfaceAlt: '#2E1824',
-  border: '#3D2431',
+  background: '#070B1F',
+  surface: '#0F1634',
+  surfaceAlt: '#18214A',
+  border: '#243060',
 
-  text: '#FFF1E6',
-  textSecondary: '#C9AFA6',
-  textInverse: '#16080F',
+  text: '#EEF1FF',
+  textSecondary: '#A3AED6',
+  textInverse: '#070B1F',
 
-  primary: brand.rose,
-  primaryText: '#16080F',
+  primary: '#7B93FF',
+  primaryText: '#070B1F',
 
-  accent: brand.amber,
+  accent: brand.saffron,
 
-  success: '#5BD6A0',
-  warning: '#FFB84D',
-  error: '#FF5A4F',
+  success: '#2EE6A6',
+  warning: '#FFB400',
+  error: '#FF5C6C',
 
-  disabled: '#5A4651',
-  overlay: 'rgba(0, 0, 0, 0.65)',
+  disabled: '#3A4570',
+  overlay: 'rgba(2, 4, 16, 0.65)',
 };

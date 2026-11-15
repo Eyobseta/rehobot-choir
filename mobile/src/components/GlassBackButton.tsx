@@ -10,9 +10,9 @@ type Props = {
   size?: number;
 };
 
-// Frosted glass fill + a soft sunset glow behind it
+// Frosted glass fill + a soft saffron glow behind it
 const GLASS_COLORS = ['rgba(255,255,255,0.28)', 'rgba(255,255,255,0.06)'] as const;
-const GLOW_COLORS = ['#FFB84D', '#FF4D6D', '#C77DFF'] as const;
+const GLOW_COLORS = ['#FFB400', '#3D5AFE', '#12B5A6'] as const;
 
 export default function GlassBackButton({
   onPress,
@@ -77,7 +77,7 @@ export default function GlassBackButton({
           },
         ]}
       >
-        {/* Aurora glow, fades in on press */}
+        {/* Saffron glow, fades in on press */}
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: glow }]}>
           <LinearGradient
             colors={GLOW_COLORS}
@@ -115,8 +115,8 @@ export default function GlassBackButton({
 const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
-    backgroundColor: 'rgba(42, 15, 30, 0.55)',
-    shadowColor: '#FF4D6D',
+    backgroundColor: 'rgba(11, 18, 54, 0.55)',
+    shadowColor: '#3D5AFE',
     shadowOpacity: 0.3,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -131,7 +131,11 @@ const styles = StyleSheet.create({
     marginRight: 2, // optical centering for the chevron
   },
   border: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     borderWidth: StyleSheet.hairlineWidth * 2,
     borderColor: 'rgba(255, 255, 255, 0.35)',
   },

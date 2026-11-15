@@ -18,7 +18,7 @@ const TAB_COLORS: Record<string, string> = {
   Memories: '#2BA8D8',
   Chat: '#F08A24',
   Approvals: '#1F9D6B',
-  Profile: BRAND.magenta,
+  Profile: '#8A5CF6',
 };
 
 const ICONS: Record<string, { on: IconName; off: IconName }> = {

@@ -31,9 +31,9 @@ import { useHomeUnreadSync } from './useHomeUnreadSync';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const AMBER = '#FFB84D';
+const AMBER = '#FFB400';
 const SKY = '#2BA8D8';
-const TEAL = '#2FBF8A';
+const TEAL = '#12B5A6';
 
 const ABS_FILL = {
   position: 'absolute' as const,
@@ -495,9 +495,9 @@ export default function HomeScreen({ navigation }: any) {
                         <LinearGradient
                           pointerEvents="none"
                           colors={[
-                            'rgba(22,8,15,0.02)',
-                            'rgba(22,8,15,0.3)',
-                            'rgba(22,8,15,0.88)',
+                            'rgba(6,10,32,0.02)',
+                            'rgba(6,10,32,0.3)',
+                            'rgba(6,10,32,0.88)',
                           ]}
                           style={ABS_FILL}
                         />
