@@ -31,9 +31,9 @@ import { useHomeUnreadSync } from './useHomeUnreadSync';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const AMBER = '#FFB400';
-const SKY = '#2BA8D8';
-const TEAL = '#12B5A6';
+const AMBER = '#E3B778';
+const SKY = '#7FA8B5';
+const TEAL = '#6FA8A0';
 
 const ABS_FILL = {
   position: 'absolute' as const,
@@ -495,9 +495,9 @@ export default function HomeScreen({ navigation }: any) {
                         <LinearGradient
                           pointerEvents="none"
                           colors={[
-                            'rgba(6,10,32,0.02)',
-                            'rgba(6,10,32,0.3)',
-                            'rgba(6,10,32,0.88)',
+                            'rgba(24,32,26,0.02)',
+                            'rgba(24,32,26,0.3)',
+                            'rgba(24,32,26,0.88)',
                           ]}
                           style={ABS_FILL}
                         />
@@ -1969,7 +1969,7 @@ function StickyBar({
                 height: 18,
                 paddingHorizontal: 4,
                 borderRadius: 9,
-                backgroundColor: '#FF5A4F',
+                backgroundColor: '#D9615F',
                 borderWidth: 2,
                 borderColor: BRAND.violet,
                 alignItems: 'center',
@@ -2093,7 +2093,7 @@ const styles = StyleSheet.create({
     height: 20,
     paddingHorizontal: 4,
     borderRadius: 10,
-    backgroundColor: '#FF5A4F',
+    backgroundColor: '#D9615F',
     borderWidth: 2,
     borderColor: BRAND.violet,
     alignItems: 'center',
@@ -2107,7 +2107,7 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 12,
     borderRadius: 20,
-    backgroundColor: 'rgba(240,138,36,0.96)',
+    backgroundColor: 'rgba(190,128,52,0.96)',
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 10,
