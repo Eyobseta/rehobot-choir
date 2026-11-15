@@ -10,9 +10,9 @@ type Props = {
   size?: number;
 };
 
-// Frosted glass fill + a soft honey glow behind it
+// Frosted glass fill + a soft gold glow behind it
 const GLASS_COLORS = ['rgba(255,255,255,0.28)', 'rgba(255,255,255,0.06)'] as const;
-const GLOW_COLORS = ['#EBC48A', '#8DB89C', '#D9959D'] as const;
+const GLOW_COLORS = ['#F5B83D', '#19C48A', '#14B8D4'] as const;
 
 export default function GlassBackButton({
   onPress,
@@ -77,7 +77,7 @@ export default function GlassBackButton({
           },
         ]}
       >
-        {/* Honey glow, fades in on press */}
+        {/* Gold glow, fades in on press */}
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: glow }]}>
           <LinearGradient
             colors={GLOW_COLORS}
@@ -115,8 +115,8 @@ export default function GlassBackButton({
 const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
-    backgroundColor: 'rgba(38, 53, 44, 0.55)',
-    shadowColor: '#8DB89C',
+    backgroundColor: 'rgba(10, 43, 33, 0.55)',
+    shadowColor: '#19C48A',
     shadowOpacity: 0.3,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },

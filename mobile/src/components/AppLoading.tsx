@@ -3,14 +3,15 @@ import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-// Modern "sage & rose" palette
+// Modern "emerald & gold" palette
 const BRAND = {
-  night: '#161B17',
-  deep: '#26352C',
-  sage: '#8DB89C',
-  rose: '#D9959D',
-  honey: '#EBC48A',
-  cream: '#F6EFE4',
+  night: '#050E0A',
+  deep: '#0A2B21',
+  emerald: '#19C48A',
+  cyan: '#14B8D4',
+  coral: '#FF6B57',
+  gold: '#F5B83D',
+  mist: '#ECF6F0',
 };
 
 const BAR_COUNT = 5;
@@ -123,7 +124,7 @@ export default function AppLoading() {
           {
             top: -120,
             left: -100,
-            backgroundColor: 'rgba(141, 184, 156, 0.25)',
+            backgroundColor: 'rgba(25, 196, 138, 0.28)',
             transform: [
               { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] }) },
             ],
@@ -137,7 +138,7 @@ export default function AppLoading() {
           {
             bottom: -130,
             right: -110,
-            backgroundColor: 'rgba(217, 149, 157, 0.2)',
+            backgroundColor: 'rgba(20, 184, 212, 0.18)',
             transform: [
               { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1.2, 1] }) },
             ],
@@ -183,7 +184,7 @@ export default function AppLoading() {
             ]}
           >
             <LinearGradient
-              colors={[BRAND.honey, BRAND.sage, BRAND.rose]}
+              colors={[BRAND.gold, BRAND.emerald, BRAND.cyan]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.logoGradient}
@@ -291,14 +292,14 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 48,
     borderWidth: 1.5,
-    borderColor: BRAND.honey,
+    borderColor: BRAND.gold,
   },
   logoMark: {
     width: 88,
     height: 88,
     borderRadius: 30,
     overflow: 'hidden',
-    shadowColor: BRAND.sage,
+    shadowColor: BRAND.emerald,
     shadowOpacity: 0.6,
     shadowRadius: 28,
     shadowOffset: { width: 0, height: 10 },
@@ -320,7 +321,7 @@ const styles = StyleSheet.create({
   titleBase: {
     fontSize: 34,
     fontWeight: '800',
-    color: BRAND.cream,
+    color: BRAND.mist,
     letterSpacing: 8,
   },
   shimmerBand: {
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: BRAND.honey,
+    color: BRAND.gold,
     letterSpacing: 16,
     marginTop: 6,
     paddingLeft: 16, // offset for letter-spacing
@@ -340,7 +341,7 @@ const styles = StyleSheet.create({
   tagline: {
     marginTop: 22,
     fontSize: 13,
-    color: BRAND.cream,
+    color: BRAND.mist,
     letterSpacing: 0.6,
   },
   barsRow: {
@@ -354,6 +355,6 @@ const styles = StyleSheet.create({
     width: 4,
     height: 28,
     borderRadius: 2,
-    backgroundColor: BRAND.rose,
+    backgroundColor: BRAND.coral,
   },
 });

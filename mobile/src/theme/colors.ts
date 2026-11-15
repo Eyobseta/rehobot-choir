@@ -1,18 +1,19 @@
-// "Sage & rose" palette: soft, warm and low-contrast.
-// Muted sage, dusty rose, honey and cream. These brand colors do NOT change between light and dark mode.
+// "Emerald & gold" palette: deep emerald ink, vivid emerald, warm gold, cyan, coral.
+// A modern take on a classic green / gold / red heritage palette.
+// These brand colors do NOT change between light and dark mode.
 export const brand = {
-  sage: '#6E9A80',
-  rose: '#C9828A',
-  honey: '#E3B778',
-  forest: '#3E5A4B',
-  cream: '#FAF6EF',
+  emerald: '#0F9D6E',
+  gold: '#F5B83D',
+  coral: '#FF6B57',
+  cyan: '#0E8FA3',
+  ink: '#06100C',
 
   // Legacy aliases so existing imports like `brand.primaryGreen` keep compiling.
   // They now point at the new palette. Migrate usages, then delete these.
-  primaryGreen: '#9CC4A8',
-  brown: '#E3B778',
-  lightGreen: '#EFE8DA',
-  darkGreen: '#5E8A70',
+  primaryGreen: '#2BD99F',
+  brown: '#F5B83D',
+  lightGreen: '#E3F0E8',
+  darkGreen: '#0B8A60',
 } as const;
 
 // Semantic colors: these differ between light and dark.
@@ -40,47 +41,47 @@ export type ThemeColors = {
 };
 
 export const lightColors: ThemeColors = {
-  background: '#FAF6EF',
-  surface: '#FFFDF9',
-  surfaceAlt: '#EFE8DA',
-  border: '#E3D9C6',
+  background: '#F3F8F5',
+  surface: '#FFFFFF',
+  surfaceAlt: '#E3F0E8',
+  border: '#CFE2D7',
 
-  text: '#2B332D',
-  textSecondary: '#6A6F63',
+  text: '#0A1F17',
+  textSecondary: '#4B665A',
   textInverse: '#FFFFFF',
 
-  primary: '#5E8A70',
+  primary: '#0B8A60',
   primaryText: '#FFFFFF',
 
-  accent: '#B8707C',
+  accent: '#B7791F',
 
-  success: '#4F8A63',
+  success: '#0B8A60',
   warning: '#B7791F',
-  error: '#BF4A4A',
+  error: '#D43F2C',
 
-  disabled: '#CFC8B8',
-  overlay: 'rgba(43, 51, 45, 0.35)',
+  disabled: '#BCCFC5',
+  overlay: 'rgba(10, 31, 23, 0.4)',
 };
 
 export const darkColors: ThemeColors = {
-  background: '#1A1F1B',
-  surface: '#232A25',
-  surfaceAlt: '#2D362F',
-  border: '#3A453D',
+  background: '#06100C',
+  surface: '#0D1C16',
+  surfaceAlt: '#13281F',
+  border: '#1E3A2D',
 
-  text: '#F3EDE3',
-  textSecondary: '#B7B3A6',
-  textInverse: '#1A1F1B',
+  text: '#ECF6F0',
+  textSecondary: '#93AFA2',
+  textInverse: '#06100C',
 
-  primary: '#9CC4A8',
-  primaryText: '#1A1F1B',
+  primary: '#2BD99F',
+  primaryText: '#06100C',
 
-  accent: brand.honey,
+  accent: brand.gold,
 
-  success: '#8FCB9B',
-  warning: '#E3B778',
-  error: '#E58A8A',
+  success: '#2BD99F',
+  warning: '#F5B83D',
+  error: '#FF6B57',
 
-  disabled: '#4A5249',
-  overlay: 'rgba(10, 14, 11, 0.6)',
+  disabled: '#34483E',
+  overlay: 'rgba(2, 8, 5, 0.7)',
 };
