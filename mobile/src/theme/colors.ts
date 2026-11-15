@@ -1,10 +1,18 @@
-// Locked palette from SRS Section 20.3
+// Modern "wine & sunset" palette (replaces the old SRS 20.3 green/brown palette).
 // These brand colors do NOT change between light and dark mode.
 export const brand = {
-  primaryGreen: '#C1E899',
-  brown: '#9A6735',
-  lightGreen: '#E6F0DC',
-  darkGreen: '#55883B',
+  rose: '#FF4D6D',
+  amber: '#FFB84D',
+  orchid: '#C77DFF',
+  wine: '#2A0F1E',
+  cream: '#FFF1E6',
+
+  // Legacy aliases so existing imports like `brand.primaryGreen` keep compiling.
+  // They now point at the new palette. Migrate usages, then delete these.
+  primaryGreen: '#FF4D6D',
+  brown: '#FFB84D',
+  lightGreen: '#FFE9DE',
+  darkGreen: '#D6264A',
 } as const;
 
 // Semantic colors — these differ between light and dark.
@@ -32,47 +40,47 @@ export type ThemeColors = {
 };
 
 export const lightColors: ThemeColors = {
-  background: '#F7FAF3',
+  background: '#FFF8F3',
   surface: '#FFFFFF',
-  surfaceAlt: '#E6F0DC',
-  border: '#D9E5CD',
+  surfaceAlt: '#FFE9DE',
+  border: '#F2D5C8',
 
-  text: '#1A1A1A',
-  textSecondary: '#4A4A4A',
+  text: '#2A0F1E',
+  textSecondary: '#6B4A5A',
   textInverse: '#FFFFFF',
 
-  primary: brand.darkGreen,
+  primary: '#D6264A',
   primaryText: '#FFFFFF',
 
-  accent: brand.brown,
+  accent: '#B26A00',
 
-  success: brand.darkGreen,
+  success: '#1F9D6B',
   warning: '#B7791F',
   error: '#C53030',
 
-  disabled: '#B8C4AE',
-  overlay: 'rgba(0, 0, 0, 0.35)',
+  disabled: '#D9C3BA',
+  overlay: 'rgba(42, 15, 30, 0.4)',
 };
 
 export const darkColors: ThemeColors = {
-  background: '#121212',
-  surface: '#1E1E1E',
-  surfaceAlt: '#2A2A2A',
-  border: '#333333',
+  background: '#16080F',
+  surface: '#22101A',
+  surfaceAlt: '#2E1824',
+  border: '#3D2431',
 
-  text: '#F1F5EC',
-  textSecondary: '#B8C4AE',
-  textInverse: '#121212',
+  text: '#FFF1E6',
+  textSecondary: '#C9AFA6',
+  textInverse: '#16080F',
 
-  primary: brand.primaryGreen,
-  primaryText: '#121212',
+  primary: brand.rose,
+  primaryText: '#16080F',
 
-  accent: brand.brown,
+  accent: brand.amber,
 
-  success: brand.primaryGreen,
-  warning: '#E0A44A',
-  error: '#F26B6B',
+  success: '#5BD6A0',
+  warning: '#FFB84D',
+  error: '#FF5A4F',
 
-  disabled: '#4A4A4A',
-  overlay: 'rgba(0, 0, 0, 0.6)',
+  disabled: '#5A4651',
+  overlay: 'rgba(0, 0, 0, 0.65)',
 };

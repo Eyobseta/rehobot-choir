@@ -37,11 +37,11 @@ import { changeLanguage } from '../../i18n';
  */
 
 export const BRAND = {
-  deep: '#24135C',
-  violet: '#6C3FE0',
-  magenta: '#E0409A',
-  gold: '#FFC247',
-  water: '#38BDF8',
+  deep: '#2A0F1E',
+  violet: '#FF4D6D',
+  magenta: '#B65DF2',
+  gold: '#FFB84D',
+  water: '#4CC9F0',
 };
 
 const BORDER_COLORS = [

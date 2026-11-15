@@ -1,48 +1,55 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, Easing, StyleSheet, Dimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-const { width } = Dimensions.get('window');
-
+// Modern "wine & sunset" palette
 const BRAND = {
-  deep: '#24135C',
-  violet: '#6C3FE0',
-  magenta: '#E0409A',
-  gold: '#FFC247',
+  night: '#16080F',
+  deep: '#2A0F1E',
+  orchid: '#C77DFF',
+  rose: '#FF4D6D',
+  amber: '#FFB84D',
+  cream: '#FFF1E6',
 };
+
+const BAR_COUNT = 5;
 
 export default function AppLoading() {
   // Fade-in for the whole screen
   const fade = useRef(new Animated.Value(0)).current;
-  // Scale pulse for the logo mark
+  // Pulse drives the logo, the sound rings and the aurora glows
   const pulse = useRef(new Animated.Value(0)).current;
   // Shimmer sweep across the title
   const shimmer = useRef(new Animated.Value(0)).current;
-  // Subtle dot loader pulse
-  const dots = useRef([0, 1, 2].map(() => new Animated.Value(0.3))).current;
+  // Equalizer bars (replace the old dots)
+  const bars = useRef(
+    Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.25)),
+  ).current;
+
+  const [titleWidth, setTitleWidth] = useState(240);
 
   useEffect(() => {
     // 1. Fade in
     Animated.timing(fade, {
       toValue: 1,
-      duration: 500,
+      duration: 600,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
 
-    // 2. Logo pulse loop
+    // 2. Pulse loop
     const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
           toValue: 1,
-          duration: 1400,
+          duration: 1600,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(pulse, {
           toValue: 0,
-          duration: 1400,
+          duration: 1600,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
@@ -55,70 +62,71 @@ export default function AppLoading() {
       Animated.sequence([
         Animated.timing(shimmer, {
           toValue: 1,
-          duration: 1800,
+          duration: 1500,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(shimmer, {
           toValue: 0,
-          duration: 400,
-          easing: Easing.inOut(Easing.quad),
+          duration: 0,
           useNativeDriver: true,
         }),
-        Animated.delay(600),
+        Animated.delay(900),
       ]),
     );
     shimmerLoop.start();
 
-    // 4. Dots pulse
-    const dotLoops = dots.map((d, i) =>
+    // 4. Equalizer bars, staggered like voices
+    const barLoops = bars.map((b, i) =>
       Animated.loop(
         Animated.sequence([
-          Animated.delay(i * 200),
-          Animated.timing(d, {
+          Animated.delay(i * 140),
+          Animated.timing(b, {
             toValue: 1,
-            duration: 500,
+            duration: 420,
             easing: Easing.inOut(Easing.quad),
             useNativeDriver: true,
           }),
-          Animated.timing(d, {
-            toValue: 0.3,
-            duration: 500,
+          Animated.timing(b, {
+            toValue: 0.25,
+            duration: 520,
             easing: Easing.inOut(Easing.quad),
             useNativeDriver: true,
           }),
         ]),
       ),
     );
-    dotLoops.forEach((l) => l.start());
+    barLoops.forEach((l) => l.start());
 
     return () => {
       pulseLoop.stop();
       shimmerLoop.stop();
-      dotLoops.forEach((l) => l.stop());
+      barLoops.forEach((l) => l.stop());
     };
-  }, [fade, pulse, shimmer, dots]);
+  }, [fade, pulse, shimmer, bars]);
 
   return (
     <View style={styles.container}>
-      {/* Background gradient */}
+      {/* Background */}
       <LinearGradient
-        colors={[BRAND.deep, '#1A0F45', BRAND.deep]}
+        colors={[BRAND.night, BRAND.deep, BRAND.night]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Soft glow blobs */}
+      {/* Aurora glows */}
       <Animated.View
         pointerEvents="none"
         style={[
           styles.blob,
           {
-            top: -80,
-            left: -60,
-            backgroundColor: 'rgba(108, 63, 224, 0.35)',
-            transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] }) }],
+            top: -120,
+            left: -100,
+            backgroundColor: 'rgba(199, 125, 255, 0.26)',
+            transform: [
+              { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] }) },
+            ],
           },
         ]}
       />
@@ -127,60 +135,91 @@ export default function AppLoading() {
         style={[
           styles.blob,
           {
-            bottom: -80,
-            right: -60,
-            backgroundColor: 'rgba(224, 64, 154, 0.3)',
-            transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1.15, 1] }) }],
+            bottom: -130,
+            right: -110,
+            backgroundColor: 'rgba(255, 77, 109, 0.22)',
+            transform: [
+              { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1.2, 1] }) },
+            ],
           },
         ]}
       />
 
       <Animated.View style={[styles.center, { opacity: fade }]}>
-        {/* Logo mark with pulsing glow */}
-        <Animated.View
-          style={[
-            styles.logoMark,
-            {
-              transform: [
-                { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) },
-              ],
-            },
-          ]}
-        >
-          <LinearGradient
-            colors={[BRAND.gold, BRAND.magenta, BRAND.violet]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.logoGradient}
-          >
-            <Ionicons name="musical-notes" size={40} color={BRAND.deep} />
-          </LinearGradient>
-        </Animated.View>
-
-        {/* Animated wordmark */}
-        <View style={{ marginTop: 28, alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row' }}>
-            {/* Base text (always visible) */}
-            <Text style={styles.titleBase}>REHOBOT</Text>
-            {/* Shimmer overlay */}
+        {/* Logo with sound-wave rings */}
+        <View style={styles.logoWrap}>
+          {[0, 1, 2].map((i) => (
             <Animated.View
+              key={i}
               pointerEvents="none"
               style={[
-                StyleSheet.absoluteFill,
+                styles.ring,
                 {
+                  opacity: pulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.35 - i * 0.1, 0.05],
+                  }),
                   transform: [
                     {
-                      translateX: shimmer.interpolate({
+                      scale: pulse.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [-width, width],
+                        outputRange: [1 + i * 0.28, 1.25 + i * 0.32],
                       }),
                     },
                   ],
                 },
               ]}
+            />
+          ))}
+
+          <Animated.View
+            style={[
+              styles.logoMark,
+              {
+                transform: [
+                  { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) },
+                ],
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={[BRAND.amber, BRAND.orchid, BRAND.rose]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.logoGradient}
+            >
+              <Ionicons name="musical-notes" size={38} color={BRAND.night} />
+            </LinearGradient>
+          </Animated.View>
+        </View>
+
+        {/* Wordmark */}
+        <View style={styles.titleBlock}>
+          <View
+            style={styles.titleClip}
+            onLayout={(e) => setTitleWidth(e.nativeEvent.layout.width)}
+          >
+            <Text style={styles.titleBase}>REHOBOT</Text>
+            {/* Shimmer overlay */}
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.shimmerBand,
+                {
+                  transform: [
+                    {
+                      translateX: shimmer.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-90, titleWidth + 90],
+                      }),
+                    },
+                    { skewX: '-20deg' },
+                  ],
+                },
+              ]}
             >
               <LinearGradient
-                colors={['transparent', 'rgba(255, 194, 71, 0.9)', 'transparent']}
+                colors={['transparent', 'rgba(255, 255, 255, 0.45)', 'transparent']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
@@ -196,27 +235,23 @@ export default function AppLoading() {
           style={[
             styles.tagline,
             {
-              opacity: fade.interpolate({ inputRange: [0, 1], outputRange: [0, 0.7] }),
+              opacity: fade.interpolate({ inputRange: [0, 1], outputRange: [0, 0.65] }),
             },
           ]}
         >
           Sing together, grow together
         </Animated.Text>
 
-        {/* Three pulsing dots instead of a spinner */}
-        <View style={styles.dotsRow}>
-          {dots.map((d, i) => (
+        {/* Equalizer loader */}
+        <View style={styles.barsRow}>
+          {bars.map((b, i) => (
             <Animated.View
               key={i}
               style={[
-                styles.dot,
+                styles.bar,
                 {
-                  opacity: d,
-                  transform: [
-                    {
-                      scale: d.interpolate({ inputRange: [0.3, 1], outputRange: [1, 1.4] }),
-                    },
-                  ],
+                  opacity: b.interpolate({ inputRange: [0.25, 1], outputRange: [0.45, 1] }),
+                  transform: [{ scaleY: b }],
                 },
               ]}
             />
@@ -230,65 +265,95 @@ export default function AppLoading() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BRAND.deep,
+    backgroundColor: BRAND.night,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   blob: {
     position: 'absolute',
-    width: 320,
-    height: 320,
-    borderRadius: 160,
+    width: 360,
+    height: 360,
+    borderRadius: 180,
   },
   center: {
     alignItems: 'center',
   },
+  logoWrap: {
+    width: 96,
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ring: {
+    position: 'absolute',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 1.5,
+    borderColor: BRAND.amber,
+  },
   logoMark: {
-    width: 92,
-    height: 92,
-    borderRadius: 26,
+    width: 88,
+    height: 88,
+    borderRadius: 30,
     overflow: 'hidden',
-    shadowColor: BRAND.gold,
-    shadowOpacity: 0.55,
-    shadowRadius: 24,
+    shadowColor: BRAND.orchid,
+    shadowOpacity: 0.6,
+    shadowRadius: 28,
     shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
+    elevation: 14,
   },
   logoGradient: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  titleBlock: {
+    marginTop: 44,
+    alignItems: 'center',
+  },
+  titleClip: {
+    overflow: 'hidden',
+    paddingLeft: 8, // offset for letter-spacing
+  },
   titleBase: {
     fontSize: 34,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: BRAND.cream,
     letterSpacing: 8,
   },
+  shimmerBand: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 70,
+  },
   subtitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: BRAND.gold,
-    letterSpacing: 14,
-    marginTop: 4,
-    paddingLeft: 10, // offset for letter-spacing
+    fontSize: 13,
+    fontWeight: '700',
+    color: BRAND.amber,
+    letterSpacing: 16,
+    marginTop: 6,
+    paddingLeft: 16, // offset for letter-spacing
   },
   tagline: {
-    marginTop: 24,
+    marginTop: 22,
     fontSize: 13,
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+    color: BRAND.cream,
+    letterSpacing: 0.6,
   },
-  dotsRow: {
+  barsRow: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    gap: 6,
+    height: 28,
     marginTop: 36,
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: BRAND.gold,
+  bar: {
+    width: 4,
+    height: 28,
+    borderRadius: 2,
+    backgroundColor: BRAND.rose,
   },
 });

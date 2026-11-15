@@ -15,10 +15,10 @@ type IconName = keyof typeof Ionicons.glyphMap;
 const TAB_COLORS: Record<string, string> = {
   Home: BRAND.violet,
   Songs: BRAND.magenta,
-  Memories: '#0EA5E9',
-  Chat: '#F59E0B',
-  Approvals: '#16A34A',
-  Profile: '#0D9488',
+  Memories: '#2BA8D8',
+  Chat: '#F08A24',
+  Approvals: '#1F9D6B',
+  Profile: BRAND.magenta,
 };
 
 const ICONS: Record<string, { on: IconName; off: IconName }> = {

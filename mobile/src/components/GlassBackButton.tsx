@@ -1,9 +1,5 @@
 import React, { useRef } from 'react';
-import {
-  Pressable,
-  Animated,
-  StyleSheet,
-} from 'react-native';
+import { Pressable, Animated, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -14,7 +10,9 @@ type Props = {
   size?: number;
 };
 
-const GRADIENT_COLORS = ['#38BDF8', '#6C3FE0', '#E0409A'] as const;
+// Frosted glass fill + a soft sunset glow behind it
+const GLASS_COLORS = ['rgba(255,255,255,0.28)', 'rgba(255,255,255,0.06)'] as const;
+const GLOW_COLORS = ['#FFB84D', '#FF4D6D', '#C77DFF'] as const;
 
 export default function GlassBackButton({
   onPress,
@@ -23,24 +21,41 @@ export default function GlassBackButton({
   size = 48,
 }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
+  const glow = useRef(new Animated.Value(0)).current;
 
   const pressIn = () => {
-    Animated.spring(scale, {
-      toValue: 0.9,
-      speed: 50,
-      bounciness: 4,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 0.9,
+        speed: 50,
+        bounciness: 4,
+        useNativeDriver: true,
+      }),
+      Animated.timing(glow, {
+        toValue: 1,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
   const pressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      speed: 30,
-      bounciness: 12,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 1,
+        speed: 30,
+        bounciness: 12,
+        useNativeDriver: true,
+      }),
+      Animated.timing(glow, {
+        toValue: 0,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
+
+  const r = size / 2;
 
   return (
     <Pressable
@@ -57,23 +72,41 @@ export default function GlassBackButton({
           {
             width: size,
             height: size,
-            borderRadius: size / 2,
+            borderRadius: r,
             transform: [{ scale }],
           },
         ]}
       >
+        {/* Aurora glow, fades in on press */}
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: glow }]}>
+          <LinearGradient
+            colors={GLOW_COLORS}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+
+        {/* Glass layer */}
         <LinearGradient
-          colors={GRADIENT_COLORS}
+          colors={GLASS_COLORS}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.gradient, { borderRadius: size / 2 }]}
+          style={[styles.gradient, { borderRadius: r }]}
         >
           <Ionicons
-            name="arrow-back"
+            name="chevron-back"
             size={Math.round(size * 0.5)}
             color={tint}
+            style={styles.icon}
           />
         </LinearGradient>
+
+        {/* Hairline border + top highlight for the glass edge */}
+        <View
+          pointerEvents="none"
+          style={[styles.border, { borderRadius: r }]}
+        />
       </Animated.View>
     </Pressable>
   );
@@ -82,15 +115,24 @@ export default function GlassBackButton({
 const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
-    shadowColor: '#6C3FE0',
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
+    backgroundColor: 'rgba(42, 15, 30, 0.55)',
+    shadowColor: '#FF4D6D',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   gradient: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  icon: {
+    marginRight: 2, // optical centering for the chevron
+  },
+  border: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: StyleSheet.hairlineWidth * 2,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
   },
 });
