@@ -1,40 +1,38 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Animated, Easing, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-// Modern "emerald & gold" palette
+// Palette sampled from the design reference: deep teal, lime, lavender, mint.
 const BRAND = {
-  night: '#050E0A',
-  deep: '#0A2B21',
-  emerald: '#19C48A',
-  cyan: '#14B8D4',
-  coral: '#FF6B57',
-  gold: '#F5B83D',
-  mist: '#ECF6F0',
+  teal: '#1D4550',
+  tealDark: '#163740',
+  lime: '#C4F44F',
+  lavender: '#D3C3F8',
+  lavenderSoft: '#EFE9FF',
+  mint: '#63D485',
+  cream: '#FAF3EB',
 };
 
-const BAR_COUNT = 5;
+const TRACK_W = 132;
+const BAR_W = 52;
 
 export default function AppLoading() {
+  const { width, height } = useWindowDimensions();
+
   // Fade-in for the whole screen
   const fade = useRef(new Animated.Value(0)).current;
-  // Pulse drives the logo, the sound rings and the aurora glows
+  // Pulse drives the big shapes, the badge and the diamonds
   const pulse = useRef(new Animated.Value(0)).current;
-  // Shimmer sweep across the title
+  // Shimmer = the lime progress sweep under the headline
   const shimmer = useRef(new Animated.Value(0)).current;
-  // Equalizer bars (replace the old dots)
-  const bars = useRef(
-    Array.from({ length: BAR_COUNT }, () => new Animated.Value(0.25)),
-  ).current;
-
-  const [titleWidth, setTitleWidth] = useState(240);
+  // Three loader dots
+  const dots = useRef([0, 1, 2].map(() => new Animated.Value(0.3))).current;
 
   useEffect(() => {
     // 1. Fade in
     Animated.timing(fade, {
       toValue: 1,
-      duration: 600,
+      duration: 650,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
@@ -44,27 +42,27 @@ export default function AppLoading() {
       Animated.sequence([
         Animated.timing(pulse, {
           toValue: 1,
-          duration: 1600,
-          easing: Easing.inOut(Easing.quad),
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(pulse, {
           toValue: 0,
-          duration: 1600,
-          easing: Easing.inOut(Easing.quad),
+          duration: 2200,
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
       ]),
     );
     pulseLoop.start();
 
-    // 3. Shimmer sweep
+    // 3. Progress sweep
     const shimmerLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(shimmer, {
           toValue: 1,
-          duration: 1500,
-          easing: Easing.inOut(Easing.quad),
+          duration: 1300,
+          easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(shimmer, {
@@ -72,187 +70,219 @@ export default function AppLoading() {
           duration: 0,
           useNativeDriver: true,
         }),
-        Animated.delay(900),
+        Animated.delay(250),
       ]),
     );
     shimmerLoop.start();
 
-    // 4. Equalizer bars, staggered like voices
-    const barLoops = bars.map((b, i) =>
+    // 4. Dots, staggered
+    const dotLoops = dots.map((d, i) =>
       Animated.loop(
         Animated.sequence([
-          Animated.delay(i * 140),
-          Animated.timing(b, {
+          Animated.delay(i * 180),
+          Animated.timing(d, {
             toValue: 1,
-            duration: 420,
+            duration: 450,
             easing: Easing.inOut(Easing.quad),
             useNativeDriver: true,
           }),
-          Animated.timing(b, {
-            toValue: 0.25,
-            duration: 520,
+          Animated.timing(d, {
+            toValue: 0.3,
+            duration: 450,
             easing: Easing.inOut(Easing.quad),
             useNativeDriver: true,
           }),
         ]),
       ),
     );
-    barLoops.forEach((l) => l.start());
+    dotLoops.forEach((l) => l.start());
 
     return () => {
       pulseLoop.stop();
       shimmerLoop.stop();
-      barLoops.forEach((l) => l.stop());
+      dotLoops.forEach((l) => l.stop());
     };
-  }, [fade, pulse, shimmer, bars]);
+  }, [fade, pulse, shimmer, dots]);
+
+  // Geometry
+  const bigD = width * 1.08;
+  const bigTop = height * 0.17;
+  const limeD = width * 1.0;
+  const mintD = width * 0.25;
+
+  const shapeIn = {
+    opacity: fade,
+    transform: [{ scale: fade.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }) }],
+  };
 
   return (
     <View style={styles.container}>
-      {/* Background */}
-      <LinearGradient
-        colors={[BRAND.night, BRAND.deep, BRAND.night]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* Aurora glows */}
+      {/* Lime arc, cropped by the top edge */}
       <Animated.View
         pointerEvents="none"
         style={[
-          styles.blob,
+          styles.shape,
           {
-            top: -120,
-            left: -100,
-            backgroundColor: 'rgba(25, 196, 138, 0.28)',
+            width: limeD,
+            height: limeD,
+            borderRadius: limeD / 2,
+            top: -limeD * 0.62,
+            left: width * 0.02,
+            backgroundColor: BRAND.lime,
+          },
+          shapeIn,
+        ]}
+      />
+
+      {/* Small lavender circle, top-left corner */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.shape,
+          {
+            width: 46,
+            height: 46,
+            borderRadius: 23,
+            top: -10,
+            left: 22,
+            backgroundColor: BRAND.lavender,
+          },
+          shapeIn,
+        ]}
+      />
+
+      {/* Mint circle, floats */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.shape,
+          {
+            width: mintD,
+            height: mintD,
+            borderRadius: mintD / 2,
+            top: height * 0.07,
+            right: width * 0.05,
+            backgroundColor: BRAND.mint,
+            opacity: fade,
             transform: [
-              { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.2] }) },
+              { translateY: pulse.interpolate({ inputRange: [0, 1], outputRange: [-7, 7] }) },
             ],
           },
         ]}
       />
+
+      {/* Soft diamond */}
       <Animated.View
         pointerEvents="none"
         style={[
-          styles.blob,
+          styles.shape,
           {
-            bottom: -130,
-            right: -110,
-            backgroundColor: 'rgba(20, 184, 212, 0.18)',
+            width: 26,
+            height: 26,
+            borderRadius: 5,
+            top: height * 0.075,
+            right: width * 0.3,
+            backgroundColor: BRAND.lavenderSoft,
+            opacity: fade,
             transform: [
-              { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1.2, 1] }) },
+              { rotate: pulse.interpolate({ inputRange: [0, 1], outputRange: ['45deg', '135deg'] }) },
             ],
           },
         ]}
       />
 
-      <Animated.View style={[styles.center, { opacity: fade }]}>
-        {/* Logo with sound-wave rings */}
-        <View style={styles.logoWrap}>
-          {[0, 1, 2].map((i) => (
-            <Animated.View
-              key={i}
-              pointerEvents="none"
-              style={[
-                styles.ring,
-                {
-                  opacity: pulse.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.35 - i * 0.1, 0.05],
-                  }),
-                  transform: [
-                    {
-                      scale: pulse.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [1 + i * 0.28, 1.25 + i * 0.32],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            />
-          ))}
-
-          <Animated.View
-            style={[
-              styles.logoMark,
-              {
-                transform: [
-                  { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] }) },
-                ],
-              },
-            ]}
-          >
-            <LinearGradient
-              colors={[BRAND.gold, BRAND.emerald, BRAND.cyan]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.logoGradient}
-            >
-              <Ionicons name="musical-notes" size={38} color={BRAND.night} />
-            </LinearGradient>
-          </Animated.View>
-        </View>
-
-        {/* Wordmark */}
-        <View style={styles.titleBlock}>
-          <View
-            style={styles.titleClip}
-            onLayout={(e) => setTitleWidth(e.nativeEvent.layout.width)}
-          >
-            <Text style={styles.titleBase}>REHOBOT</Text>
-            {/* Shimmer overlay */}
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.shimmerBand,
-                {
-                  transform: [
-                    {
-                      translateX: shimmer.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-90, titleWidth + 90],
-                      }),
-                    },
-                    { skewX: '-20deg' },
-                  ],
-                },
-              ]}
-            >
-              <LinearGradient
-                colors={['transparent', 'rgba(255, 255, 255, 0.45)', 'transparent']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={StyleSheet.absoluteFill}
-              />
-            </Animated.View>
-          </View>
-
-          <Text style={styles.subtitle}>CHOIR</Text>
-        </View>
-
-        {/* Tagline */}
-        <Animated.Text
+      {/* Big lavender circle with the logo badge */}
+      <Animated.View
+        style={[
+          styles.shape,
+          {
+            width: bigD,
+            height: bigD,
+            borderRadius: bigD / 2,
+            top: bigTop,
+            left: -width * 0.1,
+            backgroundColor: BRAND.lavender,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: fade,
+            transform: [
+              { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.035] }) },
+            ],
+          },
+        ]}
+      >
+        <Animated.View
           style={[
-            styles.tagline,
+            styles.badge,
             {
-              opacity: fade.interpolate({ inputRange: [0, 1], outputRange: [0, 0.65] }),
+              transform: [
+                { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) },
+                { rotate: pulse.interpolate({ inputRange: [0, 1], outputRange: ['-4deg', '4deg'] }) },
+              ],
             },
           ]}
         >
-          Sing together, grow together
-        </Animated.Text>
+          <Ionicons name="musical-notes" size={46} color={BRAND.lime} />
+        </Animated.View>
+      </Animated.View>
 
-        {/* Equalizer loader */}
-        <View style={styles.barsRow}>
-          {bars.map((b, i) => (
+      {/* Lime diamond on the big circle */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.shape,
+          {
+            width: 24,
+            height: 24,
+            borderRadius: 5,
+            top: bigTop + bigD * 0.78,
+            left: width * 0.2,
+            backgroundColor: BRAND.lime,
+            opacity: fade,
+            transform: [
+              { rotate: pulse.interpolate({ inputRange: [0, 1], outputRange: ['45deg', '-45deg'] }) },
+            ],
+          },
+        ]}
+      />
+
+      {/* Copy block, bottom-left */}
+      <Animated.View style={[styles.copy, { opacity: fade }]}>
+        <Text style={styles.eyebrow}>REHOBOT CHOIR</Text>
+        <Text style={styles.headline}>Sing together,{'\n'}grow together</Text>
+
+        {/* Lime progress sweep */}
+        <View style={styles.track}>
+          <Animated.View
+            style={[
+              styles.bar,
+              {
+                transform: [
+                  {
+                    translateX: shimmer.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-BAR_W, TRACK_W],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          />
+        </View>
+
+        {/* Dots */}
+        <View style={styles.dotsRow}>
+          {dots.map((d, i) => (
             <Animated.View
               key={i}
               style={[
-                styles.bar,
+                styles.dot,
                 {
-                  opacity: b.interpolate({ inputRange: [0.25, 1], outputRange: [0.45, 1] }),
-                  transform: [{ scaleY: b }],
+                  backgroundColor: [BRAND.lime, BRAND.mint, BRAND.lavender][i],
+                  opacity: d,
+                  transform: [
+                    { scale: d.interpolate({ inputRange: [0.3, 1], outputRange: [1, 1.5] }) },
+                  ],
                 },
               ]}
             />
@@ -266,95 +296,68 @@ export default function AppLoading() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BRAND.night,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: BRAND.teal,
     overflow: 'hidden',
   },
-  blob: {
+  shape: {
     position: 'absolute',
-    width: 360,
-    height: 360,
-    borderRadius: 180,
   },
-  center: {
-    alignItems: 'center',
-  },
-  logoWrap: {
-    width: 96,
-    height: 96,
+  badge: {
+    width: 92,
+    height: 92,
+    borderRadius: 28,
+    backgroundColor: BRAND.teal,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: BRAND.tealDark,
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
   },
-  ring: {
+  copy: {
     position: 'absolute',
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 1.5,
-    borderColor: BRAND.gold,
+    left: 28,
+    right: 28,
+    bottom: 56,
   },
-  logoMark: {
-    width: 88,
-    height: 88,
-    borderRadius: 30,
-    overflow: 'hidden',
-    shadowColor: BRAND.emerald,
-    shadowOpacity: 0.6,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 14,
-  },
-  logoGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titleBlock: {
-    marginTop: 44,
-    alignItems: 'center',
-  },
-  titleClip: {
-    overflow: 'hidden',
-    paddingLeft: 8, // offset for letter-spacing
-  },
-  titleBase: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: BRAND.mist,
-    letterSpacing: 8,
-  },
-  shimmerBand: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 70,
-  },
-  subtitle: {
-    fontSize: 13,
+  eyebrow: {
+    fontSize: 12,
     fontWeight: '700',
-    color: BRAND.gold,
-    letterSpacing: 16,
-    marginTop: 6,
-    paddingLeft: 16, // offset for letter-spacing
+    letterSpacing: 3,
+    color: BRAND.lime,
+    marginBottom: 10,
   },
-  tagline: {
+  headline: {
+    fontSize: 36,
+    lineHeight: 42,
+    fontWeight: '800',
+    letterSpacing: -0.8,
+    color: '#FFFFFF',
+  },
+  track: {
+    width: TRACK_W,
+    height: 3,
+    borderRadius: 2,
     marginTop: 22,
-    fontSize: 13,
-    color: BRAND.mist,
-    letterSpacing: 0.6,
-  },
-  barsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 28,
-    marginTop: 36,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
   },
   bar: {
-    width: 4,
-    height: 28,
+    width: BAR_W,
+    height: 3,
     borderRadius: 2,
-    backgroundColor: BRAND.coral,
+    backgroundColor: BRAND.lime,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 20,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });

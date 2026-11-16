@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
-import { Pressable, Animated, StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, Animated, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 type Props = {
@@ -8,30 +7,34 @@ type Props = {
   accessibilityLabel?: string;
   tint?: string;
   size?: number;
+  /** 'glass' = translucent, for dark/teal headers. 'solid' = deep teal, for light surfaces. */
+  variant?: 'glass' | 'solid';
 };
 
-// Frosted glass fill + a soft gold glow behind it
-const GLASS_COLORS = ['rgba(255,255,255,0.28)', 'rgba(255,255,255,0.06)'] as const;
-const GLOW_COLORS = ['#F5B83D', '#19C48A', '#14B8D4'] as const;
+// Palette sampled from the design reference
+const TEAL = '#1D4550';
+const LIME = '#C4F44F';
 
 export default function GlassBackButton({
   onPress,
   accessibilityLabel = 'Back',
   tint = '#FFFFFF',
   size = 48,
+  variant = 'glass',
 }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
-  const glow = useRef(new Animated.Value(0)).current;
+  // 0 = resting, 1 = pressed (lime fill + teal icon)
+  const active = useRef(new Animated.Value(0)).current;
 
   const pressIn = () => {
     Animated.parallel([
       Animated.spring(scale, {
-        toValue: 0.9,
+        toValue: 0.92,
         speed: 50,
         bounciness: 4,
         useNativeDriver: true,
       }),
-      Animated.timing(glow, {
+      Animated.timing(active, {
         toValue: 1,
         duration: 120,
         useNativeDriver: true,
@@ -47,15 +50,17 @@ export default function GlassBackButton({
         bounciness: 12,
         useNativeDriver: true,
       }),
-      Animated.timing(glow, {
+      Animated.timing(active, {
         toValue: 0,
-        duration: 260,
+        duration: 240,
         useNativeDriver: true,
       }),
     ]).start();
   };
 
-  const r = size / 2;
+  const radius = Math.round(size * 0.36); // squircle, not a circle
+  const iconSize = Math.round(size * 0.46);
+  const solid = variant === 'solid';
 
   return (
     <Pressable
@@ -72,41 +77,53 @@ export default function GlassBackButton({
           {
             width: size,
             height: size,
-            borderRadius: r,
+            borderRadius: radius,
+            backgroundColor: solid ? TEAL : 'rgba(255, 255, 255, 0.14)',
+            borderColor: solid ? 'transparent' : 'rgba(255, 255, 255, 0.24)',
             transform: [{ scale }],
           },
         ]}
       >
-        {/* Gold glow, fades in on press */}
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: glow }]}>
-          <LinearGradient
-            colors={GLOW_COLORS}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+        {/* Lime fill, fades in on press */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: LIME, opacity: active },
+          ]}
+        />
+
+        {/* Resting icon */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.iconLayer,
+            {
+              opacity: active.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+              transform: [
+                { translateX: active.interpolate({ inputRange: [0, 1], outputRange: [0, -3] }) },
+              ],
+            },
+          ]}
+        >
+          <Ionicons name="chevron-back" size={iconSize} color={tint} />
         </Animated.View>
 
-        {/* Glass layer */}
-        <LinearGradient
-          colors={GLASS_COLORS}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.gradient, { borderRadius: r }]}
-        >
-          <Ionicons
-            name="chevron-back"
-            size={Math.round(size * 0.5)}
-            color={tint}
-            style={styles.icon}
-          />
-        </LinearGradient>
-
-        {/* Hairline border + top highlight for the glass edge */}
-        <View
+        {/* Pressed icon */}
+        <Animated.View
           pointerEvents="none"
-          style={[styles.border, { borderRadius: r }]}
-        />
+          style={[
+            styles.iconLayer,
+            {
+              opacity: active,
+              transform: [
+                { translateX: active.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) },
+              ],
+            },
+          ]}
+        >
+          <Ionicons name="arrow-back" size={iconSize} color={TEAL} />
+        </Animated.View>
       </Animated.View>
     </Pressable>
   );
@@ -115,28 +132,17 @@ export default function GlassBackButton({
 const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
-    backgroundColor: 'rgba(10, 43, 33, 0.55)',
-    shadowColor: '#19C48A',
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  gradient: {
-    flex: 1,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  icon: {
-    marginRight: 2, // optical centering for the chevron
-  },
-  border: {
+  iconLayer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderColor: 'rgba(255, 255, 255, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
