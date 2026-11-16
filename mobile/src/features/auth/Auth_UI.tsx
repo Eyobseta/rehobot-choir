@@ -32,29 +32,36 @@ import { changeLanguage } from '../../i18n';
 
 /**
  * Shared UI kit for the auth screens (Login / Register / Status).
- * Lives next to the screens: src/features/auth/AuthUI.tsx
+ * Lives next to the screens: src/features/auth/Auth_UI.tsx
  * Requires: npx expo install expo-linear-gradient
+ *
+ * Design language: deep teal, lime, lavender and mint. Flat geometric shapes,
+ * squircle controls, no heavy gradients.
  */
 
 export const BRAND = {
-  deep: '#0A2B21',
-  violet: '#0F9D6E',
-  magenta: '#0E8FA3',
-  gold: '#F5B83D',
-  water: '#6FD3E8',
+  // Palette sampled from the design reference
+  teal: '#1D4550',
+  tealDark: '#163740',
+  lime: '#C4F44F',
+  lavender: '#D3C3F8',
+  lavenderSoft: '#EFE9FF',
+  mint: '#63D485',
+  cream: '#FAF3EB',
+
+  // Legacy keys: HomeScreen, AnimatedTabBar and others still import these.
+  // They map to darker shades of the new palette so white text on them stays
+  // readable. Remove them once those screens are migrated.
+  deep: '#1D4550',
+  violet: '#2F7A6B',
+  magenta: '#7D63C4',
+  gold: '#C4F44F',
+  water: '#D3C3F8',
 };
 
-const BORDER_COLORS = [
-  BRAND.violet,
-  BRAND.magenta,
-  BRAND.gold,
-  BRAND.violet,
-  BRAND.magenta,
-  BRAND.gold,
-  BRAND.violet,
-] as const;
-
-const BUTTON_COLORS = [BRAND.violet, BRAND.magenta] as const;
+/** Shared control geometry */
+export const FIELD_RADIUS = 14;
+export const BUTTON_RADIUS = 16;
 
 /** "#RRGGBB" + alpha (0..1) -> "#RRGGBBAA". Falls back to the colour itself. */
 export function withAlpha(color: string, alpha: number): string {
@@ -67,6 +74,18 @@ export function withAlpha(color: string, alpha: number): string {
   return color;
 }
 
+/** Picks deep teal or white, whichever reads better on top of `bg`. */
+export function onColor(bg: string): string {
+  if (typeof bg === 'string' && bg.startsWith('#') && bg.length === 7) {
+    const r = parseInt(bg.slice(1, 3), 16);
+    const g = parseInt(bg.slice(3, 5), 16);
+    const b = parseInt(bg.slice(5, 7), 16);
+    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return lum > 0.6 ? BRAND.teal : '#FFFFFF';
+  }
+  return '#FFFFFF';
+}
+
 // ---------------------------------------------------------------------------
 // Keyboard-aware scrolling (shared with AuthField through context)
 // ---------------------------------------------------------------------------
@@ -75,18 +94,18 @@ type ScrollCtxValue = { ensureVisible: (node: View | null) => void };
 const ScrollCtx = createContext<ScrollCtxValue>({ ensureVisible: () => {} });
 
 // ---------------------------------------------------------------------------
-// Floating water drops (decorative, ignores touches)
+// Floating drops (decorative, ignores touches)
 // ---------------------------------------------------------------------------
 
 const DROPS = [
-  { x: 0.08, size: 16, color: BRAND.water, dur: 12000, delay: 0 },
-  { x: 0.22, size: 26, color: BRAND.magenta, dur: 16000, delay: 2500 },
-  { x: 0.36, size: 11, color: BRAND.gold, dur: 11000, delay: 5200 },
-  { x: 0.5, size: 22, color: BRAND.violet, dur: 15000, delay: 1200 },
-  { x: 0.63, size: 14, color: BRAND.water, dur: 13000, delay: 6800 },
-  { x: 0.76, size: 28, color: BRAND.magenta, dur: 17000, delay: 3800 },
-  { x: 0.88, size: 12, color: BRAND.gold, dur: 12500, delay: 8200 },
-  { x: 0.95, size: 20, color: BRAND.violet, dur: 14500, delay: 900 },
+  { x: 0.08, size: 16, color: BRAND.lavender, dur: 12000, delay: 0 },
+  { x: 0.22, size: 26, color: BRAND.mint, dur: 16000, delay: 2500 },
+  { x: 0.36, size: 11, color: BRAND.lime, dur: 11000, delay: 5200 },
+  { x: 0.5, size: 22, color: BRAND.lavender, dur: 15000, delay: 1200 },
+  { x: 0.63, size: 14, color: BRAND.mint, dur: 13000, delay: 6800 },
+  { x: 0.76, size: 28, color: BRAND.lime, dur: 17000, delay: 3800 },
+  { x: 0.88, size: 12, color: BRAND.lavender, dur: 12500, delay: 8200 },
+  { x: 0.95, size: 20, color: BRAND.mint, dur: 14500, delay: 900 },
 ];
 
 function Drop({
@@ -150,9 +169,9 @@ function Drop({
           borderRadius: size / 2,
           borderTopRightRadius: 0,
           transform: [{ rotate: '-45deg' }],
-          backgroundColor: withAlpha(color, 0.22),
+          backgroundColor: withAlpha(color, 0.3),
           borderWidth: 1,
-          borderColor: withAlpha(color, 0.6),
+          borderColor: withAlpha(color, 0.7),
         }}
       >
         <View
@@ -193,8 +212,65 @@ export function WaterDrops() {
 }
 
 // ---------------------------------------------------------------------------
-// Brand header: pulsing "sound ripples" around the choir logo
+// Brand header: flat shapes + the choir logo (a lavender sun with voices)
 // ---------------------------------------------------------------------------
+
+/** Gentle vertical drift for decorative shapes. */
+function Float({
+  children,
+  style,
+  amp = 6,
+  dur = 3600,
+  delay = 0,
+}: {
+  children?: React.ReactNode;
+  style?: any;
+  amp?: number;
+  dur?: number;
+  delay?: number;
+}) {
+  const p = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(p, {
+          toValue: 1,
+          duration: dur,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(p, {
+          toValue: 0,
+          duration: dur,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    const timer = setTimeout(() => loop.start(), delay);
+    return () => {
+      clearTimeout(timer);
+      loop.stop();
+    };
+  }, [p, dur, delay]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        style,
+        {
+          transform: [
+            { translateY: p.interpolate({ inputRange: [0, 1], outputRange: [-amp, amp] }) },
+          ],
+        },
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
+}
 
 function Ring({ size, delay, color }: { size: number; delay: number; color: string }) {
   const p = useRef(new Animated.Value(0)).current;
@@ -223,12 +299,68 @@ function Ring({ size, delay, color }: { size: number; delay: number; color: stri
         width: size,
         height: size,
         borderRadius: size / 2,
-        borderWidth: 2,
+        borderWidth: 1.5,
         borderColor: color,
-        opacity: p.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0] }),
-        transform: [{ scale: p.interpolate({ inputRange: [0, 1], outputRange: [1, 2.6] }) }],
+        opacity: p.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
+        transform: [{ scale: p.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] }) }],
       }}
     />
+  );
+}
+
+/** Five little "voices" that bounce out of phase. */
+function LogoBars({ size }: { size: number }) {
+  const bars = useRef([0, 1, 2, 3, 4].map(() => new Animated.Value(0.3))).current;
+
+  useEffect(() => {
+    const loops = bars.map((b, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 120),
+          Animated.timing(b, {
+            toValue: 1,
+            duration: 420,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(b, {
+            toValue: 0.3,
+            duration: 520,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ]),
+      ),
+    );
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, [bars]);
+
+  const h = size * 0.46;
+  const w = Math.max(3, size * 0.075);
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Math.max(2, size * 0.05),
+        height: h,
+      }}
+    >
+      {bars.map((b, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: w,
+            height: h,
+            borderRadius: w / 2,
+            backgroundColor: i % 2 === 0 ? BRAND.teal : BRAND.mint,
+            transform: [{ scaleY: b }],
+          }}
+        />
+      ))}
+    </View>
   );
 }
 
@@ -241,28 +373,39 @@ function Logo({ size }: { size: number }) {
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Ring size={size} delay={0} color={BRAND.gold} />
-      <Ring size={size} delay={1000} color={BRAND.magenta} />
-      <Ring size={size} delay={2000} color="#FFFFFF" />
+      <Ring size={size} delay={0} color={BRAND.lavender} />
+      <Ring size={size} delay={1500} color={BRAND.lime} />
       <Animated.View
         style={{
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: BRAND.gold,
+          backgroundColor: BRAND.lavender,
           alignItems: 'center',
           justifyContent: 'center',
           transform: [{ scale: pop }],
-          shadowColor: BRAND.gold,
-          shadowOpacity: 0.6,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: 8,
         }}
       >
-        <Text style={{ fontSize: size * 0.5, color: BRAND.deep, fontWeight: '800' }}>♪</Text>
+        <LogoBars size={size} />
       </Animated.View>
     </View>
+  );
+}
+
+/** REHOBOT with the two O's lit in lime. */
+function Wordmark({ size, spacing }: { size: number; spacing: number }) {
+  const o = { color: BRAND.lime };
+  return (
+    <Text
+      style={{
+        color: '#FFFFFF',
+        fontSize: size,
+        fontWeight: '800',
+        letterSpacing: spacing,
+      }}
+    >
+      REH<Text style={o}>O</Text>B<Text style={o}>O</Text>T
+    </Text>
   );
 }
 
@@ -286,15 +429,15 @@ export function LanguageToggle({ top }: { top: number }) {
       style={{
         paddingHorizontal: 10,
         paddingVertical: 5,
-        borderRadius: 14,
-        backgroundColor: active ? BRAND.gold : 'transparent',
+        borderRadius: 11,
+        backgroundColor: active ? BRAND.lime : 'transparent',
       }}
     >
       <Text
         style={{
           fontSize: 12,
           fontWeight: '800',
-          color: active ? BRAND.deep : 'rgba(255,255,255,0.85)',
+          color: active ? BRAND.teal : 'rgba(255,255,255,0.8)',
         }}
       >
         {label}
@@ -312,10 +455,10 @@ export function LanguageToggle({ top }: { top: number }) {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 3,
-        borderRadius: 18,
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.35)',
-        backgroundColor: 'rgba(255,255,255,0.12)',
+        borderColor: 'rgba(255,255,255,0.16)',
+        backgroundColor: BRAND.tealDark,
         zIndex: 10,
       }}
     >
@@ -338,18 +481,18 @@ export function ThemeToggle({ top }: { top: number }) {
         position: 'absolute',
         top,
         left: 16,
-        width: 34,
-        height: 34,
-        borderRadius: 17,
+        width: 36,
+        height: 36,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.35)',
-        backgroundColor: 'rgba(255,255,255,0.12)',
+        borderColor: 'rgba(255,255,255,0.16)',
+        backgroundColor: BRAND.tealDark,
         zIndex: 10,
       }}
     >
-      <Ionicons name={mode === 'dark' ? 'sunny' : 'moon'} size={17} color={BRAND.gold} />
+      <Ionicons name={mode === 'dark' ? 'sunny' : 'moon'} size={17} color={BRAND.lime} />
     </Pressable>
   );
 }
@@ -363,9 +506,10 @@ export function BrandHeader({
 }) {
   const insets = useSafeAreaInsets();
   const topPad = insets.top + (compact ? 14 : 30);
+  const k = compact ? 0.7 : 1; // shape scale
 
   return (
-    <View style={{ backgroundColor: BRAND.deep, marginTop: -1000, paddingTop: 1000 }}>
+    <View style={{ backgroundColor: BRAND.teal, marginTop: -1000, paddingTop: 1000 }}>
       <View
         style={{
           paddingTop: topPad,
@@ -374,28 +518,56 @@ export function BrandHeader({
           overflow: 'hidden',
         }}
       >
+        {/* Flat geometric shapes (echo the loading screen) */}
         <View
           pointerEvents="none"
           style={{
             position: 'absolute',
-            top: -60,
-            left: -70,
-            width: 220,
-            height: 220,
-            borderRadius: 110,
-            backgroundColor: withAlpha(BRAND.violet, 0.55),
+            top: -175 * k,
+            left: -55 * k,
+            width: 250 * k,
+            height: 250 * k,
+            borderRadius: 125 * k,
+            backgroundColor: BRAND.lime,
           }}
         />
         <View
           pointerEvents="none"
           style={{
             position: 'absolute',
-            bottom: -70,
-            right: -50,
-            width: 200,
-            height: 200,
-            borderRadius: 100,
-            backgroundColor: withAlpha(BRAND.magenta, 0.4),
+            top: 30 * k,
+            right: -28 * k,
+            width: 86 * k,
+            height: 86 * k,
+            borderRadius: 43 * k,
+            backgroundColor: BRAND.lavender,
+          }}
+        />
+        <Float
+          amp={7}
+          style={{
+            position: 'absolute',
+            bottom: -36 * k,
+            right: -22 * k,
+            width: 124 * k,
+            height: 124 * k,
+            borderRadius: 62 * k,
+            backgroundColor: BRAND.mint,
+          }}
+        />
+        <Float
+          amp={5}
+          dur={3000}
+          delay={600}
+          style={{
+            position: 'absolute',
+            bottom: 28 * k,
+            left: 30 * k,
+            width: 20 * k,
+            height: 20 * k,
+            borderRadius: 5,
+            backgroundColor: BRAND.lavenderSoft,
+            transform: [{ rotate: '45deg' }],
           }}
         />
 
@@ -403,10 +575,16 @@ export function BrandHeader({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
             <Logo size={46} />
             <View>
-              <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '800', letterSpacing: 4 }}>
-                REHOBOT
-              </Text>
-              <Text style={{ color: BRAND.gold, fontSize: 13, fontWeight: '700', letterSpacing: 9 }}>
+              <Wordmark size={22} spacing={4} />
+              <Text
+                style={{
+                  color: BRAND.lime,
+                  fontSize: 13,
+                  fontWeight: '800',
+                  letterSpacing: 9,
+                  marginTop: 2,
+                }}
+              >
                 CHOIR
               </Text>
             </View>
@@ -414,34 +592,35 @@ export function BrandHeader({
         ) : (
           <>
             <Logo size={88} />
-            <Text
+            <View style={{ marginTop: 20 }}>
+              <Wordmark size={30} spacing={6} />
+            </View>
+            <View
               style={{
-                marginTop: 18,
-                color: '#FFFFFF',
-                fontSize: 30,
-                fontWeight: '800',
-                letterSpacing: 6,
+                marginTop: 10,
+                paddingHorizontal: 16,
+                paddingVertical: 5,
+                borderRadius: 999,
+                backgroundColor: BRAND.lime,
               }}
             >
-              REHOBOT
-            </Text>
-            <Text
-              style={{
-                color: BRAND.gold,
-                fontSize: 16,
-                fontWeight: '700',
-                letterSpacing: 12,
-                marginTop: 2,
-                paddingLeft: 12,
-              }}
-            >
-              CHOIR
-            </Text>
+              <Text
+                style={{
+                  color: BRAND.teal,
+                  fontSize: 12,
+                  fontWeight: '800',
+                  letterSpacing: 6,
+                  paddingLeft: 6,
+                }}
+              >
+                CHOIR
+              </Text>
+            </View>
             {subtitle ? (
               <Text
                 style={{
-                  marginTop: 10,
-                  color: 'rgba(255,255,255,0.78)',
+                  marginTop: 12,
+                  color: 'rgba(255,255,255,0.74)',
                   fontSize: 13,
                   textAlign: 'center',
                   paddingHorizontal: 32,
@@ -461,13 +640,13 @@ export function BrandHeader({
 }
 
 // ---------------------------------------------------------------------------
-// Screen shell: header + rounded sheet + keyboard handling + water drops
+// Screen shell: header + rounded sheet + keyboard handling + drops
 // ---------------------------------------------------------------------------
 
 /**
  * ScrollView + keyboard handling. Use it for any screen with inputs:
  * the focused field is scrolled just above the keyboard.
- * Water drops are opt-in via `drops` (default: off).
+ * Drops are opt-in via `drops` (default: off).
  */
 export function KeyboardAwareScroll({
   children,
@@ -592,7 +771,7 @@ export function AuthScreen({
 }
 
 // ---------------------------------------------------------------------------
-// Avatar with a slowly rotating gradient ring
+// Avatar with a slowly rotating colour ring
 // ---------------------------------------------------------------------------
 
 export function AvatarRing({
@@ -639,7 +818,7 @@ export function AvatarRing({
         }}
       >
         <LinearGradient
-          colors={[BRAND.gold, BRAND.magenta, BRAND.violet, BRAND.water, BRAND.gold]}
+          colors={[BRAND.lime, BRAND.mint, BRAND.lavender, BRAND.lime]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{ flex: 1 }}
@@ -674,7 +853,7 @@ export function AvatarRing({
 }
 
 // ---------------------------------------------------------------------------
-// Input with animated gradient border
+// Input: flat squircle with an animated focus ring
 // ---------------------------------------------------------------------------
 
 export function AuthField({
@@ -721,45 +900,26 @@ export function AuthField({
 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
   const { ensureVisible } = useContext(ScrollCtx);
 
   const wrapRef = useRef<View>(null);
   const focus = useRef(new Animated.Value(0)).current;
-  const slide = useRef(new Animated.Value(0)).current;
-  const loopRef = useRef<Animated.CompositeAnimation | null>(null);
   const [hidden, setHidden] = useState(!!secureTextEntry);
   const [focused, setFocused] = useState(false);
-  const [w, setW] = useState(0);
 
   const onFocus = () => {
     setFocused(true);
     Animated.timing(focus, { toValue: 1, duration: 180, useNativeDriver: true }).start();
-    if (w > 0) {
-      slide.setValue(0);
-      loopRef.current = Animated.loop(
-        Animated.timing(slide, {
-          toValue: -w,
-          duration: 2600,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }),
-      );
-      loopRef.current.start();
-    }
     ensureVisible(wrapRef.current);
   };
 
   const onBlur = () => {
     setFocused(false);
-    Animated.timing(focus, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
-      loopRef.current?.stop();
-    });
+    Animated.timing(focus, { toValue: 0, duration: 200, useNativeDriver: true }).start();
   };
 
-  useEffect(() => () => loopRef.current?.stop(), []);
-
-  const r = radius.md;
+  const r = FIELD_RADIUS;
 
   return (
     <View ref={wrapRef} collapsable={false} style={{ marginBottom: spacing.md }}>
@@ -768,7 +928,7 @@ export function AuthField({
           style={[
             typography.bodySmall,
             {
-              color: error ? colors.error : focused ? BRAND.violet : colors.textSecondary,
+              color: error ? colors.error : focused ? colors.primary : colors.textSecondary,
               marginBottom: spacing.xs,
               fontWeight: '600',
             },
@@ -779,85 +939,77 @@ export function AuthField({
       ) : null}
 
       <View
-        onLayout={(e) => setW(e.nativeEvent.layout.width)}
-        style={{ borderRadius: r, overflow: 'hidden', backgroundColor: error ? colors.error : colors.border }}
+        style={{
+          minHeight: multiline ? 120 : 52,
+          flexDirection: 'row',
+          alignItems: multiline ? 'flex-start' : 'center',
+          paddingHorizontal: spacing.md,
+          borderRadius: r,
+          borderWidth: 1.5,
+          borderColor: error ? colors.error : colors.border,
+          backgroundColor: colors.surface,
+        }}
       >
-        {w > 0 && (
+        {/* Focus ring fades in over the base border */}
+        {!error ? (
           <Animated.View
             pointerEvents="none"
             style={{
               position: 'absolute',
-              top: 0,
-              bottom: 0,
-              left: 0,
-              width: w * 2,
+              top: -1.5,
+              left: -1.5,
+              right: -1.5,
+              bottom: -1.5,
+              borderRadius: r,
+              borderWidth: 2,
+              borderColor: colors.primary,
               opacity: focus,
-              transform: [{ translateX: slide }],
-            }}
-          >
-            <LinearGradient
-              colors={BORDER_COLORS}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{ flex: 1 }}
-            />
-          </Animated.View>
-        )}
-
-        <View
-          style={{
-            margin: 2,
-            minHeight: multiline ? 120 : 50,
-            flexDirection: 'row',
-            alignItems: multiline ? 'flex-start' : 'center',
-            paddingHorizontal: spacing.md,
-            borderRadius: r - 2,
-            backgroundColor: colors.surface,
-          }}
-        >
-          {iconNode ? (
-            <View style={{ marginRight: spacing.sm, marginTop: multiline ? 10 : 0 }}>{iconNode}</View>
-          ) : icon ? (
-            <Text style={{ fontSize: 16, marginRight: spacing.sm, marginTop: multiline ? 14 : 0 }}>{icon}</Text>
-          ) : null}
-          <TextInput
-            ref={inputRef}
-            maxLength={maxLength}
-            autoComplete={autoComplete}
-            blurOnSubmit={returnKeyType !== 'next'}
-            value={value}
-            onChangeText={onChangeText}
-            keyboardType={keyboardType ?? 'default'}
-            autoCapitalize={autoCapitalize ?? 'sentences'}
-            secureTextEntry={secureTextEntry ? hidden : false}
-            multiline={multiline}
-            textAlignVertical={multiline ? 'top' : 'center'}
-            placeholder={placeholder}
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType={returnKeyType}
-            onSubmitEditing={onSubmitEditing}
-            onFocus={onFocus}
-            onBlur={onBlur}
-            style={{
-              flex: 1,
-              paddingVertical: spacing.md,
-              color: colors.text,
-              fontSize: typography.body.fontSize,
             }}
           />
-          {showCheck && value.length > 0 ? (
-            <Ionicons name="checkmark-circle" size={18} color={BRAND.gold} />
-          ) : null}
-          {secureTextEntry ? (
-            <Pressable onPress={() => setHidden((h) => !h)} hitSlop={10}>
-              <Text style={[typography.bodySmall, { color: BRAND.violet, fontWeight: '700' }]}>
-                {hidden
-                  ? t('auth.show', { defaultValue: 'Show' })
-                  : t('auth.hide', { defaultValue: 'Hide' })}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
+        ) : null}
+
+        {iconNode ? (
+          <View style={{ marginRight: spacing.sm, marginTop: multiline ? 10 : 0 }}>{iconNode}</View>
+        ) : icon ? (
+          <Text style={{ fontSize: 16, marginRight: spacing.sm, marginTop: multiline ? 14 : 0 }}>{icon}</Text>
+        ) : null}
+        <TextInput
+          ref={inputRef}
+          maxLength={maxLength}
+          autoComplete={autoComplete}
+          blurOnSubmit={returnKeyType !== 'next'}
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={keyboardType ?? 'default'}
+          autoCapitalize={autoCapitalize ?? 'sentences'}
+          secureTextEntry={secureTextEntry ? hidden : false}
+          multiline={multiline}
+          textAlignVertical={multiline ? 'top' : 'center'}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textSecondary}
+          returnKeyType={returnKeyType}
+          onSubmitEditing={onSubmitEditing}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          style={{
+            flex: 1,
+            paddingVertical: spacing.md,
+            color: colors.text,
+            fontSize: typography.body.fontSize,
+          }}
+        />
+        {showCheck && value.length > 0 ? (
+          <Ionicons name="checkmark-circle" size={18} color={BRAND.mint} />
+        ) : null}
+        {secureTextEntry ? (
+          <Pressable onPress={() => setHidden((h) => !h)} hitSlop={10}>
+            <Text style={[typography.bodySmall, { color: colors.primary, fontWeight: '700' }]}>
+              {hidden
+                ? t('auth.show', { defaultValue: 'Show' })
+                : t('auth.hide', { defaultValue: 'Hide' })}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
       {helper ? (
         <Text
@@ -895,11 +1047,12 @@ export function PrimaryButton({
   iconNode?: React.ReactNode;
 }) {
   const { theme } = useTheme();
-  const { spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
   const scale = useRef(new Animated.Value(1)).current;
   const sheen = useRef(new Animated.Value(0)).current;
   const [w, setW] = useState(0);
   const off = !!busy || !!disabled;
+  const dark = theme.mode === 'dark';
 
   useEffect(() => {
     if (!w || off) return;
@@ -912,7 +1065,7 @@ export function PrimaryButton({
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.delay(2400),
+        Animated.delay(2600),
       ]),
     );
     loop.start();
@@ -922,16 +1075,21 @@ export function PrimaryButton({
   const to = (v: number) =>
     Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
 
+  // Screens pass white icons; recolor them so they read on lime / teal.
+  const iconEl = React.isValidElement(iconNode)
+    ? React.cloneElement(iconNode as React.ReactElement<any>, { color: colors.primaryText })
+    : iconNode;
+
   return (
     <Animated.View
       style={[
         {
-          borderRadius: radius.md,
-          backgroundColor: BRAND.violet,
-          opacity: off ? 0.65 : 1,
+          borderRadius: BUTTON_RADIUS,
+          backgroundColor: colors.primary,
+          opacity: off ? 0.6 : 1,
           transform: [{ scale }],
-          shadowColor: BRAND.magenta,
-          shadowOpacity: 0.4,
+          shadowColor: colors.primary,
+          shadowOpacity: dark ? 0.3 : 0.24,
           shadowRadius: 14,
           shadowOffset: { width: 0, height: 8 },
           elevation: 6,
@@ -947,15 +1105,12 @@ export function PrimaryButton({
         accessibilityRole="button"
         accessibilityState={{ disabled: off, busy: !!busy }}
       >
-        <LinearGradient
-          colors={BUTTON_COLORS}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <View
           onLayout={(e) => setW(e.nativeEvent.layout.width)}
           style={{
             minHeight: 54,
             paddingVertical: spacing.md,
-            borderRadius: radius.md,
+            borderRadius: BUTTON_RADIUS,
             overflow: 'hidden',
             flexDirection: 'row',
             alignItems: 'center',
@@ -970,9 +1125,9 @@ export function PrimaryButton({
                 position: 'absolute',
                 top: -20,
                 left: 0,
-                width: 46,
+                width: 40,
                 height: 120,
-                backgroundColor: 'rgba(255,255,255,0.28)',
+                backgroundColor: dark ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.22)',
                 transform: [
                   {
                     translateX: sheen.interpolate({
@@ -986,16 +1141,16 @@ export function PrimaryButton({
             />
           ) : null}
           {busy ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.primaryText} />
           ) : (
             <>
-              {iconNode ?? (icon ? <Text style={{ fontSize: 16 }}>{icon}</Text> : null)}
-              <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '700' }]}>
+              {iconEl ?? (icon ? <Text style={{ fontSize: 16 }}>{icon}</Text> : null)}
+              <Text style={[typography.button, { color: colors.primaryText, fontWeight: '800' }]}>
                 {label}
               </Text>
             </>
           )}
-        </LinearGradient>
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -1011,7 +1166,7 @@ export function SecondaryButton({
   flex?: number;
 }) {
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
   const scale = useRef(new Animated.Value(1)).current;
 
   const to = (v: number) =>
@@ -1027,7 +1182,7 @@ export function SecondaryButton({
         style={{
           minHeight: 54,
           paddingVertical: spacing.md,
-          borderRadius: radius.md,
+          borderRadius: BUTTON_RADIUS,
           borderWidth: 1.5,
           borderColor: colors.border,
           backgroundColor: colors.surface,
@@ -1035,7 +1190,7 @@ export function SecondaryButton({
           justifyContent: 'center',
         }}
       >
-        <Text style={[typography.button, { color: colors.text }]}>{label}</Text>
+        <Text style={[typography.button, { color: colors.text, fontWeight: '700' }]}>{label}</Text>
       </Pressable>
     </Animated.View>
   );
@@ -1043,20 +1198,22 @@ export function SecondaryButton({
 
 export function ErrorBanner({ message }: { message: string }) {
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
   return (
     <View
       style={{
         flexDirection: 'row',
+        alignItems: 'center',
         padding: spacing.md,
         marginBottom: spacing.md,
-        borderRadius: radius.md,
-        borderLeftWidth: 4,
-        borderLeftColor: colors.error,
+        borderRadius: FIELD_RADIUS,
+        borderWidth: 1,
+        borderColor: withAlpha(colors.error, 0.4),
         backgroundColor: withAlpha(colors.error, 0.12),
+        gap: spacing.sm,
       }}
     >
-      <Text style={{ marginRight: spacing.sm }}>⚠️</Text>
+      <Ionicons name="alert-circle" size={20} color={colors.error} />
       <Text style={[typography.bodySmall, { color: colors.error, flex: 1 }]}>{message}</Text>
     </View>
   );
@@ -1075,33 +1232,34 @@ function StepDot({
 }) {
   const { theme } = useTheme();
   const { colors } = theme;
-  const s = useRef(new Animated.Value(state === 'current' ? 1.12 : 1)).current;
+  const s = useRef(new Animated.Value(state === 'current' ? 1.1 : 1)).current;
 
   useEffect(() => {
     Animated.spring(s, {
-      toValue: state === 'current' ? 1.12 : 1,
+      toValue: state === 'current' ? 1.1 : 1,
       friction: 5,
       useNativeDriver: true,
     }).start();
   }, [state, s]);
 
   const bg =
-    state === 'done' ? BRAND.gold : state === 'current' ? BRAND.magenta : colors.surface;
+    state === 'done' ? BRAND.mint : state === 'current' ? colors.primary : colors.surface;
+  const fg = state === 'done' ? BRAND.teal : colors.primaryText;
 
   return (
     <Animated.View
       style={{
         width: 42,
         height: 42,
-        borderRadius: 21,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: bg,
         borderWidth: state === 'todo' ? 1.5 : 0,
         borderColor: colors.border,
         transform: [{ scale: s }],
-        shadowColor: BRAND.magenta,
-        shadowOpacity: state === 'current' ? 0.5 : 0,
+        shadowColor: colors.primary,
+        shadowOpacity: state === 'current' ? 0.4 : 0,
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 4 },
         elevation: state === 'current' ? 6 : 0,
@@ -1111,8 +1269,8 @@ function StepDot({
         style={{
           fontSize: state === 'done' ? 18 : 16,
           fontWeight: '800',
-          color: state === 'done' ? BRAND.deep : '#FFFFFF',
-          opacity: state === 'todo' ? 0.55 : 1,
+          color: state === 'todo' ? colors.textSecondary : fg,
+          opacity: state === 'todo' ? 0.7 : 1,
         }}
       >
         {state === 'done' ? '✓' : icon}
@@ -1163,7 +1321,7 @@ export function Stepper({
               <Animated.View
                 style={{
                   height: 4,
-                  backgroundColor: BRAND.gold,
+                  backgroundColor: BRAND.mint,
                   width: progress.interpolate({
                     inputRange: [i, i + 1],
                     outputRange: ['0%', '100%'],

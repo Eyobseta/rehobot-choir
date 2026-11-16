@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated, Easing, StyleSheet, useWindowDimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 // Palette sampled from the design reference: deep teal, lime, lavender, mint.
@@ -13,6 +14,7 @@ const BRAND = {
 };
 
 const WORD = 'REHOBOT'.split('');
+const TAG_LINES = ['Sing together,', 'grow together'];
 const LETTER_STAGGER = 110;
 const LETTER_PERIOD = 2200;
 const TRACK_W = 140;
@@ -41,6 +43,9 @@ export default function AppLoading() {
   const bars = useRef([0, 1, 2, 3, 4].map(() => new Animated.Value(0.25))).current;
   // Wordmark letters
   const letters = useRef(WORD.map(() => new Animated.Value(0))).current;
+  // Tagline: staggered entrance + glint sweep
+  const tag = useRef(TAG_LINES.map(() => new Animated.Value(0))).current;
+  const glint = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // 1. Entrance
@@ -175,7 +180,39 @@ export default function AppLoading() {
     );
     letterLoops.forEach((l) => l.start());
 
+    // 8. Tagline: lines rise in one after another, then a glint keeps sweeping across
+    Animated.sequence([
+      Animated.delay(650),
+      Animated.stagger(
+        220,
+        tag.map((t) =>
+          Animated.spring(t, {
+            toValue: 1,
+            friction: 7,
+            tension: 55,
+            useNativeDriver: true,
+          }),
+        ),
+      ),
+    ]).start();
+
+    const glintLoop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(1600),
+        Animated.timing(glint, {
+          toValue: 1,
+          duration: 1100,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glint, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.delay(900),
+      ]),
+    );
+    glintLoop.start();
+
     return () => {
+      glintLoop.stop();
       pulseLoop.stop();
       shimmerLoop.stop();
       spinALoop.stop();
@@ -184,7 +221,7 @@ export default function AppLoading() {
       barLoops.forEach((l) => l.stop());
       letterLoops.forEach((l) => l.stop());
     };
-  }, [enter, fade, pulse, shimmer, spinA, spinB, rings, bars, letters]);
+  }, [enter, fade, pulse, shimmer, spinA, spinB, rings, bars, letters, tag, glint]);
 
   // Geometry
   const D = Math.min(width * 0.58, 240); // hero circle
@@ -193,6 +230,7 @@ export default function AppLoading() {
   const orbitA = D * 1.55;
   const orbitB = D * 1.25;
   const wordTop = cy + orbitA / 2 + 18;
+  const tagW = Math.min(width * 0.84, 320);
 
   const rotA = spinA.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const rotB = spinB.interpolate({ inputRange: [0, 1], outputRange: ['360deg', '0deg'] });
@@ -390,7 +428,73 @@ export default function AppLoading() {
           <Text style={styles.pillText}>CHOIR</Text>
         </View>
 
-        <Text style={styles.tagline}>Sing together, grow together</Text>
+        {/* Tagline: two lines, glowing, floating, with a glint sweep */}
+        <View style={[styles.tagBlock, { width: tagW }]}>
+          {TAG_LINES.map((line, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                styles.tagLine,
+                {
+                  opacity: tag[i],
+                  transform: [
+                    { translateY: tag[i].interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) },
+                    {
+                      translateY: pulse.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: i === 0 ? [0, -3] : [0, 3],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              {/* Pulsing glow layer behind the text */}
+              <Animated.Text
+                style={[
+                  styles.tagText,
+                  styles.tagGlow,
+                  i === 1 && styles.tagTextAccent,
+                  {
+                    opacity: pulse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: i === 0 ? [0.25, 0.85] : [0.85, 0.25],
+                    }),
+                  },
+                ]}
+              >
+                {line}
+              </Animated.Text>
+              <Text style={[styles.tagText, i === 1 && styles.tagTextAccent]}>{line}</Text>
+            </Animated.View>
+          ))}
+
+          {/* Glint */}
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.glint,
+              {
+                transform: [
+                  {
+                    translateX: glint.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-70, tagW + 10],
+                    }),
+                  },
+                  { skewX: '-20deg' },
+                ],
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={['transparent', 'rgba(255, 255, 255, 0.4)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
+        </View>
       </Animated.View>
 
       {/* Lime progress sweep */}
@@ -485,11 +589,46 @@ const styles = StyleSheet.create({
     paddingLeft: 6, // offset for letter-spacing
     color: BRAND.teal,
   },
-  tagline: {
-    marginTop: 18,
-    fontSize: 13,
-    letterSpacing: 0.5,
-    color: 'rgba(255, 255, 255, 0.62)',
+  tagBlock: {
+    marginTop: 12,
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24, // keeps the glow from being clipped
+    overflow: 'hidden',
+    borderRadius: 16,
+  },
+  tagLine: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tagText: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textAlign: 'center',
+    color: '#FFFFFF',
+    paddingHorizontal: 8,
+    textShadowColor: 'rgba(196, 244, 79, 0.55)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  tagTextAccent: {
+    color: BRAND.lime,
+  },
+  tagGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    textShadowColor: 'rgba(196, 244, 79, 0.95)',
+    textShadowRadius: 22,
+  },
+  glint: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 56,
   },
   track: {
     position: 'absolute',

@@ -21,6 +21,7 @@ import {
   ErrorBanner,
   Stepper,
   BRAND,
+  withAlpha,
 } from './Auth_UI';
 import {
   ChoiceCards,
@@ -288,10 +289,10 @@ export default function RegisterScreen({ navigation }: Props) {
             paddingHorizontal: spacing.md,
             paddingVertical: 3,
             borderRadius: radius.pill,
-            backgroundColor: 'rgba(108,63,224,0.14)',
+            backgroundColor: withAlpha(colors.primary, 0.16),
           }}
         >
-          <Text style={[typography.caption, { color: BRAND.violet, fontWeight: '800' }]}>
+          <Text style={[typography.caption, { color: colors.primary, fontWeight: '800' }]}>
             {t('register.step', { current: step, total: 3 })}
           </Text>
         </View>
@@ -460,14 +461,14 @@ export default function RegisterScreen({ navigation }: Props) {
                     width: 44,
                     height: 44,
                     borderRadius: 22,
-                    backgroundColor: BRAND.magenta,
+                    backgroundColor: colors.primary,
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 3,
                     borderColor: colors.background,
                   }}
                 >
-                  <Ionicons name="camera" size={20} color="#FFFFFF" />
+                  <Ionicons name="camera" size={20} color={colors.primaryText} />
                 </View>
               </AvatarRing>
               <Text
@@ -476,7 +477,7 @@ export default function RegisterScreen({ navigation }: Props) {
                   {
                     marginTop: spacing.md,
                     fontWeight: '700',
-                    color: photoInvalid ? colors.error : BRAND.violet,
+                    color: photoInvalid ? colors.error : colors.primary,
                   },
                 ]}
               >
@@ -600,7 +601,7 @@ function Heading({ text }: { text: string }) {
           width: 4,
           height: 22,
           borderRadius: 2,
-          backgroundColor: BRAND.gold,
+          backgroundColor: BRAND.lime,
           marginRight: spacing.sm,
         }}
       />

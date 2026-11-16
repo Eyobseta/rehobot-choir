@@ -22,12 +22,11 @@ import { FadeInUp, StatusBadge, StatusTimeline, fieldIcon, useShake } from './Au
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Status'>;
 
-const PENDING_COLOR = '#F59E0B';
-
 export default function RegistrationStatusScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, radius, typography } = theme;
+  const pendingColor = colors.warning;
 
   const [phone, setPhone] = useState(route.params?.phone ?? '');
   const [busy, setBusy] = useState(false);
@@ -79,7 +78,7 @@ export default function RegistrationStatusScreen({ route, navigation }: Props) {
       ? { color: colors.success }
       : status?.status === 'REJECTED'
         ? { color: colors.error }
-        : { color: PENDING_COLOR };
+        : { color: pendingColor };
 
   const badgeLabel =
     status?.status === 'APPROVED'
@@ -230,7 +229,7 @@ export default function RegistrationStatusScreen({ route, navigation }: Props) {
             <StatusTimeline
               status={status.status}
               decisionColor={tone.color}
-              pendingColor={PENDING_COLOR}
+              pendingColor={pendingColor}
             />
           </View>
 

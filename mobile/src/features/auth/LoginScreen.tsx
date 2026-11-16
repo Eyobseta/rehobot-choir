@@ -9,7 +9,7 @@ import { ApiError } from '../../services/api';
 import { setSessionState } from '../../services/session';
 import type { AuthStackParamList } from '../../navigation/AuthNavigator';
 import { registerDeviceWithBackend } from '../../services/pushTokens';
-import { AuthScreen, AuthField, PrimaryButton, ErrorBanner } from './Auth_UI';
+import { AuthScreen, AuthField, PrimaryButton, ErrorBanner, BRAND } from './Auth_UI';
 import {
   ActionTile,
   FadeInUp,
@@ -157,7 +157,7 @@ export default function LoginScreen({ navigation }: Props) {
           <ActionTile
             icon="search-outline"
             label={t('auth.checkStatus')}
-            tint={colors.accent}
+            tint={BRAND.cream}
             onPress={() => navigation.navigate('Status')}
           />
         </View>

@@ -1,21 +1,25 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { View, Text, Pressable, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
-import { BRAND, withAlpha } from './Auth_UI';
+import { BRAND, FIELD_RADIUS, onColor, withAlpha } from './Auth_UI';
 
 /**
- * Extra building blocks for the redesigned Login / Register / Status screens.
- * Lives next to Auth_UI.tsx. Nothing here touches app logic — pure UI.
+ * Extra building blocks for the Login / Register / Status screens.
+ * Lives next to Auth_UI.tsx. Nothing here touches app logic, pure UI.
  */
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+function FieldIcon({ name, color }: { name: IconName; color?: string }) {
+  const { theme } = useTheme();
+  return <Ionicons name={name} size={18} color={color ?? theme.colors.textSecondary} />;
+}
+
 /** Ionicon sized + tinted for use as AuthField `iconNode`. */
-export function fieldIcon(name: IconName, color: string = BRAND.violet) {
-  return <Ionicons name={name} size={18} color={color} />;
+export function fieldIcon(name: IconName, color?: string) {
+  return <FieldIcon name={name} color={color} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,13 +77,15 @@ export function useShake() {
 
 // ---------------------------------------------------------------------------
 // Action tile (Login: "Register" / "Check status")
+// Pastel card with a white icon box, like the specialty cards in the design.
+// `tint` is the card's pastel colour.
 // ---------------------------------------------------------------------------
 
 export function ActionTile({
   icon,
   label,
   onPress,
-  tint = BRAND.violet,
+  tint = BRAND.lavender,
 }: {
   icon: IconName;
   label: string;
@@ -87,7 +93,7 @@ export function ActionTile({
   tint?: string;
 }) {
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { spacing, radius, typography } = theme;
   const scale = useRef(new Animated.Value(1)).current;
   const to = (v: number) =>
     Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
@@ -99,33 +105,31 @@ export function ActionTile({
         onPressIn={() => to(0.96)}
         onPressOut={() => to(1)}
         accessibilityRole="button"
+        accessibilityLabel={label}
         style={{
-          minHeight: 104,
+          minHeight: 118,
           padding: spacing.md,
-          borderRadius: radius.lg,
-          borderWidth: 1.5,
-          borderColor: withAlpha(tint, 0.35),
-          backgroundColor: colors.surface,
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: spacing.sm,
+          borderRadius: radius.lg + 4,
+          backgroundColor: tint,
+          justifyContent: 'space-between',
         }}
       >
-        <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: withAlpha(tint, 0.14),
-          }}
-        >
-          <Ionicons name={icon} size={22} color={tint} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#FFFFFF',
+            }}
+          >
+            <Ionicons name={icon} size={22} color={BRAND.teal} />
+          </View>
+          <Ionicons name="arrow-forward" size={18} color={withAlpha(BRAND.teal, 0.6)} />
         </View>
-        <Text
-          style={[typography.bodySmall, { color: colors.text, fontWeight: '700', textAlign: 'center' }]}
-        >
+        <Text style={[typography.bodySmall, { color: BRAND.teal, fontWeight: '800' }]}>
           {label}
         </Text>
       </Pressable>
@@ -133,7 +137,7 @@ export function ActionTile({
   );
 }
 
-/** Line — text — line */
+/** Line, text, line */
 export function LabeledDivider({ text }: { text: string }) {
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
@@ -169,7 +173,7 @@ export function DateField({
   invalid?: boolean;
 }) {
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
   const filled = !!text;
 
   return (
@@ -191,18 +195,18 @@ export function DateField({
         accessibilityRole="button"
         accessibilityLabel={label}
         style={{
-          minHeight: 54,
+          minHeight: 52,
           flexDirection: 'row',
           alignItems: 'center',
           paddingHorizontal: spacing.md,
-          borderRadius: radius.md,
-          borderWidth: 2,
-          borderColor: invalid ? colors.error : filled ? BRAND.violet : colors.border,
+          borderRadius: FIELD_RADIUS,
+          borderWidth: 1.5,
+          borderColor: invalid ? colors.error : filled ? colors.primary : colors.border,
           backgroundColor: colors.surface,
           gap: spacing.sm,
         }}
       >
-        <Ionicons name={icon} size={18} color={BRAND.violet} />
+        <Ionicons name={icon} size={18} color={filled ? colors.primary : colors.textSecondary} />
         <Text
           style={[
             typography.body,
@@ -225,7 +229,7 @@ export function DateField({
 
 export type Choice<T extends string> = { value: T; label: string; icon: IconName };
 
-/** Segmented choice cards (used for gender). Active card gets the brand gradient. */
+/** Segmented choice cards (used for gender). The active card fills with the primary colour. */
 export function ChoiceCards<T extends string>({
   label,
   options,
@@ -240,7 +244,7 @@ export function ChoiceCards<T extends string>({
   invalid?: boolean;
 }) {
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
 
   return (
     <View style={{ marginBottom: spacing.md }}>
@@ -268,21 +272,13 @@ export function ChoiceCards<T extends string>({
               style={{
                 flex: 1,
                 minHeight: 58,
-                borderRadius: radius.md,
-                borderWidth: 2,
-                borderColor: active ? 'transparent' : invalid ? colors.error : colors.border,
-                backgroundColor: colors.surface,
+                borderRadius: FIELD_RADIUS,
+                borderWidth: 1.5,
+                borderColor: active ? colors.primary : invalid ? colors.error : colors.border,
+                backgroundColor: active ? colors.primary : colors.surface,
                 overflow: 'hidden',
               }}
             >
-              {active ? (
-                <LinearGradient
-                  colors={[BRAND.violet, BRAND.magenta]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                />
-              ) : null}
               <View
                 style={{
                   flex: 1,
@@ -295,17 +291,22 @@ export function ChoiceCards<T extends string>({
                 <Ionicons
                   name={o.icon}
                   size={20}
-                  color={active ? '#FFFFFF' : BRAND.magenta}
+                  color={active ? colors.primaryText : colors.textSecondary}
                 />
                 <Text
                   style={[
                     typography.body,
-                    { color: active ? '#FFFFFF' : colors.text, fontWeight: active ? '700' : '500' },
+                    {
+                      color: active ? colors.primaryText : colors.text,
+                      fontWeight: active ? '800' : '500',
+                    },
                   ]}
                 >
                   {o.label}
                 </Text>
-                {active ? <Ionicons name="checkmark-circle" size={16} color={BRAND.gold} /> : null}
+                {active ? (
+                  <Ionicons name="checkmark-circle" size={16} color={colors.primaryText} />
+                ) : null}
               </View>
             </Pressable>
           );
@@ -331,7 +332,7 @@ export function PasswordMeter({ password }: { password: string }) {
   if (!long) score = Math.min(score, 1);
   score = Math.max(score, 1);
 
-  const palette = [colors.error, colors.warning, BRAND.gold, colors.success];
+  const palette = [colors.error, colors.warning, colors.primary, colors.success];
   const labels = [
     t('register.strengthWeak', { defaultValue: 'Weak' }),
     t('register.strengthFair', { defaultValue: 'Fair' }),
@@ -394,7 +395,7 @@ export function ReviewSection({
     <View
       style={{
         padding: spacing.lg,
-        borderRadius: radius.lg,
+        borderRadius: radius.lg + 4,
         borderWidth: 1,
         borderColor: colors.border,
         backgroundColor: colors.surface,
@@ -402,7 +403,7 @@ export function ReviewSection({
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
-        <Text style={[typography.bodySmall, { flex: 1, color: BRAND.violet, fontWeight: '800', letterSpacing: 0.5 }]}>
+        <Text style={[typography.bodySmall, { flex: 1, color: colors.primary, fontWeight: '800', letterSpacing: 0.8 }]}>
           {title.toUpperCase()}
         </Text>
         {onEdit ? (
@@ -410,10 +411,18 @@ export function ReviewSection({
             onPress={onEdit}
             hitSlop={10}
             accessibilityRole="button"
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 999,
+              backgroundColor: withAlpha(colors.accent, 0.16),
+            }}
           >
-            <Ionicons name="create-outline" size={15} color={BRAND.magenta} />
-            <Text style={[typography.bodySmall, { color: BRAND.magenta, fontWeight: '700' }]}>
+            <Ionicons name="create-outline" size={14} color={colors.accent} />
+            <Text style={[typography.caption, { color: colors.accent, fontWeight: '800' }]}>
               {t('register.edit', { defaultValue: 'Edit' })}
             </Text>
           </Pressable>
@@ -450,15 +459,15 @@ export function ReviewRow({
     >
       <View
         style={{
-          width: 32,
-          height: 32,
-          borderRadius: 16,
+          width: 34,
+          height: 34,
+          borderRadius: 11,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: withAlpha(BRAND.violet, 0.12),
+          backgroundColor: withAlpha(colors.accent, 0.16),
         }}
       >
-        <Ionicons name={icon} size={16} color={BRAND.violet} />
+        <Ionicons name={icon} size={16} color={colors.accent} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[typography.caption, { color: colors.textSecondary }]}>{label}</Text>
@@ -544,19 +553,19 @@ export function StatusBadge({
           backgroundColor: color,
           transform: [{ scale: pop }],
           shadowColor: color,
-          shadowOpacity: 0.55,
-          shadowRadius: 18,
+          shadowOpacity: 0.4,
+          shadowRadius: 16,
           shadowOffset: { width: 0, height: 8 },
           elevation: 8,
         }}
       >
-        <Ionicons name={icon} size={42} color="#FFFFFF" />
+        <Ionicons name={icon} size={42} color={onColor(color)} />
       </Animated.View>
     </View>
   );
 }
 
-/** Submitted → In review → Decision */
+/** Submitted, In review, Decision */
 export function StatusTimeline({
   status,
   decisionColor,
@@ -605,7 +614,7 @@ export function StatusTimeline({
               style={{
                 width: 26,
                 height: 26,
-                borderRadius: 13,
+                borderRadius: 9,
                 alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: s.state === 'done' ? s.color : 'transparent',
@@ -614,7 +623,7 @@ export function StatusTimeline({
               }}
             >
               {s.state === 'done' ? (
-                <Ionicons name={s.icon} size={15} color="#FFFFFF" />
+                <Ionicons name={s.icon} size={15} color={onColor(s.color)} />
               ) : s.state === 'current' ? (
                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: s.color }} />
               ) : null}

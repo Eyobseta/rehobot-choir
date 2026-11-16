@@ -1,19 +1,19 @@
-// "Emerald & gold" palette: deep emerald ink, vivid emerald, warm gold, cyan, coral.
-// A modern take on a classic green / gold / red heritage palette.
+// "Teal, lime & lavender" palette, sampled from the design reference.
 // These brand colors do NOT change between light and dark mode.
 export const brand = {
-  emerald: '#0F9D6E',
-  gold: '#F5B83D',
-  coral: '#FF6B57',
-  cyan: '#0E8FA3',
-  ink: '#06100C',
+  teal: '#1D4550',
+  tealDark: '#163740',
+  lime: '#C4F44F',
+  lavender: '#D3C3F8',
+  mint: '#63D485',
+  cream: '#FAF3EB',
 
   // Legacy aliases so existing imports like `brand.primaryGreen` keep compiling.
-  // They now point at the new palette. Migrate usages, then delete these.
-  primaryGreen: '#2BD99F',
-  brown: '#F5B83D',
-  lightGreen: '#E3F0E8',
-  darkGreen: '#0B8A60',
+  // Migrate usages, then delete these.
+  primaryGreen: '#C4F44F',
+  brown: '#D3C3F8',
+  lightGreen: '#E5DEF6',
+  darkGreen: '#1D4550',
 } as const;
 
 // Semantic colors: these differ between light and dark.
@@ -41,47 +41,47 @@ export type ThemeColors = {
 };
 
 export const lightColors: ThemeColors = {
-  background: '#F3F8F5',
+  background: '#F5F6FA',
   surface: '#FFFFFF',
-  surfaceAlt: '#E3F0E8',
-  border: '#CFE2D7',
+  surfaceAlt: '#E5DEF6',
+  border: '#DCE3E6',
 
-  text: '#0A1F17',
-  textSecondary: '#4B665A',
+  text: '#14323B',
+  textSecondary: '#5C7480',
   textInverse: '#FFFFFF',
 
-  primary: '#0B8A60',
+  primary: brand.teal,
   primaryText: '#FFFFFF',
 
-  accent: '#B7791F',
+  accent: '#7B5FC7',
 
-  success: '#0B8A60',
+  success: '#2E9E5B',
   warning: '#B7791F',
-  error: '#D43F2C',
+  error: '#D64545',
 
-  disabled: '#BCCFC5',
-  overlay: 'rgba(10, 31, 23, 0.4)',
+  disabled: '#BCC9CE',
+  overlay: 'rgba(20, 50, 59, 0.4)',
 };
 
 export const darkColors: ThemeColors = {
-  background: '#06100C',
-  surface: '#0D1C16',
-  surfaceAlt: '#13281F',
-  border: '#1E3A2D',
+  background: '#0E262C',
+  surface: '#163740',
+  surfaceAlt: '#1D4550',
+  border: '#2A5662',
 
-  text: '#ECF6F0',
-  textSecondary: '#93AFA2',
-  textInverse: '#06100C',
+  text: '#F2F7F5',
+  textSecondary: '#9DB6BC',
+  textInverse: '#0E262C',
 
-  primary: '#2BD99F',
-  primaryText: '#06100C',
+  primary: brand.lime,
+  primaryText: brand.teal,
 
-  accent: brand.gold,
+  accent: brand.lavender,
 
-  success: '#2BD99F',
-  warning: '#F5B83D',
-  error: '#FF6B57',
+  success: brand.mint,
+  warning: '#F2C94C',
+  error: '#FF7A7A',
 
-  disabled: '#34483E',
-  overlay: 'rgba(2, 8, 5, 0.7)',
+  disabled: '#3A5963',
+  overlay: 'rgba(5, 16, 19, 0.65)',
 };
