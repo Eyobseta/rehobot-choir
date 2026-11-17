@@ -115,7 +115,7 @@ export default function EventsScreen({ navigation }: any) {
               </Text>
             </View>
           }
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             let eth: EthDate = { year: 0, month: 1, day: 1 };
             if (typeof item.date === 'object' && item.date !== null) {
               eth = item.date as unknown as EthDate;
@@ -124,67 +124,133 @@ export default function EventsScreen({ navigation }: any) {
             }
 
             const dayNum = eth.day;
-            const monthShort = eth.month ? formatEthDate(eth, lang).split(' ')[0] : '';
+            const monthShort = eth.month ? formatEthDate(eth, lang).split(' ')[0].slice(0, 3) : '';
+            const isNext = scope === 'upcoming' && index === 0;
+            const isLast = index === items.length - 1;
 
             return (
-              <Pressable
-                onPress={() => navigation.navigate('EventDetail', { id: item.id })}
-                style={({ pressed }) => ({
-                  marginBottom: spacing.md + 2,
-                  borderRadius: 26,
-                  overflow: 'hidden',
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  transform: [{ scale: pressed ? 0.98 : 1 }],
-                  shadowColor: BRAND.deep,
-                  shadowOpacity: 0.12,
-                  shadowRadius: 12,
-                  shadowOffset: { width: 0, height: 6 },
-                  elevation: 3,
-                })}
-              >
-                <View style={{ height: item.coverImageUrl ? 150 : 96 }}>
-                  {item.coverImageUrl ? (
-                    <Image source={{ uri: item.coverImageUrl }} style={{ width: '100%', height: '100%' }} />
-                  ) : (
-                    <View style={{ backgroundColor: BRAND.teal, overflow: 'hidden',  flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-<View pointerEvents="none" style={{ position: 'absolute', top: -40, left: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
-<View pointerEvents="none" style={{ position: 'absolute', bottom: -50, right: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: BRAND.lavender }} />
-
-                      <Ionicons name="calendar" size={64} color="rgba(255,255,255,0.18)" />
-                    </View>
-                  )}
-                  {item.coverImageUrl && (
-                    <LinearGradient pointerEvents="none" colors={['rgba(14,38,44,0)', 'rgba(14,38,44,0.45)']} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0 }} />
-                  )}
-                  <View style={{ position: 'absolute', top: spacing.sm + 2, left: spacing.sm + 2, width: 52, paddingVertical: 6, borderRadius: 16, backgroundColor: '#FFFFFF', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 3 }}>
-                    <Text style={{ fontSize: 20, fontWeight: '800', color: BRAND.deep, lineHeight: 22 }}>{dayNum}</Text>
-                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#7B5FC7', textTransform: 'uppercase' }}>{monthShort}</Text>
+              <View style={{ flexDirection: 'row', marginBottom: spacing.md }}>
+                {/* timeline rail */}
+                <View style={{ width: 60, alignItems: 'center' }}>
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: 29,
+                      top: 0,
+                      width: 2,
+                      ...(isLast ? { height: 34 } : { bottom: -spacing.md }),
+                      backgroundColor: colors.border,
+                    }}
+                  />
+                  <View
+                    style={{
+                      width: 54,
+                      paddingVertical: 8,
+                      borderRadius: 18,
+                      alignItems: 'center',
+                      backgroundColor: isNext ? BRAND.lime : colors.surface,
+                      borderWidth: isNext ? 0 : 1.5,
+                      borderColor: colors.border,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 21,
+                        fontWeight: '800',
+                        lineHeight: 24,
+                        color: isNext ? BRAND.teal : colors.text,
+                      }}
+                    >
+                      {dayNum}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        fontWeight: '800',
+                        textTransform: 'uppercase',
+                        color: isNext ? BRAND.teal : colors.accent,
+                      }}
+                    >
+                      {monthShort}
+                    </Text>
                   </View>
                 </View>
 
-                <View style={{ padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[typography.body, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>{item.title}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 }}>
-                      <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-                      <Text style={[typography.bodySmall, { color: colors.textSecondary, flex: 1 }]} numberOfLines={1}>
-                        {formatEthDate(eth, lang)}
-                      </Text>
-                    </View>
-                    {item.location && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                        <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                        <Text style={[typography.bodySmall, { color: colors.textSecondary, flex: 1 }]} numberOfLines={1}>{item.location}</Text>
+                {/* card */}
+                <Pressable
+                  onPress={() => navigation.navigate('EventDetail', { id: item.id })}
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    borderRadius: 26,
+                    overflow: 'hidden',
+                    backgroundColor: colors.surface,
+                    borderWidth: isNext ? 2 : 1,
+                    borderColor: isNext ? BRAND.lime : colors.border,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
+                  })}
+                >
+                  <View style={{ height: item.coverImageUrl ? 128 : 78 }}>
+                    {item.coverImageUrl ? (
+                      <Image source={{ uri: item.coverImageUrl }} style={{ width: '100%', height: '100%' }} />
+                    ) : (
+                      <View style={{ flex: 1, backgroundColor: BRAND.teal, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+                        <View pointerEvents="none" style={{ position: 'absolute', top: -40, left: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: BRAND.lime }} />
+                        <View pointerEvents="none" style={{ position: 'absolute', bottom: -50, right: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: BRAND.lavender }} />
+                        <Ionicons name="calendar" size={44} color="rgba(255,255,255,0.2)" />
+                      </View>
+                    )}
+                    {item.coverImageUrl && (
+                      <LinearGradient pointerEvents="none" colors={['rgba(14,38,44,0)', 'rgba(14,38,44,0.45)']} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0 }} />
+                    )}
+                    {isNext && (
+                      <View
+                        style={{
+                          position: 'absolute',
+                          top: 10,
+                          left: 10,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 5,
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          borderRadius: 999,
+                          backgroundColor: BRAND.lime,
+                        }}
+                      >
+                        <Ionicons name="sparkles" size={12} color={BRAND.teal} />
+                        <Text style={{ color: BRAND.teal, fontSize: 11, fontWeight: '800' }}>
+                          {t('events.nextUp', { defaultValue: 'Next up' })}
+                        </Text>
                       </View>
                     )}
                   </View>
-                  <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: withAlpha(colors.primary, 0.12), alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+
+                  <View style={{ padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[typography.body, { color: colors.text, fontWeight: '800' }]} numberOfLines={2}>
+                        {item.title}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                        <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
+                        <Text style={[typography.bodySmall, { color: colors.textSecondary, flex: 1 }]} numberOfLines={1}>
+                          {formatEthDate(eth, lang)}
+                        </Text>
+                      </View>
+                      {item.location && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                          <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+                          <Text style={[typography.bodySmall, { color: colors.textSecondary, flex: 1 }]} numberOfLines={1}>
+                            {item.location}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={{ width: 34, height: 34, borderRadius: 12, backgroundColor: BRAND.teal, alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="arrow-forward" size={16} color={BRAND.lime} />
+                    </View>
                   </View>
-                </View>
-              </Pressable>
+                </Pressable>
+              </View>
             );
           }}
         />

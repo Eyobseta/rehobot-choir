@@ -10,6 +10,8 @@ import {
   RefreshControl,
   Animated,
   Easing,
+  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +44,8 @@ export default function DirectoryScreen({ navigation }: Props) {
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const [focused, setFocused] = useState(false);
+  const { width: screenW } = useWindowDimensions();
+  const tileW = (screenW - spacing.lg * 2 - 12) / 2;
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(search.trim()), 300);
@@ -60,6 +64,100 @@ export default function DirectoryScreen({ navigation }: Props) {
     if (!q.data || q.data.length === 0) return;
     void warmMemberProfileCache(q.data.map((m) => m.id));
   }, [q.data]);
+
+  const onlineMembers = items.filter((m) => describeLastSeen(m.lastActiveAt).online);
+  const onlineStrip =
+    !debounced && onlineMembers.length > 0 ? (
+      <View style={{ marginBottom: spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm + 2 }}>
+          <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: colors.success }} />
+          <Text
+            style={[
+              typography.caption,
+              { color: colors.textSecondary, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+            ]}
+          >
+            {t('directory.online')}
+          </Text>
+          <View
+            style={{
+              paddingHorizontal: 8,
+              paddingVertical: 1,
+              borderRadius: 999,
+              backgroundColor: BRAND.lime,
+            }}
+          >
+            <Text style={{ color: BRAND.teal, fontSize: 11, fontWeight: '800' }}>
+              {onlineMembers.length}
+            </Text>
+          </View>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 14, paddingRight: spacing.lg }}
+        >
+          {onlineMembers.map((m, i) => {
+            const p = AVATAR_PALETTE[i % AVATAR_PALETTE.length];
+            return (
+              <Pressable
+                key={m.id}
+                onPress={() => navigation.navigate('MemberProfile', { id: m.id })}
+                accessibilityRole="button"
+                accessibilityLabel={m.fullName}
+                style={{ width: 66, alignItems: 'center' }}
+              >
+                <View style={{ width: 60, height: 60 }}>
+                  <View
+                    style={{
+                      width: 60,
+                      height: 60,
+                      borderRadius: 21,
+                      padding: 2.5,
+                      backgroundColor: p[0],
+                      borderWidth: 2,
+                      borderColor: BRAND.lime,
+                    }}
+                  >
+                    {m.profilePhotoUrl ? (
+                      <Image
+                        source={{ uri: m.profilePhotoUrl }}
+                        style={{ width: '100%', height: '100%', borderRadius: 16 }}
+                      />
+                    ) : (
+                      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: p[1], fontSize: 20, fontWeight: '800' }}>
+                          {m.fullName.trim().charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <View
+                    style={{
+                      position: 'absolute',
+                      bottom: -2,
+                      right: -2,
+                      width: 15,
+                      height: 15,
+                      borderRadius: 8,
+                      backgroundColor: colors.success,
+                      borderWidth: 2.5,
+                      borderColor: colors.background,
+                    }}
+                  />
+                </View>
+                <Text
+                  style={[typography.caption, { color: colors.text, fontWeight: '700', marginTop: 6 }]}
+                  numberOfLines={1}
+                >
+                  {m.fullName.trim().split(' ')[0]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+    ) : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -227,6 +325,9 @@ export default function DirectoryScreen({ navigation }: Props) {
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
+          numColumns={2}
+          columnWrapperStyle={{ justifyContent: 'space-between' }}
+          ListHeaderComponent={onlineStrip}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
@@ -276,9 +377,10 @@ export default function DirectoryScreen({ navigation }: Props) {
             </View>
           }
           renderItem={({ item, index }) => (
-            <MemberCard
+            <MemberTile
               item={item}
               index={index}
+              width={tileW}
               onPress={() => navigation.navigate('MemberProfile', { id: item.id })}
               onlineLabel={t('directory.online')}
             />
@@ -289,21 +391,23 @@ export default function DirectoryScreen({ navigation }: Props) {
   );
 }
 
-// ---------- Member card ----------
+// ---------- Member tile ----------
 
-function MemberCard({
+function MemberTile({
   item,
   index,
+  width,
   onPress,
   onlineLabel,
 }: {
   item: DirectoryMember;
   index: number;
+  width: number;
   onPress: () => void;
   onlineLabel: string;
 }) {
   const { theme } = useTheme();
-  const { colors, spacing, typography } = theme;
+  const { colors, typography } = theme;
   const palette = AVATAR_PALETTE[index % AVATAR_PALETTE.length];
   const seen = describeLastSeen(item.lastActiveAt);
   const initial = item.fullName.trim().charAt(0).toUpperCase();
@@ -334,7 +438,8 @@ function MemberCard({
   return (
     <Animated.View
       style={{
-        marginBottom: spacing.sm + 4,
+        width,
+        marginBottom: 12,
         opacity: enter,
         transform: [
           { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) },
@@ -344,78 +449,97 @@ function MemberCard({
     >
       <Pressable
         onPress={onPress}
-        onPressIn={() => to(0.98)}
+        onPressIn={() => to(0.97)}
         onPressOut={() => to(1)}
         accessibilityRole="button"
         accessibilityLabel={item.fullName}
         style={{
-          flexDirection: 'row',
           alignItems: 'center',
-          padding: 12,
-          paddingLeft: 16,
-          borderRadius: 20,
+          paddingTop: 20,
+          paddingBottom: 14,
+          paddingHorizontal: 10,
+          borderRadius: 26,
           borderWidth: 1,
           borderColor: colors.border,
           backgroundColor: colors.surface,
           overflow: 'hidden',
         }}
       >
-        <View style={{ backgroundColor: palette[0],  position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }} />
+        {/* pastel wash behind the avatar */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -46,
+            width: 150,
+            height: 110,
+            borderRadius: 75,
+            backgroundColor: palette[0],
+            opacity: 0.55,
+          }}
+        />
 
-        <View style={{ width: 52, height: 52 }}>
-          <View style={{ backgroundColor: palette[0],  width: 52, height: 52, borderRadius: 26, padding: 2 }}>
+        <View style={{ width: 78, height: 78 }}>
+          <View
+            style={{
+              width: 78,
+              height: 78,
+              borderRadius: 27,
+              padding: 3,
+              backgroundColor: palette[0],
+            }}
+          >
             {item.profilePhotoUrl ? (
               <Image
                 source={{ uri: item.profilePhotoUrl }}
                 style={{ width: '100%', height: '100%', borderRadius: 24 }}
               />
             ) : (
-              <View
-                style={{
-                  flex: 1,
-                  borderRadius: 24,
-                  backgroundColor: colors.surface,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ color: palette[1], fontSize: 18, fontWeight: '800' }}>
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: palette[1], fontSize: 28, fontWeight: '800' }}>
                   {initial}
                 </Text>
               </View>
             )}
           </View>
-
           {seen.online && (
             <View
               style={{
                 position: 'absolute',
-                bottom: 0,
-                right: 0,
-                width: 14,
-                height: 14,
-                borderRadius: 7,
+                bottom: -2,
+                right: -2,
+                width: 18,
+                height: 18,
+                borderRadius: 9,
                 backgroundColor: colors.success,
-                borderWidth: 2.5,
+                borderWidth: 3,
                 borderColor: colors.surface,
               }}
             />
           )}
         </View>
 
-        <View style={{ flex: 1, marginLeft: 14 }}>
-          <Text
-            style={[typography.body, { color: colors.text, fontWeight: '800' }]}
-            numberOfLines={1}
-          >
-            {item.fullName}
-          </Text>
+        <Text
+          style={[typography.body, { color: colors.text, fontWeight: '800', marginTop: 12, textAlign: 'center' }]}
+          numberOfLines={1}
+        >
+          {item.fullName}
+        </Text>
+
+        <View
+          style={{
+            marginTop: 8,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 999,
+            backgroundColor: seen.online ? withAlpha(colors.success, 0.16) : withAlpha(colors.textSecondary, 0.12),
+          }}
+        >
           <Text
             style={[
               typography.caption,
               {
                 color: seen.online ? colors.success : colors.textSecondary,
-                marginTop: 2,
                 fontWeight: seen.online ? '800' : '600',
               },
             ]}
@@ -423,20 +547,6 @@ function MemberCard({
           >
             {seen.online ? onlineLabel : seen.label}
           </Text>
-        </View>
-
-        <View
-          style={{
-            width: 34,
-            height: 34,
-            borderRadius: 17,
-            backgroundColor: withAlpha(palette[1], 0.16),
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginLeft: 8,
-          }}
-        >
-          <Ionicons name="chevron-forward" size={18} color={palette[1]} />
         </View>
       </Pressable>
     </Animated.View>

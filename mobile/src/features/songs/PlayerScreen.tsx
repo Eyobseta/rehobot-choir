@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Animated, Easing } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,13 +20,14 @@ import {
 } from '../../services/audioPlayer';
 import { EqBars, useReduceMotion } from './Songs_Kit';
 
-const DISC = 262;
+const DISC = 232;
 
 export default function PlayerScreen({ route, navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing } = theme;
   const reduce = useReduceMotion();
+  const insets = useSafeAreaInsets();
 
   const initialTitle: string = route.params?.title ?? t('songs.nowPlaying');
   const initialSubtitle: string | null = route.params?.subtitle ?? null;
@@ -159,38 +160,13 @@ export default function PlayerScreen({ route, navigation }: any) {
   const spinDeg = rot.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   return (
-    <LinearGradient
-      colors={[BRAND.deep, '#0F2A31', '#08161A']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ flex: 1 }}
-    >
-      <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1 }}>
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: -120,
-            right: -80,
-            width: 320,
-            height: 320,
-            borderRadius: 160,
-            backgroundColor: withAlpha(BRAND.lavender, 0.2),
-          }}
-        />
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            bottom: -140,
-            left: -100,
-            width: 340,
-            height: 340,
-            borderRadius: 170,
-            backgroundColor: withAlpha(BRAND.mint, 0.18),
-          }}
-        />
+    <View style={{ flex: 1, backgroundColor: BRAND.teal }}>
+      {/* flat stage shapes */}
+      <View pointerEvents="none" style={{ position: 'absolute', top: -120, right: -80, width: 270, height: 270, borderRadius: 135, backgroundColor: BRAND.lime }} />
+      <View pointerEvents="none" style={{ position: 'absolute', top: 250, left: -80, width: 170, height: 170, borderRadius: 85, backgroundColor: withAlpha(BRAND.lavender, 0.2) }} />
+      <View pointerEvents="none" style={{ position: 'absolute', top: 140, right: 26, width: 18, height: 18, borderRadius: 5, backgroundColor: BRAND.mint, transform: [{ rotate: '45deg' }] }} />
 
+      <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         {/* Header */}
         <View
           style={{
@@ -206,31 +182,45 @@ export default function PlayerScreen({ route, navigation }: any) {
             accessibilityRole="button"
             accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
             style={{
-              width: 42,
-              height: 42,
-              borderRadius: 21,
-              backgroundColor: 'rgba(255,255,255,0.14)',
+              width: 44,
+              height: 44,
+              borderRadius: 15,
+              backgroundColor: BRAND.tealDark,
               borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.2)',
+              borderColor: 'rgba(255,255,255,0.18)',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
             <Ionicons name="chevron-down" size={22} color="#FFFFFF" />
           </Pressable>
-          <View style={{ flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
-            <EqBars active={status.isPlaying} color={BRAND.gold} height={12} />
-            <Text
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <View
               style={{
-                color: 'rgba(255,255,255,0.75)',
-                fontSize: 11,
-                fontWeight: '800',
-                letterSpacing: 1.4,
-                textTransform: 'uppercase',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 999,
+                backgroundColor: BRAND.tealDark,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.14)',
               }}
             >
-              {t('songs.nowPlaying')}
-            </Text>
+              <EqBars active={status.isPlaying} color={BRAND.lime} height={12} />
+              <Text
+                style={{
+                  color: 'rgba(255,255,255,0.85)',
+                  fontSize: 11,
+                  fontWeight: '800',
+                  letterSpacing: 1.4,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {t('songs.nowPlaying')}
+              </Text>
+            </View>
           </View>
           <Pressable
             onPress={onClose}
@@ -238,12 +228,12 @@ export default function PlayerScreen({ route, navigation }: any) {
             accessibilityRole="button"
             accessibilityLabel={t('common.close', { defaultValue: 'Close' })}
             style={{
-              width: 42,
-              height: 42,
-              borderRadius: 21,
-              backgroundColor: 'rgba(255,255,255,0.14)',
+              width: 44,
+              height: 44,
+              borderRadius: 15,
+              backgroundColor: BRAND.tealDark,
               borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.2)',
+              borderColor: 'rgba(255,255,255,0.18)',
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -252,67 +242,58 @@ export default function PlayerScreen({ route, navigation }: any) {
           </Pressable>
         </View>
 
-        {/* Vinyl */}
-        <View
-          style={{
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingHorizontal: spacing.xl,
-          }}
-        >
+        {/* Vinyl stage */}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 26 }}>
           <Animated.View
             style={{
               transform: [{ scale: ringScale }],
               opacity: ringOpacity,
               position: 'absolute',
-              width: DISC + 56,
-              height: DISC + 56,
-              borderRadius: (DISC + 56) / 2,
+              width: DISC + 52,
+              height: DISC + 52,
+              borderRadius: (DISC + 52) / 2,
               borderWidth: 2,
-              borderColor: BRAND.gold,
+              borderColor: BRAND.lavender,
             }}
           />
           <View
             style={{
               position: 'absolute',
-              width: DISC + 24,
-              height: DISC + 24,
-              borderRadius: (DISC + 24) / 2,
-              backgroundColor: withAlpha(BRAND.gold, 0.08),
+              width: DISC + 22,
+              height: DISC + 22,
+              borderRadius: (DISC + 22) / 2,
+              backgroundColor: withAlpha(BRAND.lavender, 0.14),
             }}
           />
-
           <Animated.View
             style={{
               width: DISC,
               height: DISC,
               borderRadius: DISC / 2,
               transform: [{ rotate: spinDeg }],
-              shadowColor: colors.primary,
-              shadowOpacity: 0.55,
-              shadowRadius: 26,
+              shadowColor: '#000',
+              shadowOpacity: 0.35,
+              shadowRadius: 24,
               shadowOffset: { width: 0, height: 14 },
               elevation: 12,
             }}
           >
             <LinearGradient
-              colors={[BRAND.lime, BRAND.mint, BRAND.lavender, BRAND.lime]}
+              colors={[BRAND.lavender, BRAND.lime, BRAND.mint, BRAND.lavender]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={{ flex: 1, borderRadius: DISC / 2, padding: 6 }}
+              style={{ flex: 1, borderRadius: DISC / 2, padding: 8 }}
             >
               <View
                 style={{
                   flex: 1,
                   borderRadius: DISC / 2,
-                  backgroundColor: '#08161A',
+                  backgroundColor: BRAND.tealDark,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                {/* grooves */}
-                {[18, 40, 62].map((inset) => (
+                {[16, 36, 56].map((inset) => (
                   <View
                     key={inset}
                     style={{
@@ -323,66 +304,106 @@ export default function PlayerScreen({ route, navigation }: any) {
                       bottom: inset,
                       borderRadius: DISC,
                       borderWidth: 1,
-                      borderColor: 'rgba(255,255,255,0.07)',
+                      borderColor: 'rgba(255,255,255,0.08)',
                     }}
                   />
                 ))}
-                {/* label */}
-                <LinearGradient
-                  colors={[BRAND.lime, BRAND.mint]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+                <View
                   style={{
-                    width: 96,
-                    height: 96,
-                    borderRadius: 48,
+                    width: 92,
+                    height: 92,
+                    borderRadius: 46,
+                    backgroundColor: BRAND.lime,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Ionicons name="musical-notes" size={40} color={BRAND.deep} />
-                </LinearGradient>
+                  <Ionicons name="musical-notes" size={38} color={BRAND.teal} />
+                </View>
                 <View
                   style={{
                     position: 'absolute',
                     width: 12,
                     height: 12,
                     borderRadius: 6,
-                    backgroundColor: '#08161A',
+                    backgroundColor: BRAND.tealDark,
                     borderWidth: 2,
-                    borderColor: 'rgba(255,255,255,0.35)',
+                    borderColor: 'rgba(255,255,255,0.4)',
                   }}
                 />
               </View>
             </LinearGradient>
           </Animated.View>
         </View>
+      </SafeAreaView>
+
+      {/* Control sheet */}
+      <View
+        style={{
+          backgroundColor: colors.background,
+          borderTopLeftRadius: 38,
+          borderTopRightRadius: 38,
+          paddingHorizontal: spacing.xl,
+          paddingTop: 12,
+          paddingBottom: insets.bottom + 22,
+        }}
+      >
+        <View
+          style={{
+            alignSelf: 'center',
+            width: 44,
+            height: 5,
+            borderRadius: 3,
+            backgroundColor: colors.border,
+            marginBottom: spacing.lg,
+          }}
+        />
 
         {/* Title */}
-        <View style={{ paddingHorizontal: spacing.xl, alignItems: 'center' }}>
-          <Text
-            style={{ color: '#FFFFFF', fontSize: 25, fontWeight: '800', textAlign: 'center' }}
-            numberOfLines={2}
-          >
-            {initialTitle}
-          </Text>
-          {initialSubtitle && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <View style={{ flex: 1 }}>
             <Text
-              style={{
-                color: 'rgba(255,255,255,0.7)',
-                marginTop: 6,
-                fontSize: 13,
-                fontWeight: '600',
-              }}
-              numberOfLines={1}
+              style={{ color: colors.text, fontSize: 24, fontWeight: '800', letterSpacing: -0.3 }}
+              numberOfLines={2}
             >
-              {initialSubtitle}
+              {initialTitle}
             </Text>
-          )}
+            {initialSubtitle && (
+              <View
+                style={{
+                  alignSelf: 'flex-start',
+                  marginTop: 8,
+                  paddingHorizontal: 11,
+                  paddingVertical: 4,
+                  borderRadius: 999,
+                  backgroundColor: withAlpha(colors.accent, 0.16),
+                }}
+              >
+                <Text
+                  style={{ color: colors.accent, fontSize: 12, fontWeight: '800' }}
+                  numberOfLines={1}
+                >
+                  {initialSubtitle}
+                </Text>
+              </View>
+            )}
+          </View>
+          <View
+            style={{
+              width: 46,
+              height: 46,
+              borderRadius: 16,
+              backgroundColor: colors.surfaceAlt,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <EqBars active={status.isPlaying} color={colors.primary} height={18} />
+          </View>
         </View>
 
         {/* Progress */}
-        <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.xl }}>
+        <View style={{ marginTop: spacing.lg }}>
           <Slider
             minimumValue={0}
             maximumValue={duration / 1000}
@@ -390,15 +411,15 @@ export default function PlayerScreen({ route, navigation }: any) {
             onSlidingStart={onSeekStart}
             onValueChange={onSeekChange}
             onSlidingComplete={onSeekEnd}
-            minimumTrackTintColor={BRAND.gold}
-            maximumTrackTintColor="rgba(255,255,255,0.2)"
-            thumbTintColor={BRAND.gold}
+            minimumTrackTintColor={colors.primary}
+            maximumTrackTintColor={colors.border}
+            thumbTintColor={colors.primary}
           />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: -4 }}>
-            <Text style={{ color: sliding !== null ? BRAND.gold : 'rgba(255,255,255,0.75)', fontSize: 12, fontWeight: '800' }}>
+            <Text style={{ color: sliding !== null ? colors.primary : colors.textSecondary, fontSize: 12, fontWeight: '800' }}>
               {formatTime(displayPosition)}
             </Text>
-            <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, fontWeight: '700' }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '700' }}>
               -{formatTime(Math.max(0, status.durationMillis - displayPosition))}
             </Text>
           </View>
@@ -409,10 +430,9 @@ export default function PlayerScreen({ route, navigation }: any) {
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'space-around',
-            paddingHorizontal: spacing.xl,
+            justifyContent: 'space-between',
             marginTop: spacing.lg,
-            marginBottom: spacing.xl,
+            paddingHorizontal: spacing.sm,
           }}
         >
           <SkipButton icon="play-back" label="15" onPress={() => skipBy(-15)} />
@@ -425,39 +445,32 @@ export default function PlayerScreen({ route, navigation }: any) {
               accessibilityRole="button"
               accessibilityLabel={status.isPlaying ? t('songs.pause') : t('songs.playAudio')}
               style={{
-                width: 96,
-                height: 96,
-                borderRadius: 48,
-                overflow: 'hidden',
+                width: 88,
+                height: 88,
+                borderRadius: 32,
+                backgroundColor: colors.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
                 shadowColor: colors.primary,
-                shadowOpacity: 0.65,
-                shadowRadius: 24,
-                shadowOffset: { width: 0, height: 12 },
-                elevation: 12,
+                shadowOpacity: 0.4,
+                shadowRadius: 20,
+                shadowOffset: { width: 0, height: 10 },
+                elevation: 10,
               }}
             >
-              <View style={{ backgroundColor: BRAND.lime, 
-                  flex: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 2,
-                  borderColor: 'rgba(255,255,255,0.25)',
-                  borderRadius: 48,
-                }}>
-                <Ionicons
-                  name={status.isPlaying ? 'pause' : 'play'}
-                  size={44}
-                  color={BRAND.teal}
-                  style={{ marginLeft: status.isPlaying ? 0 : 5 }}
-                />
-              </View>
+              <Ionicons
+                name={status.isPlaying ? 'pause' : 'play'}
+                size={40}
+                color={colors.primaryText}
+                style={{ marginLeft: status.isPlaying ? 0 : 4 }}
+              />
             </Pressable>
           </Animated.View>
 
           <SkipButton icon="play-forward" label="15" onPress={() => skipBy(15)} />
         </View>
-      </SafeAreaView>
-    </LinearGradient>
+      </View>
+    </View>
   );
 }
 
@@ -470,24 +483,24 @@ function SkipButton({
   label: string;
   onPress: () => void;
 }) {
+  const { theme } = useTheme();
+  const { colors } = theme;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${label}s`}
       style={({ pressed }) => ({
-        width: 62,
-        height: 62,
-        borderRadius: 31,
-        backgroundColor: pressed ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.12)',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.18)',
+        width: 64,
+        height: 64,
+        borderRadius: 22,
+        backgroundColor: pressed ? colors.border : colors.surfaceAlt,
         alignItems: 'center',
         justifyContent: 'center',
       })}
     >
-      <Ionicons name={icon} size={22} color="#FFFFFF" />
-      <Text style={{ color: BRAND.gold, fontSize: 10, fontWeight: '800', marginTop: -1 }}>
+      <Ionicons name={icon} size={22} color={colors.text} />
+      <Text style={{ color: colors.accent, fontSize: 10, fontWeight: '800', marginTop: -1 }}>
         {label}
       </Text>
     </Pressable>

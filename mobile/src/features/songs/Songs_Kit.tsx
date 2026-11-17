@@ -562,3 +562,181 @@ export function SongRow({
     </Animated.View>
   );
 }
+
+/** Pastel grid card for the library's grid view. Same props as SongRow plus `width`. */
+export function SongTile({
+  index,
+  title,
+  subtitle,
+  icon,
+  palette,
+  playing,
+  onPress,
+  width,
+}: {
+  index: number;
+  title: string;
+  subtitle?: string | null;
+  icon: IconName;
+  palette: readonly [string, string];
+  playing?: boolean;
+  onPress: () => void;
+  width: number;
+}) {
+  const { t } = useTranslation();
+  const enter = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const a = Animated.timing(enter, {
+      toValue: 1,
+      duration: 420,
+      delay: Math.min(index, 8) * 50,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+    a.start();
+    return () => a.stop();
+  }, [enter, index]);
+
+  const to = (v: number) =>
+    Animated.spring(scale, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: true }).start();
+
+  return (
+    <Animated.View
+      style={{
+        width,
+        marginBottom: 12,
+        opacity: enter,
+        transform: [
+          { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) },
+          { scale },
+        ],
+      }}
+    >
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => to(0.97)}
+        onPressOut={() => to(1)}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        style={{
+          height: 164,
+          borderRadius: 26,
+          padding: 14,
+          justifyContent: 'space-between',
+          overflow: 'hidden',
+          backgroundColor: palette[0],
+          borderWidth: playing ? 2 : 0,
+          borderColor: BRAND.teal,
+        }}
+      >
+        <Text
+          style={{
+            position: 'absolute',
+            right: 10,
+            top: -4,
+            fontSize: 66,
+            fontWeight: '800',
+            color: withAlpha(BRAND.teal, 0.08),
+          }}
+        >
+          {String(index + 1).padStart(2, '0')}
+        </Text>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 14,
+              backgroundColor: '#FFFFFF',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {playing ? (
+              <EqBars active color={BRAND.teal} height={18} />
+            ) : (
+              <Ionicons name={icon} size={20} color={BRAND.teal} />
+            )}
+          </View>
+          <View
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: 9,
+              backgroundColor: BRAND.teal,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name={playing ? 'pause' : 'play'} size={12} color={BRAND.lime} />
+          </View>
+        </View>
+
+        <View>
+          <Text
+            style={{ color: BRAND.teal, fontSize: 15, lineHeight: 20, fontWeight: '800' }}
+            numberOfLines={2}
+          >
+            {title}
+          </Text>
+          <Text
+            style={{ color: withAlpha(BRAND.teal, 0.7), fontSize: 12, fontWeight: '700', marginTop: 3 }}
+            numberOfLines={1}
+          >
+            {playing ? t('songs.nowPlaying') : subtitle ?? ' '}
+          </Text>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+/** List / grid switch, sits in the hero. UI-only state. */
+export function ViewToggle({
+  mode,
+  onChange,
+}: {
+  mode: 'list' | 'grid';
+  onChange: (m: 'list' | 'grid') => void;
+}) {
+  const opt = (m: 'list' | 'grid', icon: IconName) => {
+    const active = mode === m;
+    return (
+      <Pressable
+        key={m}
+        onPress={() => onChange(m)}
+        accessibilityRole="button"
+        accessibilityLabel={m}
+        accessibilityState={{ selected: active }}
+        style={{
+          width: 36,
+          height: 32,
+          borderRadius: 11,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: active ? BRAND.lime : 'transparent',
+        }}
+      >
+        <Ionicons name={icon} size={16} color={active ? BRAND.teal : 'rgba(255,255,255,0.8)'} />
+      </Pressable>
+    );
+  };
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        padding: 3,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.16)',
+        backgroundColor: BRAND.tealDark,
+      }}
+    >
+      {opt('list', 'list')}
+      {opt('grid', 'grid')}
+    </View>
+  );
+}

@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ScrollView,
   Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +28,8 @@ import {
   PALETTES,
   ScreenHero,
   HeroPill,
+  SongTile,
+  ViewToggle,
   SavedPill,
   EmptyState,
   ListSkeleton,
@@ -49,6 +52,10 @@ export default function SongsScreen({ navigation }: any) {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [isZema, setIsZema] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [view, setView] = useState<'list' | 'grid'>('grid');
+  const { width: screenW } = useWindowDimensions();
+  const grid = view === 'grid';
+  const tileW = (screenW - spacing.lg * 2 - 12) / 2;
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(search.trim()), 300);
@@ -178,12 +185,26 @@ export default function SongsScreen({ navigation }: any) {
           </ScrollView>
         )}
 
-        {!firstLoad && (
-          <HeroPill
-            icon="musical-notes"
-            text={t('songs.count', { count: filtered.length, defaultValue: '{{count}} songs' })}
-          />
-        )}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            marginTop: 2,
+          }}
+        >
+          {!firstLoad ? (
+            <HeroPill
+              icon="musical-notes"
+              text={t('songs.count', { count: filtered.length, defaultValue: '{{count}} songs' })}
+            />
+          ) : (
+            <View />
+          )}
+          <View style={{ marginTop: 14 }}>
+            <ViewToggle mode={view} onChange={setView} />
+          </View>
+        </View>
       </ScreenHero>
 
       {(showingSavedData || (q.isError && q.data === undefined)) && (
@@ -206,8 +227,11 @@ export default function SongsScreen({ navigation }: any) {
       </View>
 
       <FlatList
+        key={view}
         data={firstLoad ? [] : filtered}
         keyExtractor={(item) => item.id}
+        numColumns={grid ? 2 : 1}
+        columnWrapperStyle={grid ? { justifyContent: 'space-between' } : undefined}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={header}
@@ -233,14 +257,27 @@ export default function SongsScreen({ navigation }: any) {
             <EmptyState icon="musical-notes-outline" text={t('songs.empty')} />
           )
         }
-        renderItem={({ item, index }) => (
-          <SongCard
-            item={item}
-            index={index}
-            playing={np.playing && np.key === item.id}
-            onPress={() => navigation.navigate('SongDetail', { id: item.id })}
-          />
-        )}
+        renderItem={({ item, index }) =>
+          grid ? (
+            <SongTile
+              index={index}
+              width={tileW}
+              title={item.title}
+              subtitle={item.category?.name}
+              icon={item.youtubeUrl ? 'logo-youtube' : 'musical-notes'}
+              palette={PALETTES[index % PALETTES.length]}
+              playing={np.playing && np.key === item.id}
+              onPress={() => navigation.navigate('SongDetail', { id: item.id })}
+            />
+          ) : (
+            <SongCard
+              item={item}
+              index={index}
+              playing={np.playing && np.key === item.id}
+              onPress={() => navigation.navigate('SongDetail', { id: item.id })}
+            />
+          )
+        }
       />
     </View>
   );
