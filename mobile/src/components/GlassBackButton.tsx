@@ -78,8 +78,8 @@ export default function GlassBackButton({
             width: size,
             height: size,
             borderRadius: radius,
-            backgroundColor: solid ? TEAL : 'rgba(255, 255, 255, 0.14)',
-            borderColor: solid ? 'transparent' : 'rgba(255, 255, 255, 0.24)',
+            backgroundColor: solid ? TEAL : 'rgba(14, 38, 44, 0.55)',
+            borderColor: solid ? 'transparent' : 'rgba(255, 255, 255, 0.2)',
             transform: [{ scale }],
           },
         ]}

@@ -21,11 +21,11 @@ import { ethTodayFromInstant, formatEthDate } from '../../utils/ethiopianCalenda
 import { DailyQuote } from '../../services/quotes';
 import { useRecentQuotesQuery } from './useQuotes';
 
-const BROWN = '#9A6735';
-const CREAM = '#FFF4E0';
-const SAND = '#F3DDB8';
-const INK = '#7A4B22';
-const GRADIENT = ['#2E1A12', '#6E3B1C', '#A2601F'] as const;
+const BROWN = '#7B5FC7';
+const CREAM = '#FAF3EB';
+const SAND = '#D3C3F8';
+const INK = '#1D4550';
+const GRADIENT = ['#102A31', '#1D4550', '#2F6B78'] as const;
 const SERIF = Platform.select({ ios: 'Georgia', android: 'serif', default: undefined });
 
 function publisherOf(item: DailyQuote): { name: string | null; photo: string | null } {
@@ -165,13 +165,13 @@ export default function DailyQuoteHistoryScreen({ navigation }: any) {
               paddingHorizontal: 12,
               paddingVertical: 6,
               borderRadius: 999,
-              backgroundColor: withAlpha('#F59E0B', 0.14),
+              backgroundColor: withAlpha('#E8A65D', 0.14),
               borderWidth: 1,
-              borderColor: withAlpha('#F59E0B', 0.4),
+              borderColor: withAlpha('#E8A65D', 0.4),
             }}
           >
-            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
-            <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+            <Ionicons name="cloud-offline" size={13} color="#E8A65D" />
+            <Text style={[typography.caption, { color: '#E8A65D', fontWeight: '800' }]}>
               {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
             </Text>
           </View>
@@ -334,7 +334,7 @@ function QuoteRow({
               width: 80,
               height: 80,
               borderRadius: 40,
-              backgroundColor: withAlpha(BRAND.gold, 0.22),
+              backgroundColor: BRAND.lime,
             }}
           />
         </>
@@ -428,22 +428,17 @@ function QuoteRow({
         {pub.photo ? (
           <Image source={{ uri: pub.photo }} style={{ width: 26, height: 26, borderRadius: 13 }} />
         ) : (
-          <LinearGradient
-            colors={[BRAND.violet, BRAND.magenta]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
+          <View style={{ backgroundColor: BRAND.lime, 
               width: 26,
               height: 26,
               borderRadius: 13,
               alignItems: 'center',
               justifyContent: 'center',
-            }}
-          >
-            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
+            }}>
+            <Text style={{ color: BRAND.teal, fontSize: 12, fontWeight: '800' }}>
               {name.charAt(0).toUpperCase()}
             </Text>
-          </LinearGradient>
+          </View>
         )}
         <Text
           style={[typography.caption, { color: subColor, flex: 1 }]}
@@ -519,7 +514,7 @@ function QuoteRow({
           borderWidth: featured ? 0 : 1,
           borderColor: colors.border,
           backgroundColor: colors.surface,
-          shadowColor: '#2A1408',
+          shadowColor: '#0E262C',
           shadowOpacity: featured ? 0.3 : 0.06,
           shadowRadius: featured ? 14 : 8,
           shadowOffset: { width: 0, height: featured ? 8 : 4 },

@@ -44,14 +44,9 @@ export default function EventsScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ paddingHorizontal: 16, paddingTop: insets.top + 16, paddingBottom: 22, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' }}
-      >
-        <View pointerEvents="none" style={{ position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.gold, 0.22) }} />
-        <View pointerEvents="none" style={{ position: 'absolute', bottom: -80, left: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.water, 0.22) }} />
+      <View style={{ backgroundColor: BRAND.teal,  paddingHorizontal: 16, paddingTop: insets.top + 16, paddingBottom: 22, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' }}>
+        <View pointerEvents="none" style={{ position: 'absolute', top: -65, right: -45, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
+        <View pointerEvents="none" style={{ position: 'absolute', bottom: -70, left: -45, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lavender }} />
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center' }}>
@@ -73,13 +68,13 @@ export default function EventsScreen({ navigation }: any) {
           <HeroSegBtn icon="sparkles" label={t('events.upcoming')} active={scope === 'upcoming'} onPress={() => setScope('upcoming')} />
           <HeroSegBtn icon="time" label={t('events.past')} active={scope === 'past'} onPress={() => setScope('past')} />
         </View>
-      </LinearGradient>
+      </View>
 
       {showingSavedData && (
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-          <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#F59E0B', 0.14), borderWidth: 1, borderColor: withAlpha('#F59E0B', 0.4) }}>
-            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
-            <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+          <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#E8A65D', 0.14), borderWidth: 1, borderColor: withAlpha('#E8A65D', 0.4) }}>
+            <Ionicons name="cloud-offline" size={13} color="#E8A65D" />
+            <Text style={[typography.caption, { color: '#E8A65D', fontWeight: '800' }]}>
               {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
             </Text>
           </View>
@@ -97,7 +92,7 @@ export default function EventsScreen({ navigation }: any) {
 
       {firstLoad ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={BRAND.violet} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -106,11 +101,11 @@ export default function EventsScreen({ navigation }: any) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl }}
           refreshControl={
-            <RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} tintColor={BRAND.violet} colors={[BRAND.violet]} />
+            <RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} tintColor={colors.primary} colors={[BRAND.teal]} />
           }
           ListEmptyComponent={
             <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
-              <LinearGradient colors={[BRAND.violet, BRAND.magenta, BRAND.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' }}>
+              <LinearGradient colors={[BRAND.lime, BRAND.mint, BRAND.lavender]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' }}>
                 <View style={{ width: 104, height: 104, borderRadius: 52, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
                   <Ionicons name="calendar-outline" size={40} color={colors.textSecondary} />
                 </View>
@@ -153,16 +148,19 @@ export default function EventsScreen({ navigation }: any) {
                   {item.coverImageUrl ? (
                     <Image source={{ uri: item.coverImageUrl }} style={{ width: '100%', height: '100%' }} />
                   ) : (
-                    <LinearGradient colors={[BRAND.deep, BRAND.violet, BRAND.magenta]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                    <View style={{ backgroundColor: BRAND.teal, overflow: 'hidden',  flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+<View pointerEvents="none" style={{ position: 'absolute', top: -40, left: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
+<View pointerEvents="none" style={{ position: 'absolute', bottom: -50, right: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: BRAND.lavender }} />
+
                       <Ionicons name="calendar" size={64} color="rgba(255,255,255,0.18)" />
-                    </LinearGradient>
+                    </View>
                   )}
                   {item.coverImageUrl && (
-                    <LinearGradient pointerEvents="none" colors={['rgba(10,6,30,0)', 'rgba(10,6,30,0.45)']} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0 }} />
+                    <LinearGradient pointerEvents="none" colors={['rgba(14,38,44,0)', 'rgba(14,38,44,0.45)']} style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0 }} />
                   )}
                   <View style={{ position: 'absolute', top: spacing.sm + 2, left: spacing.sm + 2, width: 52, paddingVertical: 6, borderRadius: 16, backgroundColor: '#FFFFFF', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 3 }}>
                     <Text style={{ fontSize: 20, fontWeight: '800', color: BRAND.deep, lineHeight: 22 }}>{dayNum}</Text>
-                    <Text style={{ fontSize: 10, fontWeight: '800', color: BRAND.magenta, textTransform: 'uppercase' }}>{monthShort}</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#7B5FC7', textTransform: 'uppercase' }}>{monthShort}</Text>
                   </View>
                 </View>
 
@@ -182,8 +180,8 @@ export default function EventsScreen({ navigation }: any) {
                       </View>
                     )}
                   </View>
-                  <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: withAlpha(BRAND.violet, 0.12), alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="arrow-forward" size={16} color={BRAND.violet} />
+                  <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: withAlpha(colors.primary, 0.12), alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="arrow-forward" size={16} color={colors.primary} />
                   </View>
                 </View>
               </Pressable>
@@ -201,7 +199,7 @@ function HeroSegBtn({ icon, label, active, onPress }: { icon: keyof typeof Ionic
   return (
     <Pressable
       onPress={onPress}
-      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 16, backgroundColor: active ? '#FFFFFF' : 'transparent' }}
+      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 16, backgroundColor: active ? BRAND.lime : 'transparent' }}
     >
       <Ionicons name={icon} size={15} color={active ? BRAND.deep : 'rgba(255,255,255,0.85)'} />
       <Text style={[typography.button, { color: active ? BRAND.deep : 'rgba(255,255,255,0.85)', fontWeight: '800' }]}>{label}</Text>

@@ -31,10 +31,10 @@ import {
  * quote is published yet). Everything new is pure JS (OTA-safe).
  */
 
-const CREAM = '#FFF4E0';
-const SAND = '#F3DDB8';
-const INK = '#7A4B22';
-const SHADOW = '#2A1408';
+const CREAM = '#FAF3EB';
+const SAND = '#D3C3F8';
+const INK = '#1D4550';
+const SHADOW = '#0E262C';
 
 // Serif for the quote body (system fonts only — no asset/rebuild needed).
 const SERIF = Platform.select({ ios: 'Georgia', android: 'serif', default: undefined });
@@ -197,7 +197,7 @@ export default function DailyQuoteCard() {
         style={{ borderRadius: 30 }}
       >
         <LinearGradient
-          colors={['#2E1A12', '#6E3B1C', '#A2601F']}
+          colors={['#102A31', '#1D4550', '#2F6B78']}
           start={{ x: 0, y: 0 }}
           end={{ x: 0.9, y: 1 }}
           onLayout={(e) => setW(e.nativeEvent.layout.width)}
@@ -278,7 +278,7 @@ export default function DailyQuoteCard() {
               width: 220,
               height: 220,
               borderRadius: 110,
-              backgroundColor: 'rgba(255,214,150,0.14)',
+              backgroundColor: 'rgba(211,195,248,0.16)',
             }}
           />
 
@@ -292,7 +292,7 @@ export default function DailyQuoteCard() {
                 left: 0,
                 width: 54,
                 height: 400,
-                backgroundColor: 'rgba(255,244,224,0.10)',
+                backgroundColor: 'rgba(250,243,235,0.10)',
                 transform: [
                   {
                     translateX: sheen.interpolate({
@@ -475,22 +475,17 @@ export default function DailyQuoteCard() {
                           style={{ width: 26, height: 26, borderRadius: 13 }}
                         />
                       ) : (
-                        <LinearGradient
-                          colors={[BRAND.violet, BRAND.magenta]}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={{
+                        <View style={{ backgroundColor: BRAND.lime, 
                             width: 26,
                             height: 26,
                             borderRadius: 13,
                             alignItems: 'center',
                             justifyContent: 'center',
-                          }}
-                        >
-                          <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
+                          }}>
+                          <Text style={{ color: BRAND.teal, fontSize: 12, fontWeight: '800' }}>
                             {publisherName.charAt(0).toUpperCase()}
                           </Text>
-                        </LinearGradient>
+                        </View>
                       )}
                       <Text
                         style={{ color: CREAM, fontSize: 11.5, fontWeight: '700', flex: 1 }}

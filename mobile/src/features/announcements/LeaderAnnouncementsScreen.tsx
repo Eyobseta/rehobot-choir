@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,7 +16,7 @@ import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import { useLeaderAnnouncementsQuery } from './useAnnouncements';
 
-const AMBER = '#F59E0B';
+const AMBER = '#E8A65D';
 
 export default function LeaderAnnouncementsScreen({ navigation }: any) {
   const { t } = useTranslation();
@@ -40,36 +39,31 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        colors={['#F59E0B', BRAND.magenta, BRAND.violet]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
+      <View style={{ backgroundColor: BRAND.teal, 
           paddingHorizontal: 16,
           paddingTop: insets.top + 16,
           paddingBottom: 22,
           borderBottomLeftRadius: 28,
           borderBottomRightRadius: 28,
           overflow: 'hidden',
-        }}
-      >
+        }}>
         <View
           pointerEvents="none"
           style={{
             position: 'absolute',
-            top: -60,
-            right: -40,
-            width: 180,
-            height: 180,
-            borderRadius: 90,
-            backgroundColor: withAlpha('#FFFFFF', 0.18),
+            top: -65,
+            right: -45,
+            width: 130,
+            height: 130,
+            borderRadius: 65,
+            backgroundColor: BRAND.lime,
           }}
         />
 
@@ -112,7 +106,7 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
             size={44}
           />
         </View>
-      </LinearGradient>
+      </View>
 
       {showingSavedData && (
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
@@ -167,30 +161,25 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
             borderRadius: 22,
             overflow: 'hidden',
             transform: [{ scale: pressed ? 0.98 : 1 }],
-            shadowColor: BRAND.magenta,
+            shadowColor: colors.primary,
             shadowOpacity: 0.4,
             shadowRadius: 14,
             shadowOffset: { width: 0, height: 8 },
             elevation: 6,
           })}
         >
-          <LinearGradient
-            colors={[BRAND.violet, BRAND.magenta]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
+          <View style={{ backgroundColor: colors.primary, 
               paddingVertical: spacing.md,
               paddingHorizontal: spacing.lg,
               flexDirection: 'row',
               alignItems: 'center',
               gap: spacing.md,
               overflow: 'hidden',
-            }}
-          >
+            }}>
             <Ionicons
               name="megaphone"
               size={90}
-              color="rgba(255,255,255,0.14)"
+              color={withAlpha(colors.primaryText, 0.14)}
               style={{ position: 'absolute', right: -8, bottom: -24 }}
             />
             <View
@@ -198,18 +187,18 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
                 width: 42,
                 height: 42,
                 borderRadius: 15,
-                backgroundColor: '#FFFFFF',
+                backgroundColor: colors.primaryText,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Ionicons name="add" size={26} color={BRAND.magenta} />
+              <Ionicons name="add" size={26} color={colors.primary} />
             </View>
-            <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800', flex: 1 }]}>
+            <Text style={[typography.button, { color: colors.primaryText, fontWeight: '800', flex: 1 }]}>
               {t('announcements.create')}
             </Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-          </LinearGradient>
+            <Ionicons name="arrow-forward" size={18} color={colors.primaryText} />
+          </View>
         </Pressable>
       </View>
 
@@ -226,8 +215,8 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
           <RefreshControl
             refreshing={q.isRefetching && !firstLoad}
             onRefresh={() => q.refetch()}
-            tintColor={BRAND.violet}
-            colors={[BRAND.violet]}
+            tintColor={colors.primary}
+            colors={[BRAND.teal]}
           />
         }
         ListEmptyComponent={
@@ -286,20 +275,15 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
                   style={{ width: 62, height: 62, borderRadius: 18 }}
                 />
               ) : (
-                <LinearGradient
-                  colors={[AMBER, BRAND.magenta]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
+                <View style={{ backgroundColor: '#F7E1C8', 
                     width: 62,
                     height: 62,
                     borderRadius: 18,
                     alignItems: 'center',
                     justifyContent: 'center',
-                  }}
-                >
-                  <Ionicons name="megaphone" size={26} color="#FFFFFF" />
-                </LinearGradient>
+                  }}>
+                  <Ionicons name="megaphone" size={26} color={BRAND.teal} />
+                </View>
               )}
 
               <View style={{ flex: 1 }}>
@@ -344,12 +328,12 @@ export default function LeaderAnnouncementsScreen({ navigation }: any) {
                   width: 34,
                   height: 34,
                   borderRadius: 17,
-                  backgroundColor: withAlpha(BRAND.violet, 0.12),
+                  backgroundColor: withAlpha(colors.primary, 0.12),
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Ionicons name="create-outline" size={17} color={BRAND.violet} />
+                <Ionicons name="create-outline" size={17} color={colors.primary} />
               </View>
             </Pressable>
           );

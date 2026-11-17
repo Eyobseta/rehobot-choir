@@ -31,11 +31,11 @@ import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import { formatEthDate, isValidEthDate } from '../../utils/ethiopianCalendar';
 
-const CREAM = '#FFF4E0';
-const SAND = '#F3DDB8';
-const INK = '#7A4B22';
+const CREAM = '#FAF3EB';
+const SAND = '#D3C3F8';
+const INK = '#1D4550';
 const YT = '#FF0000';
-const GRADIENT = ['#2E1A12', '#6E3B1C', '#A2601F'] as const;
+const GRADIENT = ['#102A31', '#1D4550', '#2F6B78'] as const;
 const SERIF = Platform.select({ ios: 'Georgia', android: 'serif', default: undefined });
 
 // Reader text-size steps (Aa button cycles through them).
@@ -236,7 +236,7 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
           width: 280,
           height: 280,
           borderRadius: 140,
-          backgroundColor: 'rgba(255,214,150,0.12)',
+          backgroundColor: 'rgba(211,195,248,0.14)',
         }}
       />
 
@@ -498,22 +498,17 @@ export default function DailyQuoteDetailScreen({ route, navigation }: any) {
               style={{ width: 38, height: 38, borderRadius: 19 }}
             />
           ) : (
-            <LinearGradient
-              colors={[BRAND.violet, BRAND.magenta]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
+            <View style={{ backgroundColor: BRAND.lime, 
                 width: 38,
                 height: 38,
                 borderRadius: 19,
                 alignItems: 'center',
                 justifyContent: 'center',
-              }}
-            >
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '800' }}>
+              }}>
+              <Text style={{ color: BRAND.teal, fontSize: 16, fontWeight: '800' }}>
                 {publisherName.charAt(0).toUpperCase()}
               </Text>
-            </LinearGradient>
+            </View>
           )}
           <Text
             style={[typography.bodySmall, { color: CREAM, fontWeight: '700', flex: 1 }]}

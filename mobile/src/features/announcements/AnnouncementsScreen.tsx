@@ -24,7 +24,7 @@ import {
   warmAnnouncementDetailCache,
 } from './useAnnouncements';
 
-const AMBER = '#F59E0B';
+const AMBER = '#E8A65D';
 
 export default function AnnouncementsScreen({ navigation }: any) {
   const { t } = useTranslation();
@@ -55,29 +55,24 @@ export default function AnnouncementsScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        colors={['#F59E0B', BRAND.magenta, BRAND.violet]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
+      <View style={{ backgroundColor: BRAND.teal, 
           paddingHorizontal: 16,
           paddingTop: insets.top + 16,
           paddingBottom: 22,
           borderBottomLeftRadius: 28,
           borderBottomRightRadius: 28,
           overflow: 'hidden',
-        }}
-      >
+        }}>
         <View
           pointerEvents="none"
           style={{
             position: 'absolute',
-            top: -60,
-            right: -40,
-            width: 180,
-            height: 180,
-            borderRadius: 90,
-            backgroundColor: withAlpha('#FFFFFF', 0.18),
+            top: -65,
+            right: -45,
+            width: 130,
+            height: 130,
+            borderRadius: 65,
+            backgroundColor: BRAND.lime,
           }}
         />
 
@@ -157,7 +152,7 @@ export default function AnnouncementsScreen({ navigation }: any) {
             </Pressable>
           )}
         </View>
-      </LinearGradient>
+      </View>
 
       {showingSavedData && (
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
@@ -207,7 +202,7 @@ export default function AnnouncementsScreen({ navigation }: any) {
 
       {firstLoad ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={BRAND.violet} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -224,14 +219,14 @@ export default function AnnouncementsScreen({ navigation }: any) {
             <RefreshControl
               refreshing={q.isRefetching && !firstLoad}
               onRefresh={() => q.refetch()}
-              tintColor={BRAND.violet}
-              colors={[BRAND.violet]}
+              tintColor={colors.primary}
+              colors={[BRAND.teal]}
             />
           }
           ListEmptyComponent={
             <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
               <LinearGradient
-                colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
+                colors={[BRAND.lime, BRAND.mint, BRAND.lavender]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
@@ -286,7 +281,7 @@ export default function AnnouncementsScreen({ navigation }: any) {
                   />
                   <LinearGradient
                     pointerEvents="none"
-                    colors={['rgba(10,6,30,0)', 'rgba(10,6,30,0.4)']}
+                    colors={['rgba(14,38,44,0)', 'rgba(14,38,44,0.4)']}
                     style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
                   />
                 </View>
@@ -301,20 +296,15 @@ export default function AnnouncementsScreen({ navigation }: any) {
                 }}
               >
                 {!item.imageUrl && (
-                  <LinearGradient
-                    colors={[AMBER, BRAND.magenta]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
+                  <View style={{ backgroundColor: '#F7E1C8', 
                       width: 44,
                       height: 44,
                       borderRadius: 16,
                       alignItems: 'center',
                       justifyContent: 'center',
-                    }}
-                  >
-                    <Ionicons name="megaphone" size={20} color="#FFFFFF" />
-                  </LinearGradient>
+                    }}>
+                    <Ionicons name="megaphone" size={20} color={BRAND.teal} />
+                  </View>
                 )}
                 <View style={{ flex: 1 }}>
                   <Text

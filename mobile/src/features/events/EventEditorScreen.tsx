@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -206,7 +205,7 @@ export default function EventEditorScreen({ route, navigation }: any) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -223,29 +222,24 @@ export default function EventEditorScreen({ route, navigation }: any) {
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
+        <View style={{ backgroundColor: BRAND.teal, 
             paddingHorizontal: 16,
             paddingTop: insets.top + 16,
             paddingBottom: 22,
             borderBottomLeftRadius: 28,
             borderBottomRightRadius: 28,
             overflow: 'hidden',
-          }}
-        >
+          }}>
           <View
             pointerEvents="none"
             style={{
               position: 'absolute',
-              top: -60,
-              right: -40,
-              width: 180,
-              height: 180,
-              borderRadius: 90,
-              backgroundColor: withAlpha(BRAND.gold, 0.22),
+              top: -65,
+              right: -45,
+              width: 130,
+              height: 130,
+              borderRadius: 65,
+              backgroundColor: BRAND.lime,
             }}
           />
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -296,7 +290,7 @@ export default function EventEditorScreen({ route, navigation }: any) {
               size={44}
             />
           </View>
-        </LinearGradient>
+        </View>
 
         <View style={{ padding: spacing.lg }}>
           {/* COVER */}
@@ -330,7 +324,7 @@ export default function EventEditorScreen({ route, navigation }: any) {
                     paddingHorizontal: spacing.md,
                     paddingVertical: spacing.sm,
                     borderRadius: 16,
-                    backgroundColor: 'rgba(10,6,30,0.65)',
+                    backgroundColor: 'rgba(14,38,44,0.65)',
                   }}
                 >
                   <Ionicons name="camera" size={15} color="#FFFFFF" />
@@ -351,9 +345,9 @@ export default function EventEditorScreen({ route, navigation }: any) {
                   height: 190,
                   borderRadius: 26,
                   borderWidth: 2,
-                  borderColor: withAlpha(BRAND.violet, 0.6),
+                  borderColor: withAlpha(colors.primary, 0.6),
                   borderStyle: 'dashed',
-                  backgroundColor: withAlpha(BRAND.violet, 0.06),
+                  backgroundColor: withAlpha(colors.primary, 0.06),
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: spacing.sm,
@@ -364,17 +358,17 @@ export default function EventEditorScreen({ route, navigation }: any) {
                     width: 56,
                     height: 56,
                     borderRadius: 20,
-                    backgroundColor: withAlpha(BRAND.violet, 0.16),
+                    backgroundColor: withAlpha(colors.primary, 0.16),
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Ionicons name="image" size={26} color={BRAND.violet} />
+                  <Ionicons name="image" size={26} color={colors.primary} />
                 </View>
                 <Text
                   style={[
                     typography.body,
-                    { color: BRAND.violet, fontWeight: '700' },
+                    { color: colors.primary, fontWeight: '700' },
                   ]}
                 >
                   {t('events.pickCover')}
@@ -468,7 +462,7 @@ export default function EventEditorScreen({ route, navigation }: any) {
                 paddingVertical: spacing.md,
               }}
             >
-              <Ionicons name="calendar" size={18} color={BRAND.violet} />
+              <Ionicons name="calendar" size={18} color={colors.primary} />
               <Text style={{ color: colors.text, fontSize: 15, flex: 1 }}>
                 {formatEthDate(ethDate, lang)}
               </Text>
@@ -587,34 +581,29 @@ export default function EventEditorScreen({ route, navigation }: any) {
             borderRadius: 18,
             overflow: 'hidden',
             opacity: busy ? 0.6 : 1,
-            shadowColor: BRAND.violet,
+            shadowColor: colors.primary,
             shadowOpacity: 0.35,
             shadowRadius: 10,
             shadowOffset: { width: 0, height: 5 },
             elevation: 5,
           }}
         >
-          <LinearGradient
-            colors={[BRAND.violet, BRAND.magenta]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
+          <View style={{ backgroundColor: colors.primary, 
               flex: 1,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
-            }}
-          >
+            }}>
             {busy ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.primaryText} />
             ) : (
               <>
-                <Ionicons name="rocket" size={17} color="#FFFFFF" />
+                <Ionicons name="rocket" size={17} color={colors.primaryText} />
                 <Text
                   style={[
                     typography.button,
-                    { color: '#FFFFFF', fontWeight: '800' },
+                    { color: colors.primaryText, fontWeight: '800' },
                   ]}
                   numberOfLines={1}
                 >
@@ -622,7 +611,7 @@ export default function EventEditorScreen({ route, navigation }: any) {
                 </Text>
               </>
             )}
-          </LinearGradient>
+          </View>
         </Pressable>
       </View>
 
@@ -680,7 +669,7 @@ function EditorField({
           alignItems: multiline ? 'flex-start' : 'center',
           gap: spacing.sm,
           backgroundColor: colors.background,
-          borderColor: focused ? BRAND.violet : colors.border,
+          borderColor: focused ? colors.primary : colors.border,
           borderWidth: 1.5,
           borderRadius: radius.md + 4,
           paddingHorizontal: spacing.md,
@@ -689,7 +678,7 @@ function EditorField({
         <Ionicons
           name={icon}
           size={18}
-          color={focused ? BRAND.violet : colors.textSecondary}
+          color={focused ? colors.primary : colors.textSecondary}
           style={{ marginTop: multiline ? spacing.md : 0 }}
         />
         <TextInput

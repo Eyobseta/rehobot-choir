@@ -17,7 +17,7 @@ import GlassBackButton from '../../components/GlassBackButton';
 import { formatEthDate, EthDate } from '../../utils/ethiopianCalendar';
 import { useAnnouncementDetailQuery } from './useAnnouncements';
 
-const AMBER = '#F59E0B';
+const AMBER = '#E8A65D';
 
 export default function AnnouncementDetailScreen({ route, navigation }: any) {
    const { t, i18n } = useTranslation();
@@ -42,7 +42,7 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -104,18 +104,16 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
               style={{ width: '100%', height: '100%' }}
             />
           ) : (
-            <LinearGradient
-              colors={['#F59E0B', BRAND.magenta, BRAND.violet]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-            >
+            <View style={{ backgroundColor: BRAND.teal, overflow: 'hidden',  flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+<View pointerEvents="none" style={{ position: 'absolute', top: -40, left: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
+<View pointerEvents="none" style={{ position: 'absolute', bottom: -50, right: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: BRAND.lavender }} />
+
               <Ionicons name="megaphone" size={120} color="rgba(255,255,255,0.18)" />
-            </LinearGradient>
+            </View>
           )}
           <LinearGradient
             pointerEvents="none"
-            colors={['rgba(10,6,30,0.35)', 'rgba(10,6,30,0)', 'rgba(10,6,30,0.55)']}
+            colors={['rgba(14,38,44,0.35)', 'rgba(14,38,44,0)', 'rgba(14,38,44,0.55)']}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           />
         </View>
@@ -229,25 +227,20 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
                 borderRadius: 26,
                 overflow: 'hidden',
                 transform: [{ scale: pressed ? 0.98 : 1 }],
-                shadowColor: BRAND.violet,
+                shadowColor: colors.primary,
                 shadowOpacity: 0.3,
                 shadowRadius: 12,
                 shadowOffset: { width: 0, height: 6 },
                 elevation: 5,
               })}
             >
-              <LinearGradient
-                colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
+              <View style={{ backgroundColor: BRAND.teal, 
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: spacing.md,
                   padding: spacing.md,
                   overflow: 'hidden',
-                }}
-              >
+                }}>
                 <Ionicons
                   name="calendar"
                   size={100}
@@ -270,7 +263,7 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
                     style={{
                       fontSize: 11,
                       fontWeight: '800',
-                      color: BRAND.magenta,
+                      color: '#7B5FC7',
                       textTransform: 'uppercase',
                     }}
                   >
@@ -303,7 +296,7 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
                 >
                   <Ionicons name="arrow-forward" size={18} color={BRAND.deep} />
                 </View>
-              </LinearGradient>
+              </View>
             </Pressable>
           )}
 
@@ -322,12 +315,12 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
                     width: 28,
                     height: 28,
                     borderRadius: 10,
-                    backgroundColor: withAlpha(BRAND.violet, 0.16),
+                    backgroundColor: withAlpha(colors.primary, 0.16),
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Ionicons name="musical-notes" size={15} color={BRAND.violet} />
+                  <Ionicons name="musical-notes" size={15} color={colors.primary} />
                 </View>
                 <Text style={[typography.h3, { color: colors.text, fontWeight: '800' }]}>
                   {t('announcements.songs')}
@@ -359,12 +352,12 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
                         width: 30,
                         height: 30,
                         borderRadius: 11,
-                        backgroundColor: withAlpha(BRAND.violet, 0.12),
+                        backgroundColor: withAlpha(colors.primary, 0.12),
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      <Text style={{ fontSize: 13, fontWeight: '800', color: BRAND.violet }}>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: colors.primary }}>
                         {i + 1}
                       </Text>
                     </View>

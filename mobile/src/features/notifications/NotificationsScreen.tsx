@@ -196,15 +196,15 @@ export default function NotificationsScreen({ navigation }: Props) {
 
   const tintFor = (type: NotificationType): string => {
     switch (type) {
-      case 'ANNOUNCEMENT': return '#B6A0FF';
-      case 'EVENT_REMINDER': return '#6EDBD5';
-      case 'CHAT_MESSAGE': return '#B8E986';
-      case 'BIRTHDAY': return '#EE9BBD';
-      case 'SONG_PUBLISHED': return '#E6C779';
-      case 'MEMORY_PUBLISHED': return '#6EDBD5';
-      case 'LEADERSHIP_CHANGE': return '#B6A0FF';
-      case 'DAILY_QUOTE': return '#E6C779';
-      default: return '#B6A0FF';
+      case 'ANNOUNCEMENT': return '#8B6FD6';
+      case 'EVENT_REMINDER': return '#14A38B';
+      case 'CHAT_MESSAGE': return '#2FB36A';
+      case 'BIRTHDAY': return '#E8736F';
+      case 'SONG_PUBLISHED': return '#E8A65D';
+      case 'MEMORY_PUBLISHED': return '#14A38B';
+      case 'LEADERSHIP_CHANGE': return '#8B6FD6';
+      case 'DAILY_QUOTE': return '#E8A65D';
+      default: return '#8B6FD6';
     }
   };
 
@@ -218,7 +218,7 @@ export default function NotificationsScreen({ navigation }: Props) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -255,16 +255,16 @@ export default function NotificationsScreen({ navigation }: Props) {
               paddingHorizontal: 12,
               paddingVertical: 6,
               borderRadius: 999,
-              backgroundColor: withAlpha('#F59E0B', 0.14),
+              backgroundColor: withAlpha('#E8A65D', 0.14),
               borderWidth: 1,
-              borderColor: withAlpha('#F59E0B', 0.4),
+              borderColor: withAlpha('#E8A65D', 0.4),
             }}
           >
-            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Ionicons name="cloud-offline" size={13} color="#E8A65D" />
             <Text
               style={[
                 typography.caption,
-                { color: '#F59E0B', fontWeight: '800' },
+                { color: '#E8A65D', fontWeight: '800' },
               ]}
             >
               {t('home.showingSavedData', {
@@ -296,17 +296,17 @@ export default function NotificationsScreen({ navigation }: Props) {
             style={({ pressed }) => [
               styles.markAll,
               {
-                backgroundColor: withAlpha(BRAND.violet, 0.14),
-                borderColor: withAlpha(BRAND.violet, 0.45),
+                backgroundColor: withAlpha(colors.primary, 0.14),
+                borderColor: withAlpha(colors.primary, 0.45),
                 opacity: pressed || markAllRead.isPending ? 0.7 : 1,
               },
             ]}
           >
-            <Ionicons name="checkmark-done" size={16} color={BRAND.violet} />
+            <Ionicons name="checkmark-done" size={16} color={colors.primary} />
             <Text
               style={[
                 typography.caption,
-                { color: BRAND.violet, fontWeight: '800', marginLeft: 6 },
+                { color: colors.primary, fontWeight: '800', marginLeft: 6 },
               ]}
             >
               {t('notifications.markAllRead')}
@@ -327,14 +327,14 @@ export default function NotificationsScreen({ navigation }: Props) {
           <RefreshControl
             refreshing={q.isRefetching && !firstLoad}
             onRefresh={() => q.refetch()}
-            tintColor={BRAND.violet}
-            colors={[BRAND.violet]}
+            tintColor={colors.primary}
+            colors={[BRAND.teal]}
           />
         }
         ListEmptyComponent={
           <View style={{ padding: spacing.xl, alignItems: 'center' }}>
             <LinearGradient
-              colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
+              colors={[BRAND.lime, BRAND.mint, BRAND.lavender]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.emptyRing}
@@ -447,12 +447,7 @@ function NotificationCard({
         ]}
       >
         {unread && (
-          <LinearGradient
-            colors={[BRAND.violet, BRAND.magenta]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.unreadBar}
-          />
+          <View style={[styles.unreadBar, { backgroundColor: colors.primary, }]} />
         )}
 
         <View
@@ -531,9 +526,9 @@ const styles = StyleSheet.create({
     width: 11,
     height: 11,
     borderRadius: 6,
-    backgroundColor: BRAND.magenta,
+    backgroundColor: '#FF6B57',
     marginLeft: 10,
-    shadowColor: BRAND.magenta,
+    shadowColor: '#FF6B57',
     shadowOpacity: 0.7,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },

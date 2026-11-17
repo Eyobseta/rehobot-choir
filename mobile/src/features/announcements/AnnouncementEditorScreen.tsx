@@ -13,7 +13,6 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -40,7 +39,7 @@ import {
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const AMBER = '#F59E0B';
+const AMBER = '#E8A65D';
 const ADDIS_OFFSET_MS = 3 * 3600_000;
 
 export default function AnnouncementEditorScreen({ route, navigation }: any) {
@@ -270,7 +269,7 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -287,29 +286,24 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={['#F59E0B', BRAND.magenta, BRAND.violet]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
+        <View style={{ backgroundColor: BRAND.teal, 
             paddingHorizontal: 16,
             paddingTop: insets.top + 16,
             paddingBottom: 22,
             borderBottomLeftRadius: 28,
             borderBottomRightRadius: 28,
             overflow: 'hidden',
-          }}
-        >
+          }}>
           <View
             pointerEvents="none"
             style={{
               position: 'absolute',
-              top: -60,
-              right: -40,
-              width: 180,
-              height: 180,
-              borderRadius: 90,
-              backgroundColor: withAlpha('#FFFFFF', 0.18),
+              top: -65,
+              right: -45,
+              width: 130,
+              height: 130,
+              borderRadius: 65,
+              backgroundColor: BRAND.lime,
             }}
           />
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -351,7 +345,7 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
               size={44}
             />
           </View>
-        </LinearGradient>
+        </View>
 
         <View style={{ padding: spacing.lg }}>
           <Text
@@ -384,7 +378,7 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
                     paddingHorizontal: spacing.md,
                     paddingVertical: spacing.sm,
                     borderRadius: 16,
-                    backgroundColor: 'rgba(10,6,30,0.65)',
+                    backgroundColor: 'rgba(14,38,44,0.65)',
                   }}
                 >
                   <Ionicons name="camera" size={15} color="#FFFFFF" />
@@ -562,7 +556,7 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
                 gap: 8,
               }}
             >
-              <Ionicons name="musical-notes" size={18} color={BRAND.violet} />
+              <Ionicons name="musical-notes" size={18} color={colors.primary} />
               <Text style={{ color: colors.text, fontWeight: '700', flex: 1 }}>
                 {songs.length === 0 ? `+ ${t('announcements.songs')}` : `${songs.length} selected`}
               </Text>
@@ -680,39 +674,34 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
             borderRadius: 18,
             overflow: 'hidden',
             opacity: busy ? 0.6 : 1,
-            shadowColor: BRAND.violet,
+            shadowColor: colors.primary,
             shadowOpacity: 0.35,
             shadowRadius: 10,
             shadowOffset: { width: 0, height: 5 },
             elevation: 5,
           }}
         >
-          <LinearGradient
-            colors={[BRAND.violet, BRAND.magenta]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
+          <View style={{ backgroundColor: colors.primary, 
               flex: 1,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
-            }}
-          >
+            }}>
             {busy ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.primaryText} />
             ) : (
               <>
-                <Ionicons name="paper-plane" size={17} color="#FFFFFF" />
+                <Ionicons name="paper-plane" size={17} color={colors.primaryText} />
                 <Text
-                  style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}
+                  style={[typography.button, { color: colors.primaryText, fontWeight: '800' }]}
                   numberOfLines={1}
                 >
                   {t('announcements.publishNow')}
                 </Text>
               </>
             )}
-          </LinearGradient>
+          </View>
         </Pressable>
       </View>
 
@@ -751,7 +740,7 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
                 {t('announcements.songs')}
               </Text>
               <Pressable onPress={() => setSongPickerOpen(false)}>
-                <Text style={{ color: BRAND.violet, fontWeight: '800' }}>
+                <Text style={{ color: colors.primary, fontWeight: '800' }}>
                   {t('common.close')}
                 </Text>
               </Pressable>
@@ -774,11 +763,11 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
                     borderBottomColor: colors.border,
                   }}
                 >
-                  <Ionicons name="musical-notes" size={20} color={BRAND.violet} />
+                  <Ionicons name="musical-notes" size={20} color={colors.primary} />
                   <Text style={{ color: colors.text, flex: 1, fontWeight: '700' }}>
                     {item.title}
                   </Text>
-                  <Ionicons name="add-circle" size={22} color={BRAND.magenta} />
+                  <Ionicons name="add-circle" size={22} color={colors.accent} />
                 </Pressable>
               )}
               ListEmptyComponent={

@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { RsvpResponse } from '../../services/events';
-import { BRAND, withAlpha } from '../auth/Auth_UI';
+import { BRAND, withAlpha, onColor } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import { useMe } from '../chat/chatSession';
 import { formatEthDate } from '../../utils/ethiopianCalendar';
@@ -21,9 +21,9 @@ import { useEventDetailQuery, useRsvpMutation } from './useEvents';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const GREEN = '#16A34A';
-const AMBER = '#F59E0B';
-const RED = '#EF4444';
+const GREEN = '#2E9E5B';
+const AMBER = '#E8A65D';
+const RED = '#E5533F';
 
 export default function EventDetailScreen({ route, navigation }: any) {
   
@@ -51,7 +51,7 @@ const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en'
   if (firstLoad) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -106,18 +106,16 @@ const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en'
           {event.coverImageUrl ? (
             <Image source={{ uri: event.coverImageUrl }} style={{ width: '100%', height: '100%' }} />
           ) : (
-            <LinearGradient
-              colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-            >
+            <View style={{ backgroundColor: BRAND.teal, overflow: 'hidden',  flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+<View pointerEvents="none" style={{ position: 'absolute', top: -40, left: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
+<View pointerEvents="none" style={{ position: 'absolute', bottom: -50, right: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: BRAND.lavender }} />
+
               <Ionicons name="calendar" size={130} color="rgba(255,255,255,0.14)" />
-            </LinearGradient>
+            </View>
           )}
           <LinearGradient
             pointerEvents="none"
-            colors={['rgba(10,6,30,0.35)', 'rgba(10,6,30,0.0)', 'rgba(10,6,30,0.55)']}
+            colors={['rgba(14,38,44,0.35)', 'rgba(14,38,44,0.0)', 'rgba(14,38,44,0.55)']}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           />
           <View
@@ -144,7 +142,7 @@ const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en'
               style={{
                 fontSize: 11,
                 fontWeight: '800',
-                color: BRAND.magenta,
+                color: '#7B5FC7',
                 textTransform: 'uppercase',
               }}
             >
@@ -193,9 +191,9 @@ const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en'
           </Text>
 
           <View style={{ marginTop: spacing.md, gap: spacing.sm + 2 }}>
-            <InfoRow icon="calendar" tint={BRAND.violet} text={dateLabel} />
+            <InfoRow icon="calendar" tint={colors.primary} text={dateLabel} />
             {event.location && (
-              <InfoRow icon="location" tint={BRAND.magenta} text={event.location} />
+              <InfoRow icon="location" tint={colors.accent} text={event.location} />
             )}
           </View>
 
@@ -218,7 +216,7 @@ const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en'
 
           {event.attachments.length > 0 && (
             <View style={{ marginTop: spacing.lg }}>
-              <SectionTitle icon="images" tint={BRAND.water} label={t('events.attachments')} />
+              <SectionTitle icon="images" tint={BRAND.lavender} label={t('events.attachments')} />
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -252,7 +250,7 @@ const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en'
               borderColor: colors.border,
             }}
           >
-            <SectionTitle icon="ticket" tint={BRAND.violet} label={t('events.rsvp')} />
+            <SectionTitle icon="ticket" tint={colors.primary} label={t('events.rsvp')} />
 
             {event.rsvpClosed ? (
               <View
@@ -300,7 +298,7 @@ const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en'
             )}
 
             <View style={{ marginTop: spacing.xl }}>
-              <SectionTitle icon="people" tint={BRAND.magenta} label={t('events.attendees')} />
+              <SectionTitle icon="people" tint={colors.accent} label={t('events.attendees')} />
               {event.rsvps.length === 0 ? (
                 <Text style={[typography.body, { color: colors.textSecondary }]}>
                   {t('events.noRsvps')}
@@ -482,12 +480,12 @@ function RsvpBtn({
       <Ionicons
         name={active ? icon : (`${icon}-outline` as IconName)}
         size={22}
-        color={active ? '#FFFFFF' : tint}
+        color={active ? onColor(tint) : tint}
       />
       <Text
         style={[
           typography.caption,
-          { color: active ? '#FFFFFF' : colors.text, fontWeight: '800' },
+          { color: active ? onColor(tint) : colors.text, fontWeight: '800' },
         ]}
         numberOfLines={1}
       >

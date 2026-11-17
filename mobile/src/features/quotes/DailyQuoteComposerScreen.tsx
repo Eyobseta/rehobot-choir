@@ -24,7 +24,7 @@ import { useMe } from '../chat/chatSession';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const CREAM = '#FFF4E0';
+const CREAM = '#FAF3EB';
 
 export default function DailyQuoteComposerScreen({ navigation }: any) {
   const { t } = useTranslation();
@@ -106,7 +106,7 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
       >
         {/* ---------- Full-bleed amber hero ---------- */}
         <LinearGradient
-          colors={['#C98B4A', '#A56B36', '#6E4220']}
+          colors={['#1D4550', '#1D4550', '#163740']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
@@ -141,7 +141,7 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
               width: 140,
               height: 140,
               borderRadius: 70,
-              backgroundColor: 'rgba(255,215,140,0.14)',
+              backgroundColor: 'rgba(211,195,248,0.16)',
             }}
           />
           <View
@@ -153,7 +153,7 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
               width: 180,
               height: 180,
               borderRadius: 90,
-              backgroundColor: 'rgba(255,232,180,0.14)',
+              backgroundColor: 'rgba(196,244,79,0.12)',
             }}
           />
 
@@ -249,9 +249,9 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
                 borderRadius: radius.md + 4,
                 borderWidth: 1.5,
                 borderStyle: audioUri ? 'solid' : 'dashed',
-                borderColor: audioUri ? BRAND.violet : colors.border,
+                borderColor: audioUri ? colors.primary : colors.border,
                 backgroundColor: audioUri
-                  ? withAlpha(BRAND.violet, 0.07)
+                  ? withAlpha(colors.primary, 0.07)
                   : colors.background,
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -264,7 +264,7 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
                   height: 40,
                   borderRadius: 14,
                   backgroundColor: audioUri
-                    ? withAlpha(BRAND.violet, 0.18)
+                    ? withAlpha(colors.primary, 0.18)
                     : withAlpha(colors.textSecondary, 0.12),
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -273,7 +273,7 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
                 <Ionicons
                   name={audioUri ? 'musical-notes' : 'musical-note-outline'}
                   size={20}
-                  color={audioUri ? BRAND.violet : colors.textSecondary}
+                  color={audioUri ? colors.primary : colors.textSecondary}
                 />
               </View>
               <Text
@@ -315,11 +315,11 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
                     paddingHorizontal: spacing.sm + 2,
                     paddingVertical: spacing.xs + 2,
                     borderRadius: 12,
-                    backgroundColor: withAlpha(BRAND.violet, 0.12),
+                    backgroundColor: withAlpha(colors.primary, 0.12),
                   }}
                 >
-                  <Ionicons name="cloud-upload-outline" size={14} color={BRAND.violet} />
-                  <Text style={[typography.caption, { color: BRAND.violet, fontWeight: '800' }]}>
+                  <Ionicons name="cloud-upload-outline" size={14} color={colors.primary} />
+                  <Text style={[typography.caption, { color: colors.primary, fontWeight: '800' }]}>
                     {t('quote.pickAudio')}
                   </Text>
                 </Pressable>
@@ -356,36 +356,31 @@ export default function DailyQuoteComposerScreen({ navigation }: any) {
               borderRadius: radius.md + 6,
               overflow: 'hidden',
               opacity: busy ? 0.6 : 1,
-              shadowColor: '#3A1F08',
+              shadowColor: colors.primary,
               shadowOpacity: 0.4,
               shadowRadius: 14,
               shadowOffset: { width: 0, height: 8 },
               elevation: 6,
             }}
           >
-            <LinearGradient
-              colors={['#C98B4A', '#A56B36']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
+            <View style={{ backgroundColor: colors.primary, 
                 paddingVertical: spacing.md + 2,
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexDirection: 'row',
                 gap: spacing.sm,
-              }}
-            >
+              }}>
               {busy ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={colors.primaryText} />
               ) : (
                 <>
-                  <Ionicons name="paper-plane" size={18} color="#FFFFFF" />
-                  <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}>
+                  <Ionicons name="paper-plane" size={18} color={colors.primaryText} />
+                  <Text style={[typography.button, { color: colors.primaryText, fontWeight: '800' }]}>
                     {t('quote.publish')}
                   </Text>
                 </>
               )}
-            </LinearGradient>
+            </View>
           </Pressable>
         </View>
       </ScrollView>
@@ -449,7 +444,7 @@ function Field({
           alignItems: multiline ? 'flex-start' : 'center',
           gap: spacing.sm,
           backgroundColor: colors.background,
-          borderColor: focused ? '#A56B36' : colors.border,
+          borderColor: focused ? colors.primary : colors.border,
           borderWidth: 1.5,
           borderRadius: radius.md + 4,
           paddingHorizontal: spacing.md,
@@ -458,7 +453,7 @@ function Field({
         <Ionicons
           name={icon}
           size={18}
-          color={focused ? '#A56B36' : colors.textSecondary}
+          color={focused ? colors.primary : colors.textSecondary}
           style={{ marginTop: multiline ? spacing.md : 0 }}
         />
         <TextInput

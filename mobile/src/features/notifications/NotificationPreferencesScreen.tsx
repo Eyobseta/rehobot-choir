@@ -77,7 +77,7 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -116,16 +116,16 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
               paddingHorizontal: 12,
               paddingVertical: 6,
               borderRadius: 999,
-              backgroundColor: withAlpha('#F59E0B', 0.14),
+              backgroundColor: withAlpha('#E8A65D', 0.14),
               borderWidth: 1,
-              borderColor: withAlpha('#F59E0B', 0.4),
+              borderColor: withAlpha('#E8A65D', 0.4),
             }}
           >
-            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Ionicons name="cloud-offline" size={13} color="#E8A65D" />
             <Text
               style={[
                 theme.typography.caption,
-                { color: '#F59E0B', fontWeight: '800' },
+                { color: '#E8A65D', fontWeight: '800' },
               ]}
             >
               {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
@@ -145,7 +145,7 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
         <Animated.View style={fadeUp(0)}>
           <PrefRow
             icon="megaphone"
-            tint="#B6A0FF"
+            tint="#8B6FD6"
             label={t('notifications.typeAnnouncements')}
             value={local.announcementsEnabled}
             onChange={(v) => onToggle('announcementsEnabled', v)}
@@ -155,7 +155,7 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
         <Animated.View style={fadeUp(1)}>
           <PrefRow
             icon="calendar"
-            tint="#6EDBD5"
+            tint="#14A38B"
             label={t('notifications.typeEvents')}
             value={local.eventRemindersEnabled}
             onChange={(v) => onToggle('eventRemindersEnabled', v)}
@@ -165,7 +165,7 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
         <Animated.View style={fadeUp(2)}>
           <PrefRow
             icon="chatbubble-ellipses"
-            tint="#B8E986"
+            tint="#2FB36A"
             label={t('notifications.typeChat')}
             value={true}
             onChange={() => {
@@ -179,7 +179,7 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
         <Animated.View style={fadeUp(3)}>
           <PrefRow
             icon="gift"
-            tint="#EE9BBD"
+            tint="#E8736F"
             label={t('notifications.typeBirthdays')}
             value={local.birthdaysEnabled}
             onChange={(v) => onToggle('birthdaysEnabled', v)}
@@ -189,7 +189,7 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
         <Animated.View style={fadeUp(4)}>
           <PrefRow
             icon="musical-notes"
-            tint="#E6C779"
+            tint="#E8A65D"
             label={t('notifications.typeNewSong')}
             value={local.newSongEnabled}
             onChange={(v) => onToggle('newSongEnabled', v)}
@@ -199,7 +199,7 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
         <Animated.View style={fadeUp(5)}>
           <PrefRow
             icon="images"
-            tint="#6EDBD5"
+            tint="#14A38B"
             label={t('notifications.typeNewMemory')}
             value={local.newMemoryEnabled}
             onChange={(v) => onToggle('newMemoryEnabled', v)}
@@ -209,7 +209,7 @@ export default function NotificationPreferencesScreen({ navigation }: any) {
         <Animated.View style={fadeUp(6)}>
           <PrefRow
             icon="book"
-            tint="#E6C779"
+            tint="#E8A65D"
             label={t('notifications.typeDailyQuote')}
             value={local.dailyQuoteEnabled}
             onChange={(v) => onToggle('dailyQuoteEnabled', v)}
@@ -336,8 +336,8 @@ function PrefRow({
             value={value}
             onValueChange={onChange}
             disabled={disabled}
-            trackColor={{ false: colors.border, true: BRAND.violet }}
-            thumbColor={value ? BRAND.gold : '#FFFFFF'}
+            trackColor={{ false: colors.border, true: BRAND.mint }}
+            thumbColor={value ? BRAND.teal : '#FFFFFF'}
           />
         </Animated.View>
       </Pressable>

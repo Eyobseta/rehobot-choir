@@ -32,20 +32,15 @@ export default function LeaderEventsScreen({ navigation }: any) {
   if (firstLoad) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <LinearGradient
-        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ paddingHorizontal: 16, paddingTop: insets.top + 16, paddingBottom: 22, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' }}
-      >
-        <View pointerEvents="none" style={{ position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.gold, 0.22) }} />
+      <View style={{ backgroundColor: BRAND.teal,  paddingHorizontal: 16, paddingTop: insets.top + 16, paddingBottom: 22, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' }}>
+        <View pointerEvents="none" style={{ position: 'absolute', top: -65, right: -45, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="calendar" size={22} color={BRAND.deep} />
@@ -61,13 +56,13 @@ export default function LeaderEventsScreen({ navigation }: any) {
 
           <GlassBackButton onPress={() => navigation.goBack()} accessibilityLabel={t('common.back', { defaultValue: 'Back' })} size={44} />
         </View>
-      </LinearGradient>
+      </View>
 
       {showingSavedData && (
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-          <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#F59E0B', 0.14), borderWidth: 1, borderColor: withAlpha('#F59E0B', 0.4) }}>
-            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
-            <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+          <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#E8A65D', 0.14), borderWidth: 1, borderColor: withAlpha('#E8A65D', 0.4) }}>
+            <Ionicons name="cloud-offline" size={13} color="#E8A65D" />
+            <Text style={[typography.caption, { color: '#E8A65D', fontWeight: '800' }]}>
               {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
             </Text>
           </View>
@@ -90,21 +85,21 @@ export default function LeaderEventsScreen({ navigation }: any) {
             borderRadius: 22,
             overflow: 'hidden',
             transform: [{ scale: pressed ? 0.98 : 1 }],
-            shadowColor: BRAND.violet,
+            shadowColor: colors.primary,
             shadowOpacity: 0.4,
             shadowRadius: 14,
             shadowOffset: { width: 0, height: 8 },
             elevation: 6,
           })}
         >
-          <LinearGradient colors={[BRAND.violet, BRAND.magenta]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ paddingVertical: spacing.md, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.md, overflow: 'hidden' }}>
-            <Ionicons name="calendar" size={90} color="rgba(255,255,255,0.12)" style={{ position: 'absolute', right: -10, bottom: -24 }} />
-            <View style={{ width: 42, height: 42, borderRadius: 15, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="add" size={26} color={BRAND.deep} />
+          <View style={{ backgroundColor: colors.primary,  paddingVertical: spacing.md, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.md, overflow: 'hidden' }}>
+            <Ionicons name="calendar" size={90} color={withAlpha(colors.primaryText, 0.14)} style={{ position: 'absolute', right: -10, bottom: -24 }} />
+            <View style={{ width: 42, height: 42, borderRadius: 15, backgroundColor: colors.primaryText, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="add" size={26} color={colors.primary} />
             </View>
-            <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800', flex: 1 }]}>{t('events.createEvent')}</Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-          </LinearGradient>
+            <Text style={[typography.button, { color: colors.primaryText, fontWeight: '800', flex: 1 }]}>{t('events.createEvent')}</Text>
+            <Ionicons name="arrow-forward" size={18} color={colors.primaryText} />
+          </View>
         </Pressable>
       </View>
 
@@ -114,11 +109,11 @@ export default function LeaderEventsScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl }}
         refreshControl={
-          <RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} tintColor={BRAND.violet} colors={[BRAND.violet]} />
+          <RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} tintColor={colors.primary} colors={[BRAND.teal]} />
         }
         ListEmptyComponent={
           <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
-            <LinearGradient colors={[BRAND.violet, BRAND.magenta, BRAND.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' }}>
+            <LinearGradient colors={[BRAND.lime, BRAND.mint, BRAND.lavender]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' }}>
               <View style={{ width: 104, height: 104, borderRadius: 52, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name="calendar-outline" size={40} color={colors.textSecondary} />
               </View>
@@ -128,7 +123,7 @@ export default function LeaderEventsScreen({ navigation }: any) {
         }
         renderItem={({ item }) => {
           const published = item.status === 'PUBLISHED';
-          const tint = published ? colors.success : '#F59E0B';
+          const tint = published ? colors.success : '#E8A65D';
 
           let eth: EthDate = { year: 0, month: 1, day: 1 };
           if (typeof item.date === 'object' && item.date !== null) {
@@ -155,10 +150,10 @@ export default function LeaderEventsScreen({ navigation }: any) {
                 transform: [{ scale: pressed ? 0.98 : 1 }],
               })}
             >
-              <LinearGradient colors={[BRAND.violet, BRAND.magenta]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 56, height: 62, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ backgroundColor: BRAND.teal,  width: 56, height: 62, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 22, fontWeight: '800', color: '#FFFFFF', lineHeight: 24 }}>{eth.day}</Text>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase' }}>{monthShort}</Text>
-              </LinearGradient>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: BRAND.lime, textTransform: 'uppercase' }}>{monthShort}</Text>
+              </View>
 
               <View style={{ flex: 1 }}>
                 <Text style={[typography.body, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>{item.title}</Text>
@@ -173,8 +168,8 @@ export default function LeaderEventsScreen({ navigation }: any) {
                 </View>
               </View>
 
-              <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: withAlpha(BRAND.violet, 0.12), alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="create-outline" size={17} color={BRAND.violet} />
+              <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: withAlpha(colors.primary, 0.12), alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="create-outline" size={17} color={colors.primary} />
               </View>
             </Pressable>
           );
