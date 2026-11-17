@@ -9,7 +9,6 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -55,7 +54,7 @@ export default function ZemaSubmissionsScreen({ navigation }: any) {
     s === 'APPROVED'
       ? colors.success
       : s === 'PENDING_REVIEW'
-        ? BRAND.violet
+        ? colors.primary
         : s === 'RETURNED'
           ? AMBER
           : colors.textSecondary;
@@ -87,9 +86,9 @@ export default function ZemaSubmissionsScreen({ navigation }: any) {
   }, [filter, counts.DRAFT, counts.PENDING_REVIEW, counts.RETURNED, counts.APPROVED]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const chips: { key: Filter; label: string; icon: IconName; tint: string; count: number }[] = [
-    { key: 'ALL', label: t('zema.filterAll', { defaultValue: 'All' }), icon: 'albums', tint: BRAND.violet, count: items.length },
+    { key: 'ALL', label: t('zema.filterAll', { defaultValue: 'All' }), icon: 'albums', tint: colors.primary, count: items.length },
     { key: 'DRAFT', label: t('zema.statusDraft'), icon: 'document-text', tint: colors.textSecondary, count: counts.DRAFT },
-    { key: 'PENDING_REVIEW', label: t('zema.statusPending'), icon: 'time', tint: BRAND.violet, count: counts.PENDING_REVIEW },
+    { key: 'PENDING_REVIEW', label: t('zema.statusPending'), icon: 'time', tint: colors.primary, count: counts.PENDING_REVIEW },
     { key: 'RETURNED', label: t('zema.statusReturned'), icon: 'return-down-back', tint: AMBER, count: counts.RETURNED },
     { key: 'APPROVED', label: t('zema.statusApproved'), icon: 'checkmark-circle', tint: colors.success, count: counts.APPROVED },
   ];
@@ -116,24 +115,19 @@ export default function ZemaSubmissionsScreen({ navigation }: any) {
             elevation: 6,
           }}
         >
-          <LinearGradient
-            colors={[BRAND.gold, '#FFA94D']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{
+          <View style={{ backgroundColor: BRAND.lime, 
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
               paddingVertical: 14,
               borderRadius: 18,
-            }}
-          >
+            }}>
             <Ionicons name="add-circle" size={21} color={BRAND.deep} />
             <Text style={{ color: BRAND.deep, fontWeight: '800', fontSize: 14 }}>
               {t('zema.newSubmission')}
             </Text>
-          </LinearGradient>
+          </View>
         </Pressable>
       </ScreenHero>
 
@@ -230,8 +224,8 @@ export default function ZemaSubmissionsScreen({ navigation }: any) {
           <RefreshControl
             refreshing={q.isRefetching && !firstLoad}
             onRefresh={() => q.refetch()}
-            tintColor={BRAND.violet}
-            colors={[BRAND.violet]}
+            tintColor={colors.primary}
+            colors={[BRAND.teal]}
           />
         }
         ListEmptyComponent={
@@ -325,12 +319,7 @@ function SubmissionCard({
           overflow: 'hidden',
         }}
       >
-        <LinearGradient
-          colors={returned ? [AMBER, BRAND.magenta] : palette}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }}
-        />
+        <View style={{ backgroundColor: returned ? AMBER : palette[0],  position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View
             style={{
@@ -389,7 +378,7 @@ function SubmissionCard({
               backgroundColor: withAlpha(AMBER, 0.1),
             }}
           >
-            <Text style={[typography.caption, { color: '#B45309', fontWeight: '800' }]}>
+            <Text style={[typography.caption, { color: '#A7611B', fontWeight: '800' }]}>
               {returnReasonLabel}
             </Text>
             <Text style={[typography.bodySmall, { color: colors.text, marginTop: 3 }]}>

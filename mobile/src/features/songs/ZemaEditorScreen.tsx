@@ -164,7 +164,7 @@ export default function ZemaEditorScreen({ route, navigation }: any) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
         <View style={{ position: 'absolute', top: insets.top + 12, right: 16 }}>
           <GlassBackButton onPress={() => navigation.goBack()} size={44} />
         </View>
@@ -280,7 +280,7 @@ export default function ZemaEditorScreen({ route, navigation }: any) {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Ionicons name="return-down-back" size={16} color="#B45309" />
-                <Text style={[typography.caption, { color: '#B45309', fontWeight: '800' }]}>
+                <Text style={[typography.caption, { color: '#A7611B', fontWeight: '800' }]}>
                   {t('zema.returnReason')}
                 </Text>
               </View>
@@ -296,15 +296,15 @@ export default function ZemaEditorScreen({ route, navigation }: any) {
                 marginTop: spacing.lg,
                 padding: 14,
                 borderRadius: 18,
-                backgroundColor: withAlpha(BRAND.violet, 0.1),
+                backgroundColor: withAlpha(colors.primary, 0.1),
                 borderWidth: 1,
-                borderColor: withAlpha(BRAND.violet, 0.35),
+                borderColor: withAlpha(colors.primary, 0.35),
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 8,
               }}
             >
-              <Ionicons name="lock-closed" size={16} color={BRAND.violet} />
+              <Ionicons name="lock-closed" size={16} color={colors.primary} />
               <Text
                 style={[typography.bodySmall, { color: colors.text, flex: 1, fontWeight: '700' }]}
               >
@@ -402,13 +402,13 @@ export default function ZemaEditorScreen({ route, navigation }: any) {
                 borderRadius: 18,
                 borderWidth: 1.5,
                 borderStyle: hasAudio ? 'solid' : 'dashed',
-                borderColor: hasAudio ? BRAND.violet : colors.border,
-                backgroundColor: hasAudio ? withAlpha(BRAND.violet, 0.08) : colors.background,
+                borderColor: hasAudio ? colors.primary : colors.border,
+                backgroundColor: hasAudio ? withAlpha(colors.primary, 0.08) : colors.background,
                 opacity: readOnly ? 0.6 : pressed ? 0.85 : 1,
               })}
             >
               <LinearGradient
-                colors={hasAudio ? [BRAND.violet, BRAND.magenta] : [colors.border, colors.border]}
+                colors={hasAudio ? [colors.primary, colors.primary] : [colors.border, colors.border]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
@@ -422,7 +422,7 @@ export default function ZemaEditorScreen({ route, navigation }: any) {
                 <Ionicons
                   name={hasAudio ? 'musical-notes' : 'cloud-upload-outline'}
                   size={22}
-                  color={hasAudio ? '#FFFFFF' : colors.textSecondary}
+                  color={hasAudio ? colors.primaryText : colors.textSecondary}
                 />
               </LinearGradient>
               <Text
@@ -437,10 +437,10 @@ export default function ZemaEditorScreen({ route, navigation }: any) {
                     paddingHorizontal: 12,
                     paddingVertical: 7,
                     borderRadius: 12,
-                    backgroundColor: withAlpha(BRAND.violet, 0.14),
+                    backgroundColor: withAlpha(colors.primary, 0.14),
                   }}
                 >
-                  <Text style={[typography.caption, { color: BRAND.violet, fontWeight: '800' }]}>
+                  <Text style={[typography.caption, { color: colors.primary, fontWeight: '800' }]}>
                     {t('zema.pickAudio')}
                   </Text>
                 </View>
@@ -531,30 +531,25 @@ export default function ZemaEditorScreen({ route, navigation }: any) {
             accessibilityRole="button"
             style={{ flex: 1.2, opacity: busy ? 0.7 : 1 }}
           >
-            <LinearGradient
-              colors={[BRAND.violet, BRAND.magenta]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
+            <View style={{ backgroundColor: colors.primary, 
                 minHeight: 54,
                 borderRadius: 18,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-              }}
-            >
+              }}>
               {busy ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={colors.primaryText} />
               ) : (
                 <>
-                  <Ionicons name="paper-plane" size={17} color="#FFFFFF" />
-                  <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}>
+                  <Ionicons name="paper-plane" size={17} color={colors.primaryText} />
+                  <Text style={[typography.button, { color: colors.primaryText, fontWeight: '800' }]}>
                     {t('zema.submit')}
                   </Text>
                 </>
               )}
-            </LinearGradient>
+            </View>
           </Pressable>
         </View>
       )}
@@ -594,12 +589,12 @@ function Section({
             width: 30,
             height: 30,
             borderRadius: 11,
-            backgroundColor: withAlpha(BRAND.violet, 0.14),
+            backgroundColor: withAlpha(colors.primary, 0.14),
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Ionicons name={icon} size={16} color={BRAND.violet} />
+          <Ionicons name={icon} size={16} color={colors.primary} />
         </View>
         <Text style={[typography.h3, { color: colors.text, flex: 1 }]}>{title}</Text>
         {trailing}
@@ -633,13 +628,13 @@ function CategoryPill({
         paddingVertical: 8,
         borderRadius: 999,
         borderWidth: 1.5,
-        borderColor: active ? BRAND.violet : colors.border,
-        backgroundColor: active ? BRAND.violet : colors.surface,
+        borderColor: active ? colors.primary : colors.border,
+        backgroundColor: active ? colors.primary : colors.surface,
         opacity: disabled ? 0.6 : 1,
       }}
     >
       <Text
-        style={[typography.caption, { color: active ? '#FFFFFF' : colors.text, fontWeight: '800' }]}
+        style={[typography.caption, { color: active ? colors.primaryText : colors.text, fontWeight: '800' }]}
       >
         {label}
       </Text>
@@ -691,7 +686,7 @@ function Field({
           alignItems: multiline ? 'flex-start' : 'center',
           gap: 10,
           backgroundColor: colors.background,
-          borderColor: invalid ? colors.error : focused ? BRAND.violet : colors.border,
+          borderColor: invalid ? colors.error : focused ? colors.primary : colors.border,
           borderWidth: 1.5,
           borderRadius: radius.md + 6,
           paddingHorizontal: spacing.md,
@@ -701,7 +696,7 @@ function Field({
           <Ionicons
             name={icon}
             size={18}
-            color={invalid ? colors.error : focused ? BRAND.violet : colors.textSecondary}
+            color={invalid ? colors.error : focused ? colors.primary : colors.textSecondary}
             style={{ marginTop: multiline ? 15 : 0 }}
           />
         )}

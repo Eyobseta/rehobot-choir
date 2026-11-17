@@ -15,14 +15,15 @@ import { subscribe, getSnapshot, getCurrentKey } from '../../services/audioPlaye
  */
 
 export type IconName = React.ComponentProps<typeof Ionicons>['name'];
-export const AMBER = '#F59E0B';
-export const HEART = '#E0245E';
+export const AMBER = '#E8A65D';
+export const HEART = '#FF5C7A';
 
+// [pastel fill, accent]: pastel tiles with a teal icon, accent for text and chips.
 export const PALETTES: readonly [string, string][] = [
-  [BRAND.violet, BRAND.magenta],
-  [BRAND.water, BRAND.violet],
-  [BRAND.magenta, AMBER],
-  [BRAND.deep, BRAND.violet],
+  ['#D3C3F8', '#7B5FC7'],
+  ['#BDEBCB', '#2E9E5B'],
+  ['#F7E1C8', '#C9822F'],
+  ['#DDF59B', '#7FA800'],
 ];
 
 // ---------------------------------------------------------------------------
@@ -181,7 +182,7 @@ export function EqBars({
 // ---------------------------------------------------------------------------
 
 export function ScreenHero({
-  gradient = [BRAND.deep, BRAND.violet, BRAND.magenta],
+  gradient: _gradient,
   icon,
   overline,
   title,
@@ -198,29 +199,24 @@ export function ScreenHero({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   return (
-    <LinearGradient
-      colors={gradient as any}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{
+    <View style={{ backgroundColor: BRAND.teal, 
         paddingHorizontal: 16,
         paddingTop: insets.top + 16,
         paddingBottom: 22,
         borderBottomLeftRadius: 30,
         borderBottomRightRadius: 30,
         overflow: 'hidden',
-      }}
-    >
+      }}>
       <View
         pointerEvents="none"
         style={{
           position: 'absolute',
           top: -60,
           right: -40,
-          width: 190,
-          height: 190,
-          borderRadius: 95,
-          backgroundColor: withAlpha(BRAND.gold, 0.22),
+          width: 130,
+          height: 130,
+          borderRadius: 65,
+          backgroundColor: BRAND.lime,
         }}
       />
       <View
@@ -229,10 +225,10 @@ export function ScreenHero({
           position: 'absolute',
           bottom: -80,
           left: -50,
-          width: 190,
-          height: 190,
-          borderRadius: 95,
-          backgroundColor: withAlpha(BRAND.water, 0.2),
+          width: 130,
+          height: 130,
+          borderRadius: 65,
+          backgroundColor: BRAND.lavender,
         }}
       />
       {/* faint floating notes */}
@@ -296,7 +292,7 @@ export function ScreenHero({
         ) : null}
       </View>
       {children}
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -359,7 +355,7 @@ export function SavedPill() {
 export function EmptyState({
   icon,
   text,
-  ring = [BRAND.violet, BRAND.magenta, BRAND.gold],
+  ring = [BRAND.lime, BRAND.mint, BRAND.lavender],
 }: {
   icon: IconName;
   text: string;
@@ -503,17 +499,8 @@ export function SongRow({
           overflow: 'hidden',
         }}
       >
-        <LinearGradient
-          colors={palette}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }}
-        />
-        <LinearGradient
-          colors={palette}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
+        <View style={{ backgroundColor: palette[0],  position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }} />
+        <View style={{ backgroundColor: palette[0], 
             width: 54,
             height: 54,
             borderRadius: 17,
@@ -524,14 +511,13 @@ export function SongRow({
             shadowRadius: 8,
             shadowOffset: { width: 0, height: 4 },
             elevation: 3,
-          }}
-        >
+          }}>
           {playing ? (
-            <EqBars active color="#FFFFFF" height={20} />
+            <EqBars active color={BRAND.teal} height={20} />
           ) : (
-            <Ionicons name={icon} size={24} color="#FFFFFF" />
+            <Ionicons name={icon} size={24} color={BRAND.teal} />
           )}
-        </LinearGradient>
+        </View>
 
         <View style={{ flex: 1, marginLeft: 14 }}>
           <Text

@@ -27,10 +27,10 @@ import { warmMemberProfileCache } from './warmMemberProfileCache';
 type Props = NativeStackScreenProps<HomeStackParamList, 'Directory'>;
 
 const AVATAR_PALETTE: readonly [string, string][] = [
-  [BRAND.violet, BRAND.magenta],
-  [BRAND.water, BRAND.violet],
-  [BRAND.magenta, '#F59E0B'],
-  [BRAND.deep, BRAND.violet],
+  ['#D3C3F8', '#7B5FC7'],
+  ['#BDEBCB', '#2E9E5B'],
+  ['#F7E1C8', '#C9822F'],
+  ['#DDF59B', '#7FA800'],
 ];
 
 export default function DirectoryScreen({ navigation }: Props) {
@@ -64,41 +64,36 @@ export default function DirectoryScreen({ navigation }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* ---------- Full-bleed hero ---------- */}
-      <LinearGradient
-        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
+      <View style={{ backgroundColor: BRAND.teal, 
           paddingHorizontal: 16,
           paddingTop: insets.top + 16,
           paddingBottom: 22,
           borderBottomLeftRadius: 28,
           borderBottomRightRadius: 28,
           overflow: 'hidden',
-        }}
-      >
+        }}>
         <View
           pointerEvents="none"
           style={{
             position: 'absolute',
-            top: -60,
-            right: -40,
-            width: 180,
-            height: 180,
-            borderRadius: 90,
-            backgroundColor: withAlpha(BRAND.gold, 0.22),
+            top: -65,
+            right: -45,
+            width: 130,
+            height: 130,
+            borderRadius: 65,
+            backgroundColor: BRAND.lime,
           }}
         />
         <View
           pointerEvents="none"
           style={{
             position: 'absolute',
-            bottom: -80,
-            left: -50,
-            width: 180,
-            height: 180,
-            borderRadius: 90,
-            backgroundColor: withAlpha(BRAND.water, 0.22),
+            bottom: -70,
+            left: -45,
+            width: 130,
+            height: 130,
+            borderRadius: 65,
+            backgroundColor: BRAND.lavender,
           }}
         />
 
@@ -179,7 +174,7 @@ export default function DirectoryScreen({ navigation }: Props) {
             </Pressable>
           )}
         </View>
-      </LinearGradient>
+      </View>
 
       {showingSavedData && (
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
@@ -193,16 +188,16 @@ export default function DirectoryScreen({ navigation }: Props) {
               paddingHorizontal: 12,
               paddingVertical: 6,
               borderRadius: 999,
-              backgroundColor: withAlpha('#F59E0B', 0.14),
+              backgroundColor: withAlpha('#E8A65D', 0.14),
               borderWidth: 1,
-              borderColor: withAlpha('#F59E0B', 0.4),
+              borderColor: withAlpha('#E8A65D', 0.4),
             }}
           >
-            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+            <Ionicons name="cloud-offline" size={13} color="#E8A65D" />
             <Text
               style={[
                 typography.caption,
-                { color: '#F59E0B', fontWeight: '800' },
+                { color: '#E8A65D', fontWeight: '800' },
               ]}
             >
               {t('home.showingSavedData', {
@@ -226,7 +221,7 @@ export default function DirectoryScreen({ navigation }: Props) {
 
       {firstLoad ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={BRAND.violet} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -242,14 +237,14 @@ export default function DirectoryScreen({ navigation }: Props) {
             <RefreshControl
               refreshing={q.isRefetching && !firstLoad}
               onRefresh={() => q.refetch()}
-              tintColor={BRAND.violet}
-              colors={[BRAND.violet]}
+              tintColor={colors.primary}
+              colors={[BRAND.teal]}
             />
           }
           ListEmptyComponent={
             <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
               <LinearGradient
-                colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
+                colors={[BRAND.lime, BRAND.mint, BRAND.lavender]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
@@ -365,20 +360,10 @@ function MemberCard({
           overflow: 'hidden',
         }}
       >
-        <LinearGradient
-          colors={palette}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }}
-        />
+        <View style={{ backgroundColor: palette[0],  position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }} />
 
         <View style={{ width: 52, height: 52 }}>
-          <LinearGradient
-            colors={palette}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ width: 52, height: 52, borderRadius: 26, padding: 2 }}
-          >
+          <View style={{ backgroundColor: palette[0],  width: 52, height: 52, borderRadius: 26, padding: 2 }}>
             {item.profilePhotoUrl ? (
               <Image
                 source={{ uri: item.profilePhotoUrl }}
@@ -394,12 +379,12 @@ function MemberCard({
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: palette[0], fontSize: 18, fontWeight: '800' }}>
+                <Text style={{ color: palette[1], fontSize: 18, fontWeight: '800' }}>
                   {initial}
                 </Text>
               </View>
             )}
-          </LinearGradient>
+          </View>
 
           {seen.online && (
             <View

@@ -42,7 +42,7 @@ import {
   useToggleFavoriteMutation,
 } from './useSongs';
 
-const HEART = '#E0245E';
+const HEART = '#FF5C7A';
 const YT = '#FF0000';
 
 // Escape user content before putting it into the PDF's HTML
@@ -250,8 +250,8 @@ export default function SongDetailScreen({ route, navigation }: any) {
             <meta charset="utf-8" />
             <style>
               body { font-family: Helvetica, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
-              h1 { color: #6C3FE0; text-align: center; font-size: 28px; margin-bottom: 5px; }
-              h2 { color: #E0409A; text-align: center; font-size: 16px; font-weight: normal; margin-top: 0; margin-bottom: 30px; }
+              h1 { color: #1D4550; text-align: center; font-size: 28px; margin-bottom: 5px; }
+              h2 { color: #7B5FC7; text-align: center; font-size: 16px; font-weight: normal; margin-top: 0; margin-bottom: 30px; }
               .lyrics { font-size: 16px; font-style: italic; white-space: pre-wrap; text-align: center; margin-top: 40px; }
               .footer { text-align: center; margin-top: 60px; font-size: 12px; color: #999; }
             </style>
@@ -287,7 +287,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -327,29 +327,24 @@ export default function SongDetailScreen({ route, navigation }: any) {
         showsVerticalScrollIndicator={false}
       >
         {/* ---------- Hero ---------- */}
-        <LinearGradient
-          colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
+        <View style={{ backgroundColor: BRAND.teal, 
             paddingHorizontal: 20,
             paddingTop: insets.top + 16,
             paddingBottom: 34,
             borderBottomLeftRadius: 32,
             borderBottomRightRadius: 32,
             overflow: 'hidden',
-          }}
-        >
+          }}>
           <View
             pointerEvents="none"
             style={{
               position: 'absolute',
               top: -60,
               left: -70,
-              width: 210,
-              height: 210,
-              borderRadius: 105,
-              backgroundColor: withAlpha(BRAND.gold, 0.18),
+              width: 130,
+              height: 130,
+              borderRadius: 65,
+              backgroundColor: BRAND.lime,
             }}
           />
           <View
@@ -358,10 +353,10 @@ export default function SongDetailScreen({ route, navigation }: any) {
               position: 'absolute',
               bottom: -80,
               right: -60,
-              width: 230,
-              height: 230,
-              borderRadius: 115,
-              backgroundColor: withAlpha(BRAND.water, 0.2),
+              width: 130,
+              height: 130,
+              borderRadius: 65,
+              backgroundColor: BRAND.lavender,
             }}
           />
 
@@ -370,7 +365,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
           </View>
 
           <LinearGradient
-            colors={[BRAND.gold, BRAND.magenta, BRAND.violet, BRAND.water, BRAND.gold]}
+            colors={[BRAND.lime, BRAND.mint, BRAND.lavender, BRAND.lime]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{ width: 132, height: 132, borderRadius: 66, padding: 4, alignSelf: 'center' }}
@@ -455,7 +450,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
               />
             )}
           </View>
-        </LinearGradient>
+        </View>
 
         <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.lg }}>
           {/* ---------- Saved Data Notice ---------- */}
@@ -470,13 +465,13 @@ export default function SongDetailScreen({ route, navigation }: any) {
                   paddingHorizontal: 12,
                   paddingVertical: 6,
                   borderRadius: 999,
-                  backgroundColor: withAlpha('#F59E0B', 0.14),
+                  backgroundColor: withAlpha('#E8A65D', 0.14),
                   borderWidth: 1,
-                  borderColor: withAlpha('#F59E0B', 0.4),
+                  borderColor: withAlpha('#E8A65D', 0.4),
                 }}
               >
-                <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
-                <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+                <Ionicons name="cloud-offline" size={13} color="#E8A65D" />
+                <Text style={[typography.caption, { color: '#E8A65D', fontWeight: '800' }]}>
                   {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
                 </Text>
               </View>
@@ -533,7 +528,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                 marginTop: 14,
                 borderRadius: 18,
                 overflow: 'hidden',
-                shadowColor: BRAND.violet,
+                shadowColor: colors.primary,
                 shadowOpacity: 0.35,
                 shadowRadius: 12,
                 shadowOffset: { width: 0, height: 6 },
@@ -542,11 +537,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
               }}
               accessibilityRole="button"
             >
-              <LinearGradient
-                colors={[BRAND.violet, BRAND.magenta]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
+              <View style={{ backgroundColor: colors.primary, 
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'flex-start',
@@ -554,14 +545,13 @@ export default function SongDetailScreen({ route, navigation }: any) {
                   paddingVertical: 16,
                   paddingHorizontal: 20,
                   borderRadius: 18,
-                }}
-              >
+                }}>
                 <View
                   style={{
                     width: 40,
                     height: 40,
                     borderRadius: 20,
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: colors.primaryText,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
@@ -569,14 +559,14 @@ export default function SongDetailScreen({ route, navigation }: any) {
                   <Ionicons
                     name={isThisPlaying ? 'pause' : 'play'}
                     size={20}
-                    color={BRAND.violet}
+                    color={colors.primary}
                     style={{ marginLeft: isThisPlaying ? 0 : 2 }}
                   />
                 </View>
-                <Text style={[typography.button, { color: '#FFFFFF', fontWeight: '800' }]}>
+                <Text style={[typography.button, { color: colors.primaryText, fontWeight: '800' }]}>
                   {isThisPlaying ? t('songs.pause') : t('songs.playAudio')}
                 </Text>
-              </LinearGradient>
+              </View>
             </Pressable>
           )}
 
@@ -590,7 +580,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                 backgroundColor: colors.surface,
                 borderWidth: 1,
                 borderColor: colors.border,
-                shadowColor: BRAND.violet,
+                shadowColor: colors.primary,
                 shadowOpacity: 0.18,
                 shadowRadius: 18,
                 shadowOffset: { width: 0, height: 10 },
@@ -598,12 +588,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
               }}
             >
               {/* Gradient header strip */}
-              <LinearGradient
-                colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ paddingHorizontal: 16, paddingVertical: 14 }}
-              >
+              <View style={{ backgroundColor: BRAND.teal,  paddingHorizontal: 16, paddingVertical: 14 }}>
                 <View
                   pointerEvents="none"
                   style={{
@@ -613,7 +598,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                     width: 120,
                     height: 120,
                     borderRadius: 60,
-                    backgroundColor: withAlpha(BRAND.gold, 0.22),
+                    backgroundColor: BRAND.lime,
                   }}
                 />
 
@@ -707,7 +692,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                     />
                   </View>
                 </View>
-              </LinearGradient>
+              </View>
 
               {lyricsOpen && (
                 <Animated.View
@@ -732,7 +717,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                       fontSize: 68,
                       lineHeight: 80,
                       fontWeight: '800',
-                      color: withAlpha(BRAND.violet, 0.14),
+                      color: withAlpha(colors.primary, 0.14),
                     }}
                   >
                     “
@@ -750,7 +735,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                   >
                     <View style={{ flexDirection: 'row', gap: 14 }}>
                       <LinearGradient
-                        colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
+                        colors={[BRAND.lime, BRAND.mint, BRAND.lavender]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 0, y: 1 }}
                         style={{ width: 4, borderRadius: 2 }}
@@ -797,15 +782,15 @@ export default function SongDetailScreen({ route, navigation }: any) {
                         paddingVertical: 8,
                         paddingHorizontal: 12,
                         borderRadius: 10,
-                        backgroundColor: withAlpha(BRAND.violet, 0.1),
+                        backgroundColor: withAlpha(colors.primary, 0.1),
                       }}
                     >
                       <Ionicons
                         name={copied ? 'checkmark-circle' : 'copy-outline'}
                         size={16}
-                        color={BRAND.violet}
+                        color={colors.primary}
                       />
-                      <Text style={{ color: BRAND.violet, fontSize: 12, fontWeight: '700' }}>
+                      <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>
                         {copied
                           ? t('songs.copied', { defaultValue: 'Copied' })
                           : t('songs.copy', { defaultValue: 'Copy' })}
@@ -823,16 +808,16 @@ export default function SongDetailScreen({ route, navigation }: any) {
                         paddingVertical: 8,
                         paddingHorizontal: 12,
                         borderRadius: 10,
-                        backgroundColor: withAlpha(BRAND.magenta, 0.1),
+                        backgroundColor: withAlpha(colors.accent, 0.1),
                         opacity: pdfLoading ? 0.7 : 1,
                       }}
                     >
                       {pdfLoading ? (
-                        <ActivityIndicator size="small" color={BRAND.magenta} />
+                        <ActivityIndicator size="small" color={colors.accent} />
                       ) : (
-                        <Ionicons name="share-outline" size={16} color={BRAND.magenta} />
+                        <Ionicons name="share-outline" size={16} color={colors.accent} />
                       )}
-                      <Text style={{ color: BRAND.magenta, fontSize: 12, fontWeight: '700' }}>
+                      <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '700' }}>
                         {pdfLoading
                           ? '...'
                           : t('songs.sharePdf', { defaultValue: 'Share PDF' })}
@@ -864,7 +849,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
           statusBarTranslucent
         >
           <LinearGradient
-            colors={[BRAND.deep, '#1A0B45', '#0D0524']}
+            colors={[BRAND.deep, '#0F2A31', '#08161A']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{ flex: 1 }}
@@ -879,7 +864,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                 width: 340,
                 height: 340,
                 borderRadius: 170,
-                backgroundColor: withAlpha(BRAND.magenta, 0.3),
+                backgroundColor: withAlpha(BRAND.lavender, 0.2),
               }}
             />
             <View
@@ -891,7 +876,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                 width: 380,
                 height: 380,
                 borderRadius: 190,
-                backgroundColor: withAlpha(BRAND.violet, 0.34),
+                backgroundColor: withAlpha(BRAND.mint, 0.18),
               }}
             />
 
@@ -930,7 +915,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                 <LinearGradient
-                  colors={[BRAND.gold, BRAND.magenta]}
+                  colors={[BRAND.lime, BRAND.mint]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={{
@@ -941,7 +926,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                     justifyContent: 'center',
                   }}
                 >
-                  <Ionicons name="musical-notes" size={22} color="#FFFFFF" />
+                  <Ionicons name="musical-notes" size={22} color={BRAND.teal} />
                 </LinearGradient>
                 <View style={{ flex: 1 }}>
                   <Text
@@ -1041,7 +1026,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                 {/* Left gradient rail + big italic lyrics */}
                 <View style={{ flexDirection: 'row', gap: 16 }}>
                   <LinearGradient
-                    colors={[BRAND.gold, BRAND.magenta, BRAND.violet]}
+                    colors={[BRAND.gold, colors.accent, colors.primary]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 0, y: 1 }}
                     style={{ width: 4, borderRadius: 2, minHeight: 60 }}
@@ -1142,30 +1127,25 @@ export default function SongDetailScreen({ route, navigation }: any) {
                   opacity: pdfLoading ? 0.7 : 1,
                 }}
               >
-                <LinearGradient
-                  colors={[BRAND.violet, BRAND.magenta]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
+                <View style={{ backgroundColor: colors.primary, 
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
                     paddingVertical: 14,
                     borderRadius: 16,
-                  }}
-                >
+                  }}>
                   {pdfLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <ActivityIndicator size="small" color={colors.primaryText} />
                   ) : (
-                    <Ionicons name="share-outline" size={18} color="#FFFFFF" />
+                    <Ionicons name="share-outline" size={18} color={colors.primaryText} />
                   )}
-                  <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
+                  <Text style={{ color: colors.primaryText, fontSize: 13, fontWeight: '800' }}>
                     {pdfLoading
                       ? '...'
                       : t('songs.sharePdf', { defaultValue: 'Share PDF' })}
                   </Text>
-                </LinearGradient>
+                </View>
               </Pressable>
             </Animated.View>
           </LinearGradient>

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, Animated, Easing } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -91,12 +90,7 @@ function Bar({ status, onClose }: { status: SimpleStatus; onClose: () => void })
     >
       {/* Gradient progress with a glowing head */}
       <View style={{ height: 4, backgroundColor: colors.surfaceAlt, overflow: 'visible' }}>
-        <LinearGradient
-          colors={[BRAND.violet, BRAND.magenta]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ width: `${progress * 100}%`, height: 4 }}
-        />
+        <View style={{ backgroundColor: colors.primary,  width: `${progress * 100}%`, height: 4 }} />
         {progress > 0 && (
           <View
             style={{
@@ -134,24 +128,19 @@ function Bar({ status, onClose }: { status: SimpleStatus; onClose: () => void })
             accessibilityLabel={t('songs.nowPlaying')}
             style={{ flexDirection: 'row', alignItems: 'center' }}
           >
-            <LinearGradient
-              colors={[BRAND.violet, BRAND.magenta]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
+            <View style={{ backgroundColor: colors.primary, 
                 width: 44,
                 height: 44,
                 borderRadius: 14,
                 alignItems: 'center',
                 justifyContent: 'center',
-              }}
-            >
+              }}>
               {status.isPlaying ? (
                 <EqBars active color="#FFFFFF" height={18} />
               ) : (
                 <Ionicons name="musical-notes" size={21} color="#FFFFFF" />
               )}
-            </LinearGradient>
+            </View>
             <View style={{ flex: 1, marginLeft: spacing.md }}>
               <Text
                 style={[typography.bodySmall, { color: colors.text, fontWeight: '800' }]}
@@ -177,25 +166,20 @@ function Bar({ status, onClose }: { status: SimpleStatus; onClose: () => void })
           accessibilityLabel={status.isPlaying ? t('songs.pause') : t('songs.playAudio')}
           style={{ marginHorizontal: 8 }}
         >
-          <LinearGradient
-            colors={[BRAND.violet, BRAND.magenta]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
+          <View style={{ backgroundColor: colors.primary, 
               width: 42,
               height: 42,
               borderRadius: 21,
               alignItems: 'center',
               justifyContent: 'center',
-            }}
-          >
+            }}>
             <Ionicons
               name={status.isPlaying ? 'pause' : 'play'}
               size={20}
               color="#FFFFFF"
               style={{ marginLeft: status.isPlaying ? 0 : 2 }}
             />
-          </LinearGradient>
+          </View>
         </Pressable>
 
         <Pressable

@@ -10,7 +10,6 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import YoutubePlayer, { YoutubeIframeRef } from 'react-native-youtube-iframe';
 import { useTranslation } from 'react-i18next';
@@ -135,7 +134,7 @@ export default function SongVideoScreen({ route, navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenHero
-        gradient={['#0B0A1F', BRAND.deep, BRAND.violet]}
+        gradient={['#0B0A1F', BRAND.deep, colors.primary]}
         icon="logo-youtube"
         overline={t('songs.watchOnYoutube')}
         title={title ?? ''}
@@ -230,7 +229,7 @@ export default function SongVideoScreen({ route, navigation }: any) {
           <View
             style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm }}
           >
-            <Ionicons name="speedometer-outline" size={16} color={BRAND.violet} />
+            <Ionicons name="speedometer-outline" size={16} color={colors.primary} />
             <Text
               style={[
                 typography.caption,
@@ -257,16 +256,11 @@ export default function SongVideoScreen({ route, navigation }: any) {
                   style={{ borderRadius: 16, overflow: 'hidden' }}
                 >
                   {active ? (
-                    <LinearGradient
-                      colors={[BRAND.violet, BRAND.magenta]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{ paddingHorizontal: 18, paddingVertical: 11 }}
-                    >
-                      <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }}>
+                    <View style={{ backgroundColor: colors.primary,  paddingHorizontal: 18, paddingVertical: 11 }}>
+                      <Text style={{ color: colors.primaryText, fontSize: 14, fontWeight: '800' }}>
                         {s}x
                       </Text>
-                    </LinearGradient>
+                    </View>
                   ) : (
                     <View
                       style={{

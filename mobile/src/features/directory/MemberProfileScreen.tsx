@@ -25,11 +25,11 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'MemberProfile'>;
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const accents = {
-  violet: '#B6A0FF', violetSoft: '#B6A0FF22',
-  cyan: '#6EDBD5', cyanSoft: '#6EDBD522',
-  pink: '#EE9BBD', pinkSoft: '#EE9BBD22',
-  gold: '#E6C779', goldSoft: '#E6C77922',
-  lime: '#B8E986', limeSoft: '#B8E98622',
+  violet: '#8B6FD6', violetSoft: '#8B6FD622',
+  cyan: '#14A38B', cyanSoft: '#14A38B22',
+  pink: '#E8736F', pinkSoft: '#E8736F22',
+  gold: '#E8A65D', goldSoft: '#E8A65D22',
+  lime: '#2FB36A', limeSoft: '#2FB36A22',
 };
 
 export default function MemberProfileScreen({ route, navigation }: Props) {
@@ -48,7 +48,7 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
   if (firstLoad) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -72,20 +72,15 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
 
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: spacing.xxl }} showsVerticalScrollIndicator={false}>
-      <LinearGradient
-        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 28, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden', alignItems: 'center' }}
-      >
-        <View pointerEvents="none" style={{ position: 'absolute', top: -60, left: -70, width: 210, height: 210, borderRadius: 105, backgroundColor: withAlpha(BRAND.gold, 0.18) }} />
-        <View pointerEvents="none" style={{ position: 'absolute', bottom: -80, right: -60, width: 230, height: 230, borderRadius: 115, backgroundColor: withAlpha(BRAND.water, 0.2) }} />
+      <View style={{ backgroundColor: BRAND.teal,  paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 28, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden', alignItems: 'center' }}>
+        <View pointerEvents="none" style={{ position: 'absolute', top: -70, left: -70, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
+        <View pointerEvents="none" style={{ position: 'absolute', bottom: -70, right: -60, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lavender }} />
 
         <View pointerEvents="box-none" style={{ alignSelf: 'flex-end', marginBottom: 8 }}>
           <GlassBackButton onPress={() => navigation.goBack()} accessibilityLabel={t('common.back', { defaultValue: 'Back' })} />
         </View>
 
-        <LinearGradient colors={[BRAND.gold, BRAND.magenta, BRAND.violet, BRAND.water, BRAND.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 148, height: 148, borderRadius: 74, padding: 4 }}>
+        <LinearGradient colors={[BRAND.lime, BRAND.mint, BRAND.lavender, BRAND.lime]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 148, height: 148, borderRadius: 74, padding: 4 }}>
           {member.profilePhotoUrl ? (
             <Image source={{ uri: member.profilePhotoUrl }} style={{ width: '100%', height: '100%', borderRadius: 70 }} />
           ) : (
@@ -103,13 +98,13 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
             <Text style={{ color: BRAND.gold, fontSize: 12, fontWeight: '700' }}>{member.phone}</Text>
           </View>
         )}
-      </LinearGradient>
+      </View>
 
       {showingSavedData && (
         <View style={{ paddingHorizontal: spacing.xl, paddingTop: spacing.md }}>
-          <View accessibilityRole="text" style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#F59E0B', 0.14), borderWidth: 1, borderColor: withAlpha('#F59E0B', 0.4) }}>
-            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
-            <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+          <View accessibilityRole="text" style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#E8A65D', 0.14), borderWidth: 1, borderColor: withAlpha('#E8A65D', 0.4) }}>
+            <Ionicons name="cloud-offline" size={13} color="#E8A65D" />
+            <Text style={[typography.caption, { color: '#E8A65D', fontWeight: '800' }]}>
               {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
             </Text>
           </View>
@@ -130,7 +125,7 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[typography.caption, { color: colors.textSecondary }]}>{t('memberProfile.phone')}</Text>
-                  <Text style={[typography.body, { color: BRAND.violet, fontWeight: '700' }]} numberOfLines={1}>{member.phone}</Text>
+                  <Text style={[typography.body, { color: colors.primary, fontWeight: '700' }]} numberOfLines={1}>{member.phone}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
               </Pressable>

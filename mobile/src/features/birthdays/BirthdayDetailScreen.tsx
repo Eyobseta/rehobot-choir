@@ -32,8 +32,8 @@ import {
   useDeleteCommentMutation,
 } from './useBirthdays';
 
-const AMBER = '#F59E0B';
-const HEART = '#E0245E';
+const AMBER = '#E8A65D';
+const HEART = '#FF5C7A';
 
 function useReduceMotion(): boolean {
   const [reduce, setReduce] = useState(false);
@@ -141,18 +141,16 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
   // ---------- Loading ----------
   if (firstLoad) {
     return (
-      <LinearGradient
-        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-      >
+      <View style={{ backgroundColor: BRAND.teal, overflow: 'hidden',  flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+<View pointerEvents="none" style={{ position: 'absolute', top: -40, left: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
+<View pointerEvents="none" style={{ position: 'absolute', bottom: -50, right: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: BRAND.lavender }} />
+
         <Text style={{ fontSize: 44 }}>🎂</Text>
         <ActivityIndicator size="large" color={BRAND.gold} style={{ marginTop: spacing.lg }} />
         <View style={{ position: 'absolute', top: insets.top + 12, right: 16 }}>
           <GlassBackButton onPress={() => navigation.goBack()} size={44} />
         </View>
-      </LinearGradient>
+      </View>
     );
   }
 
@@ -210,17 +208,13 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
           <RefreshControl
             refreshing={q.isRefetching && !firstLoad}
             onRefresh={() => q.refetch()}
-            tintColor={BRAND.violet}
-            colors={[BRAND.violet]}
+            tintColor={colors.primary}
+            colors={[BRAND.teal]}
           />
         }
       >
         {/* ================= HERO ================= */}
-        <LinearGradient
-          colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
+        <View style={{ backgroundColor: BRAND.teal, 
             paddingHorizontal: 20,
             paddingTop: insets.top + 16,
             paddingBottom: 32,
@@ -228,18 +222,17 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
             borderBottomRightRadius: 36,
             overflow: 'hidden',
             alignItems: 'center',
-          }}
-        >
+          }}>
           <View
             pointerEvents="none"
             style={{
               position: 'absolute',
               top: -60,
               left: -70,
-              width: 210,
-              height: 210,
-              borderRadius: 105,
-              backgroundColor: withAlpha(BRAND.gold, 0.2),
+              width: 130,
+              height: 130,
+              borderRadius: 65,
+              backgroundColor: BRAND.lime,
             }}
           />
           <View
@@ -248,10 +241,10 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
               position: 'absolute',
               bottom: -80,
               right: -60,
-              width: 230,
-              height: 230,
-              borderRadius: 115,
-              backgroundColor: withAlpha(BRAND.water, 0.2),
+              width: 130,
+              height: 130,
+              borderRadius: 65,
+              backgroundColor: BRAND.lavender,
             }}
           />
           <Confetti />
@@ -303,7 +296,7 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
             <StatChip icon="happy" value={totalReactions} />
             <StatChip icon="chatbubble-ellipses" value={totalComments} />
           </View>
-        </LinearGradient>
+        </View>
 
         <View style={{ paddingHorizontal: spacing.lg }}>
           {showingSavedData && (
@@ -380,12 +373,12 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
                 width: 30,
                 height: 30,
                 borderRadius: 11,
-                backgroundColor: withAlpha(BRAND.violet, 0.14),
+                backgroundColor: withAlpha(colors.primary, 0.14),
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Ionicons name="chatbubbles" size={16} color={BRAND.violet} />
+              <Ionicons name="chatbubbles" size={16} color={colors.primary} />
             </View>
             <Text style={[typography.h3, { color: colors.text, flex: 1 }]}>
               {t('birthdays.comments')}
@@ -396,10 +389,10 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
                   paddingHorizontal: 10,
                   paddingVertical: 3,
                   borderRadius: 999,
-                  backgroundColor: withAlpha(BRAND.violet, 0.14),
+                  backgroundColor: withAlpha(colors.primary, 0.14),
                 }}
               >
-                <Text style={{ color: BRAND.violet, fontSize: 12, fontWeight: '800' }}>
+                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '800' }}>
                   {totalComments}
                 </Text>
               </View>
@@ -464,15 +457,15 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
               paddingHorizontal: 12,
               paddingVertical: 7,
               borderRadius: 14,
-              backgroundColor: withAlpha(BRAND.violet, 0.12),
+              backgroundColor: withAlpha(colors.primary, 0.12),
               borderLeftWidth: 3,
-              borderLeftColor: BRAND.violet,
+              borderLeftColor: colors.primary,
             }}
           >
-            <Ionicons name="return-down-forward" size={15} color={BRAND.violet} />
+            <Ionicons name="return-down-forward" size={15} color={colors.primary} />
             <Text style={[typography.caption, { color: colors.textSecondary, flex: 1 }]}>
               {t('birthdays.replyingTo')}{' '}
-              <Text style={{ color: BRAND.violet, fontWeight: '800' }}>{replyTo.name}</Text>
+              <Text style={{ color: colors.primary, fontWeight: '800' }}>{replyTo.name}</Text>
             </Text>
             <Pressable
               onPress={() => setReplyTo(null)}
@@ -496,7 +489,7 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
               maxHeight: 110,
               minHeight: 46,
               backgroundColor: colors.background,
-              borderColor: commentText ? BRAND.violet : colors.border,
+              borderColor: commentText ? colors.primary : colors.border,
               borderWidth: 1.5,
               borderRadius: 23,
               paddingHorizontal: spacing.lg,
@@ -514,7 +507,7 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
             style={{ opacity: canSend ? 1 : 0.5 }}
           >
             <LinearGradient
-              colors={canSend ? [BRAND.violet, BRAND.magenta] : [colors.border, colors.border]}
+              colors={canSend ? [colors.primary, colors.primary] : [colors.border, colors.border]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
@@ -526,9 +519,9 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
               }}
             >
               {addCommentMut.isPending ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={colors.primaryText} />
               ) : (
-                <Ionicons name="send" size={19} color="#FFFFFF" style={{ marginLeft: 2 }} />
+                <Ionicons name="send" size={19} color={canSend ? colors.primaryText : '#FFFFFF'} style={{ marginLeft: 2 }} />
               )}
             </LinearGradient>
           </Pressable>
@@ -573,12 +566,12 @@ function StatChip({
 const CONFETTI = [
   { x: 0.05, c: BRAND.gold, d: 3600, l: 0 },
   { x: 0.15, c: '#FFFFFF', d: 4400, l: 700 },
-  { x: 0.26, c: BRAND.water, d: 3900, l: 1400 },
+  { x: 0.26, c: BRAND.lavender, d: 3900, l: 1400 },
   { x: 0.37, c: BRAND.gold, d: 4700, l: 300 },
-  { x: 0.5, c: BRAND.magenta, d: 3700, l: 1800 },
+  { x: 0.5, c: BRAND.mint, d: 3700, l: 1800 },
   { x: 0.61, c: '#FFFFFF', d: 4200, l: 900 },
   { x: 0.72, c: BRAND.gold, d: 4500, l: 200 },
-  { x: 0.83, c: BRAND.water, d: 3800, l: 1200 },
+  { x: 0.83, c: BRAND.lavender, d: 3800, l: 1200 },
   { x: 0.93, c: BRAND.gold, d: 4300, l: 500 },
 ];
 
@@ -704,8 +697,8 @@ function ReactionPill({
           paddingVertical: 9,
           borderRadius: 999,
           borderWidth: 2,
-          borderColor: mine ? BRAND.violet : colors.border,
-          backgroundColor: mine ? withAlpha(BRAND.violet, 0.14) : colors.background,
+          borderColor: mine ? colors.primary : colors.border,
+          backgroundColor: mine ? withAlpha(colors.primary, 0.14) : colors.background,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
@@ -717,7 +710,7 @@ function ReactionPill({
           <Text
             style={[
               typography.caption,
-              { color: mine ? BRAND.violet : colors.text, fontWeight: '800' },
+              { color: mine ? colors.primary : colors.text, fontWeight: '800' },
             ]}
           >
             {count}
@@ -806,22 +799,17 @@ function Avatar({
     return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
   }
   return (
-    <LinearGradient
-      colors={[BRAND.violet, BRAND.magenta]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{
+    <View style={{ backgroundColor: BRAND.teal, 
         width: size,
         height: size,
         borderRadius: size / 2,
         alignItems: 'center',
         justifyContent: 'center',
-      }}
-    >
-      <Text style={{ color: '#FFFFFF', fontSize: size * 0.44, fontWeight: '800' }}>
+      }}>
+      <Text style={{ color: BRAND.lime, fontSize: size * 0.44, fontWeight: '800' }}>
         {name.trim().charAt(0).toUpperCase()}
       </Text>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -863,7 +851,7 @@ function CommentBlock({
         borderRadius: 22,
         backgroundColor: colors.surface,
         borderWidth: 1,
-        borderColor: isMine ? withAlpha(BRAND.violet, 0.45) : colors.border,
+        borderColor: isMine ? withAlpha(colors.primary, 0.45) : colors.border,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
@@ -882,10 +870,10 @@ function CommentBlock({
                   paddingHorizontal: 7,
                   paddingVertical: 1.5,
                   borderRadius: 8,
-                  backgroundColor: withAlpha(BRAND.violet, 0.14),
+                  backgroundColor: withAlpha(colors.primary, 0.14),
                 }}
               >
-                <Text style={{ color: BRAND.violet, fontSize: 10, fontWeight: '800' }}>
+                <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '800' }}>
                   {t('birthdays.you', { defaultValue: 'You' })}
                 </Text>
               </View>
@@ -912,8 +900,8 @@ function CommentBlock({
           accessibilityRole="button"
           style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
         >
-          <Ionicons name="return-down-forward" size={15} color={BRAND.violet} />
-          <Text style={[typography.caption, { color: BRAND.violet, fontWeight: '800' }]}>
+          <Ionicons name="return-down-forward" size={15} color={colors.primary} />
+          <Text style={[typography.caption, { color: colors.primary, fontWeight: '800' }]}>
             {t('birthdays.reply')}
           </Text>
         </Pressable>
@@ -947,7 +935,7 @@ function CommentBlock({
                   borderRadius: 16,
                   backgroundColor: colors.background,
                   borderLeftWidth: 3,
-                  borderLeftColor: BRAND.violet,
+                  borderLeftColor: colors.primary,
                 }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
@@ -964,10 +952,10 @@ function CommentBlock({
                         paddingHorizontal: 7,
                         paddingVertical: 1.5,
                         borderRadius: 8,
-                        backgroundColor: withAlpha(BRAND.violet, 0.14),
+                        backgroundColor: withAlpha(colors.primary, 0.14),
                       }}
                     >
-                      <Text style={{ color: BRAND.violet, fontSize: 10, fontWeight: '800' }}>
+                      <Text style={{ color: colors.primary, fontSize: 10, fontWeight: '800' }}>
                         {t('birthdays.you', { defaultValue: 'You' })}
                       </Text>
                     </View>

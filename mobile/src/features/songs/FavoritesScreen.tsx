@@ -32,7 +32,7 @@ export default function FavoritesScreen({ navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenHero
-        gradient={['#5C1230', HEART, BRAND.magenta]}
+        gradient={['#5C1230', HEART, colors.accent]}
         icon="heart"
         overline={t('tabs.songs', { defaultValue: 'Songs' })}
         title={t('songs.favorites')}
@@ -83,7 +83,7 @@ export default function FavoritesScreen({ navigation }: any) {
             <EmptyState
               icon="heart-outline"
               text={t('songs.emptyFavorites')}
-              ring={[HEART, BRAND.magenta, BRAND.gold]}
+              ring={[HEART, BRAND.mint, BRAND.lavender]}
             />
           )
         }

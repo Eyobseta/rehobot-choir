@@ -1,6 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { View, Text, FlatList, Pressable, Alert, Animated, Easing } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
@@ -90,7 +89,7 @@ export default function OfflineSongsScreen({ navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenHero
-        gradient={[BRAND.deep, BRAND.water, BRAND.violet]}
+        gradient={[BRAND.deep, BRAND.lavender, colors.primary]}
         icon="cloud-download"
         overline={t('tabs.songs', { defaultValue: 'Songs' })}
         title={t('songs.offline')}
@@ -121,7 +120,7 @@ export default function OfflineSongsScreen({ navigation }: any) {
             <EmptyState
               icon="cloud-offline-outline"
               text={t('songs.emptyOffline')}
-              ring={[BRAND.water, BRAND.violet, BRAND.gold]}
+              ring={[BRAND.lime, BRAND.mint, BRAND.lavender]}
             />
           )
         }
@@ -204,17 +203,12 @@ function OfflineCard({
           paddingLeft: 16,
           borderRadius: 22,
           borderWidth: isPlaying ? 1.5 : 1,
-          borderColor: isPlaying ? withAlpha(BRAND.magenta, 0.7) : colors.border,
-          backgroundColor: isPlaying ? withAlpha(BRAND.magenta, 0.07) : colors.surface,
+          borderColor: isPlaying ? withAlpha(colors.accent, 0.7) : colors.border,
+          backgroundColor: isPlaying ? withAlpha(colors.accent, 0.07) : colors.surface,
           overflow: 'hidden',
         }}
       >
-        <LinearGradient
-          colors={[BRAND.water, BRAND.violet]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }}
-        />
+        <View style={{ backgroundColor: BRAND.lavender,  position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }} />
 
         <Pressable
           onPress={onToggle}
@@ -222,30 +216,25 @@ function OfflineCard({
           accessibilityRole="button"
           accessibilityLabel={isPlaying ? t('songs.pause') : t('songs.playAudio')}
         >
-          <LinearGradient
-            colors={[BRAND.violet, BRAND.magenta]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{
+          <View style={{ backgroundColor: colors.primary, 
               width: 52,
               height: 52,
               borderRadius: 26,
               alignItems: 'center',
               justifyContent: 'center',
-              shadowColor: BRAND.magenta,
+              shadowColor: colors.primary,
               shadowOpacity: isPlaying ? 0.55 : 0.25,
               shadowRadius: 10,
               shadowOffset: { width: 0, height: 4 },
               elevation: 4,
-            }}
-          >
+            }}>
             <Ionicons
               name={isPlaying ? 'pause' : 'play'}
               size={22}
-              color="#FFFFFF"
+              color={colors.primaryText}
               style={{ marginLeft: isPlaying ? 0 : 2 }}
             />
-          </LinearGradient>
+          </View>
         </Pressable>
 
         <View style={{ flex: 1, marginLeft: 14 }}>
@@ -258,9 +247,9 @@ function OfflineCard({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
             {isPlaying ? (
               <>
-                <EqBars active color={BRAND.magenta} height={12} />
+                <EqBars active color={colors.accent} height={12} />
                 <Text
-                  style={[typography.caption, { color: BRAND.magenta, fontWeight: '800' }]}
+                  style={[typography.caption, { color: colors.accent, fontWeight: '800' }]}
                   numberOfLines={1}
                 >
                   {t('songs.nowPlaying')}

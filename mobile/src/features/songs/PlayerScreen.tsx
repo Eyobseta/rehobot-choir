@@ -113,7 +113,7 @@ export default function PlayerScreen({ route, navigation }: any) {
           alignItems: 'center',
         }}
       >
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Pressable
           onPress={() => navigation.goBack()}
           hitSlop={10}
@@ -125,12 +125,12 @@ export default function PlayerScreen({ route, navigation }: any) {
             width: 40,
             height: 40,
             borderRadius: 20,
-            backgroundColor: withAlpha(BRAND.violet, 0.14),
+            backgroundColor: withAlpha(colors.primary, 0.14),
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Ionicons name="chevron-down" size={22} color={BRAND.violet} />
+          <Ionicons name="chevron-down" size={22} color={colors.primary} />
         </Pressable>
       </SafeAreaView>
     );
@@ -160,7 +160,7 @@ export default function PlayerScreen({ route, navigation }: any) {
 
   return (
     <LinearGradient
-      colors={[BRAND.deep, '#1A0B45', '#0D0524']}
+      colors={[BRAND.deep, '#0F2A31', '#08161A']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={{ flex: 1 }}
@@ -175,7 +175,7 @@ export default function PlayerScreen({ route, navigation }: any) {
             width: 320,
             height: 320,
             borderRadius: 160,
-            backgroundColor: withAlpha(BRAND.magenta, 0.28),
+            backgroundColor: withAlpha(BRAND.lavender, 0.2),
           }}
         />
         <View
@@ -187,7 +187,7 @@ export default function PlayerScreen({ route, navigation }: any) {
             width: 340,
             height: 340,
             borderRadius: 170,
-            backgroundColor: withAlpha(BRAND.violet, 0.32),
+            backgroundColor: withAlpha(BRAND.mint, 0.18),
           }}
         />
 
@@ -289,7 +289,7 @@ export default function PlayerScreen({ route, navigation }: any) {
               height: DISC,
               borderRadius: DISC / 2,
               transform: [{ rotate: spinDeg }],
-              shadowColor: BRAND.magenta,
+              shadowColor: colors.primary,
               shadowOpacity: 0.55,
               shadowRadius: 26,
               shadowOffset: { width: 0, height: 14 },
@@ -297,7 +297,7 @@ export default function PlayerScreen({ route, navigation }: any) {
             }}
           >
             <LinearGradient
-              colors={[BRAND.gold, BRAND.magenta, BRAND.violet, BRAND.water, BRAND.gold]}
+              colors={[BRAND.lime, BRAND.mint, BRAND.lavender, BRAND.lime]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{ flex: 1, borderRadius: DISC / 2, padding: 6 }}
@@ -306,7 +306,7 @@ export default function PlayerScreen({ route, navigation }: any) {
                 style={{
                   flex: 1,
                   borderRadius: DISC / 2,
-                  backgroundColor: '#0D0524',
+                  backgroundColor: '#08161A',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
@@ -329,7 +329,7 @@ export default function PlayerScreen({ route, navigation }: any) {
                 ))}
                 {/* label */}
                 <LinearGradient
-                  colors={[BRAND.gold, BRAND.magenta]}
+                  colors={[BRAND.lime, BRAND.mint]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={{
@@ -348,7 +348,7 @@ export default function PlayerScreen({ route, navigation }: any) {
                     width: 12,
                     height: 12,
                     borderRadius: 6,
-                    backgroundColor: '#0D0524',
+                    backgroundColor: '#08161A',
                     borderWidth: 2,
                     borderColor: 'rgba(255,255,255,0.35)',
                   }}
@@ -429,33 +429,28 @@ export default function PlayerScreen({ route, navigation }: any) {
                 height: 96,
                 borderRadius: 48,
                 overflow: 'hidden',
-                shadowColor: BRAND.magenta,
+                shadowColor: colors.primary,
                 shadowOpacity: 0.65,
                 shadowRadius: 24,
                 shadowOffset: { width: 0, height: 12 },
                 elevation: 12,
               }}
             >
-              <LinearGradient
-                colors={[BRAND.violet, BRAND.magenta]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
+              <View style={{ backgroundColor: BRAND.lime, 
                   flex: 1,
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderWidth: 2,
                   borderColor: 'rgba(255,255,255,0.25)',
                   borderRadius: 48,
-                }}
-              >
+                }}>
                 <Ionicons
                   name={status.isPlaying ? 'pause' : 'play'}
                   size={44}
-                  color="#FFFFFF"
+                  color={BRAND.teal}
                   style={{ marginLeft: status.isPlaying ? 0 : 5 }}
                 />
-              </LinearGradient>
+              </View>
             </Pressable>
           </Animated.View>
 
