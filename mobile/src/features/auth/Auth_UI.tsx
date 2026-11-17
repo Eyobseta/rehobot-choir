@@ -497,6 +497,70 @@ export function ThemeToggle({ top }: { top: number }) {
   );
 }
 
+/**
+ * Tagline under the wordmark. Split into one line per phrase (so the second
+ * half can never be clipped), with a lime glow and a staggered rise-in.
+ */
+function Tagline({ text }: { text: string }) {
+  const lines = text.includes('\n')
+    ? text.split('\n')
+    : text.split(/,\s*/).map((part, i, all) => (i < all.length - 1 ? `${part},` : part));
+
+  const p = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    p.setValue(0);
+    Animated.timing(p, {
+      toValue: 1.6,
+      duration: 1100,
+      delay: 250,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [p, text]);
+
+  return (
+    <View style={{ marginTop: 14, alignItems: 'center', paddingHorizontal: 24 }}>
+      {lines.map((line, i) => {
+        const a = i * 0.3;
+        const last = lines.length > 1 && i === lines.length - 1;
+        return (
+          <Animated.Text
+            key={`${i}-${line}`}
+            style={{
+              color: last ? BRAND.lime : '#FFFFFF',
+              fontSize: 18,
+              lineHeight: 26,
+              fontWeight: '800',
+              letterSpacing: 0.3,
+              textAlign: 'center',
+              paddingHorizontal: 8,
+              textShadowColor: 'rgba(196, 244, 79, 0.45)',
+              textShadowOffset: { width: 0, height: 0 },
+              textShadowRadius: 10,
+              opacity: p.interpolate({
+                inputRange: [a, a + 0.6],
+                outputRange: [0, 1],
+                extrapolate: 'clamp',
+              }),
+              transform: [
+                {
+                  translateY: p.interpolate({
+                    inputRange: [a, a + 0.6],
+                    outputRange: [14, 0],
+                    extrapolate: 'clamp',
+                  }),
+                },
+              ],
+            }}
+          >
+            {line}
+          </Animated.Text>
+        );
+      })}
+    </View>
+  );
+}
+
 export function BrandHeader({
   subtitle,
   compact,
@@ -513,7 +577,7 @@ export function BrandHeader({
       <View
         style={{
           paddingTop: topPad,
-          paddingBottom: compact ? 50 : 66,
+          paddingBottom: compact ? 50 : 88,
           alignItems: 'center',
           overflow: 'hidden',
         }}
@@ -616,19 +680,7 @@ export function BrandHeader({
                 CHOIR
               </Text>
             </View>
-            {subtitle ? (
-              <Text
-                style={{
-                  marginTop: 12,
-                  color: 'rgba(255,255,255,0.74)',
-                  fontSize: 13,
-                  textAlign: 'center',
-                  paddingHorizontal: 32,
-                }}
-              >
-                {subtitle}
-              </Text>
-            ) : null}
+            {subtitle ? <Tagline text={subtitle} /> : null}
           </>
         )}
 

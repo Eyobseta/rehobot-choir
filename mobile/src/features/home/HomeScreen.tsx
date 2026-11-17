@@ -31,9 +31,14 @@ import { useHomeUnreadSync } from './useHomeUnreadSync';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const AMBER = '#F5B83D';
-const SKY = '#2F9BD6';
-const TEAL = '#14A38B';
+// Warm accent for announcements; pastel fills for the quick-access tiles.
+const AMBER = '#E8A65D';
+const TILE = {
+  lavender: '#D3C3F8',
+  peach: '#F7E1C8',
+  mint: '#BDEBCB',
+  lime: '#DDF59B',
+} as const;
 
 const ABS_FILL = {
   position: 'absolute' as const,
@@ -271,31 +276,26 @@ export default function HomeScreen({ navigation }: any) {
           <RefreshControl
             refreshing={refreshing && !firstLoad}
             onRefresh={refetchAll}
-            tintColor={BRAND.violet}
-            colors={[BRAND.violet]}
+            tintColor={BRAND.lime}
+            colors={[BRAND.teal]}
             progressViewOffset={insets.top}
           />
         }
       >
         {/* =============== HERO =============== */}
-        <LinearGradient
-          colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.hero, { paddingTop: insets.top + 14 }]}
-        >
+        <View style={[styles.hero, { paddingTop: insets.top + 14 }]}>
           {/* aurora blobs */}
           <Animated.View
             pointerEvents="none"
             style={[
               styles.blob,
               {
-                top: -70,
-                right: -50,
-                width: 230,
-                height: 230,
-                borderRadius: 115,
-                backgroundColor: withAlpha(BRAND.gold, 0.26),
+                top: -95,
+                right: -62,
+                width: 175,
+                height: 175,
+                borderRadius: 88,
+                backgroundColor: BRAND.lime,
                 transform: [
                   { translateY: parallax },
                   {
@@ -319,9 +319,12 @@ export default function HomeScreen({ navigation }: any) {
             style={[
               styles.blob,
               {
-                bottom: -110,
-                left: -60,
-                backgroundColor: withAlpha(BRAND.water, 0.26),
+                bottom: -64,
+                right: -46,
+                width: 150,
+                height: 150,
+                borderRadius: 75,
+                backgroundColor: BRAND.mint,
                 transform: [
                   { translateY: Animated.multiply(parallax, -0.5) },
                   {
@@ -424,7 +427,7 @@ export default function HomeScreen({ navigation }: any) {
               />
             )}
           </Animated.View>
-        </LinearGradient>
+        </View>
 
         <View style={{ paddingHorizontal: spacing.lg }}>
           {/* =============== SAVED-DATA NOTICE =============== */}
@@ -462,7 +465,7 @@ export default function HomeScreen({ navigation }: any) {
                 >
                   <View style={styles.eventShadow}>
                     <LinearGradient
-                      colors={[BRAND.gold, BRAND.magenta, BRAND.violet]}
+                      colors={[BRAND.lime, BRAND.mint]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.eventFrame}
@@ -479,25 +482,25 @@ export default function HomeScreen({ navigation }: any) {
                             style={ABS_FILL}
                           />
                         ) : (
-                          <LinearGradient
-                            colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={[ABS_FILL, styles.center]}
+                          <View
+                            style={[ABS_FILL, styles.center, { backgroundColor: BRAND.teal }]}
                           >
+                            <View style={styles.artLime} />
+                            <View style={styles.artLavender} />
+                            <View style={styles.artMint} />
                             <Ionicons
                               name="calendar"
-                              size={120}
-                              color="rgba(255,255,255,0.14)"
+                              size={96}
+                              color="rgba(255,255,255,0.16)"
                             />
-                          </LinearGradient>
+                          </View>
                         )}
                         <LinearGradient
                           pointerEvents="none"
                           colors={[
-                            'rgba(4,16,12,0.02)',
-                            'rgba(4,16,12,0.3)',
-                            'rgba(4,16,12,0.88)',
+                            'rgba(14,38,44,0.02)',
+                            'rgba(14,38,44,0.35)',
+                            'rgba(14,38,44,0.92)',
                           ]}
                           style={ABS_FILL}
                         />
@@ -566,7 +569,7 @@ export default function HomeScreen({ navigation }: any) {
               <SectionHeader
                 icon="compass"
                 title={t('home.explore', { defaultValue: 'Explore' })}
-                accent={SKY}
+                accent={BRAND.lavender}
               />
               <View style={styles.bento}>
                 <View style={styles.bentoRow}>
@@ -574,14 +577,14 @@ export default function HomeScreen({ navigation }: any) {
                     flex={1.35}
                     icon="musical-notes"
                     label={t('tabs.songs')}
-                    tint={BRAND.violet}
+                    tint={TILE.lavender}
                     onPress={() => navigation.getParent()?.navigate('Songs')}
                   />
                   <QuickTile
                     flex={1}
                     icon="images"
                     label={t('tabs.memories')}
-                    tint={SKY}
+                    tint={TILE.peach}
                     onPress={() => navigation.getParent()?.navigate('Memories')}
                   />
                 </View>
@@ -590,14 +593,14 @@ export default function HomeScreen({ navigation }: any) {
                     flex={1}
                     icon="calendar"
                     label={t('events.title')}
-                    tint={AMBER}
+                    tint={TILE.mint}
                     onPress={() => navigation.navigate('EventsList')}
                   />
                   <QuickTile
                     flex={1.35}
                     icon="people"
                     label={t('directory.title')}
-                    tint={TEAL}
+                    tint={TILE.lime}
                     onPress={() => navigation.navigate('Directory')}
                   />
                 </View>
@@ -622,7 +625,7 @@ export default function HomeScreen({ navigation }: any) {
                 >
                   <LinearGradient
                     pointerEvents="none"
-                    colors={[withAlpha(BRAND.gold, 0.14), withAlpha(BRAND.magenta, 0.05)]}
+                    colors={[withAlpha(BRAND.lavender, 0.32), withAlpha(BRAND.mint, 0.1)]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={ABS_FILL}
@@ -673,7 +676,7 @@ export default function HomeScreen({ navigation }: any) {
                   icon="notifications"
                   title={t('notifications.title')}
                   action={t('home.seeAll')}
-                  accent={BRAND.magenta}
+                  accent={BRAND.lavender}
                   badge={unreadCount}
                   onPress={goNotifications}
                 />
@@ -689,16 +692,16 @@ export default function HomeScreen({ navigation }: any) {
                       <Pressable
                         key={n.id}
                         onPress={goNotifications}
-                        android_ripple={{ color: withAlpha(BRAND.violet, 0.12) }}
+                        android_ripple={{ color: withAlpha(colors.primary, 0.12) }}
                         style={({ pressed }) => [
                           styles.notifRow,
                           {
                             borderBottomColor: colors.border,
                             borderBottomWidth: i === arr.length - 1 ? 0 : StyleSheet.hairlineWidth,
                             backgroundColor: pressed
-                              ? withAlpha(BRAND.violet, 0.08)
+                              ? withAlpha(colors.primary, 0.08)
                               : unread
-                              ? withAlpha(BRAND.violet, 0.05)
+                              ? withAlpha(colors.primary, 0.05)
                               : 'transparent',
                           },
                         ]}
@@ -708,7 +711,7 @@ export default function HomeScreen({ navigation }: any) {
                             styles.roundIcon,
                             {
                               backgroundColor: unread
-                                ? withAlpha(BRAND.violet, 0.16)
+                                ? withAlpha(colors.primary, 0.16)
                                 : withAlpha(colors.textSecondary, 0.12),
                             },
                           ]}
@@ -716,7 +719,7 @@ export default function HomeScreen({ navigation }: any) {
                           <Ionicons
                             name={unread ? 'notifications' : 'notifications-outline'}
                             size={17}
-                            color={unread ? BRAND.violet : colors.textSecondary}
+                            color={unread ? colors.primary : colors.textSecondary}
                           />
                         </View>
                         <View style={{ flex: 1 }}>
@@ -880,7 +883,7 @@ export default function HomeScreen({ navigation }: any) {
           {/* =============== BIBLE STUDY =============== */}
           <Reveal index={6}>
             <LinearGradient
-              colors={[withAlpha(BRAND.violet, 0.16), withAlpha(BRAND.gold, 0.22)]}
+              colors={[withAlpha(BRAND.lavender, 0.5), withAlpha(BRAND.lime, 0.28)]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={[styles.soon, { borderColor: colors.border }]}
@@ -888,7 +891,7 @@ export default function HomeScreen({ navigation }: any) {
               <Ionicons
                 name="book"
                 size={120}
-                color={withAlpha(BRAND.violet, 0.08)}
+                color={withAlpha(colors.text, 0.06)}
                 style={styles.soonWatermark}
               />
               <View style={styles.soonIcon}>
@@ -910,7 +913,7 @@ export default function HomeScreen({ navigation }: any) {
                 </Text>
               </View>
               <View style={styles.soonPill}>
-                <Ionicons name="time-outline" size={14} color={BRAND.violet} />
+                <Ionicons name="time-outline" size={14} color={colors.primary} />
               </View>
             </LinearGradient>
           </Reveal>
@@ -1264,13 +1267,13 @@ function PasswordBanner({
             },
           ]}
         >
-          <Ionicons name="key" size={18} color="#FFFFFF" />
+          <Ionicons name="key" size={18} color={BRAND.lime} />
         </Animated.View>
         <View style={{ flex: 1 }}>
           <Text style={styles.warnTitle}>{title}</Text>
           <Text style={styles.warnCta}>{cta}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+        <Ionicons name="chevron-forward" size={18} color={BRAND.teal} />
       </View>
     </PressScale>
   );
@@ -1290,8 +1293,6 @@ function QuickTile({
   flex: number;
   onPress: () => void;
 }) {
-  const { theme } = useTheme();
-  const { colors } = theme;
   const scale = useRef(new Animated.Value(1)).current;
   const tilt = useRef(new Animated.Value(0)).current;
 
@@ -1335,15 +1336,7 @@ function QuickTile({
         accessibilityRole="button"
         accessibilityLabel={label}
       >
-        <View
-          style={[
-            styles.tile,
-            {
-              backgroundColor: withAlpha(tint, 0.12),
-              borderColor: withAlpha(tint, 0.28),
-            },
-          ]}
-        >
+        <View style={[styles.tile, { backgroundColor: tint }]}>
           <Animated.View
             pointerEvents="none"
             style={[
@@ -1360,26 +1353,21 @@ function QuickTile({
               },
             ]}
           >
-            <Ionicons name={icon} size={96} color={withAlpha(tint, 0.14)} />
+            <Ionicons name={icon} size={96} color={withAlpha(BRAND.teal, 0.08)} />
           </Animated.View>
 
-          <View
-            style={[
-              styles.tileChip,
-              { backgroundColor: tint, shadowColor: tint },
-            ]}
-          >
-            <Ionicons name={icon} size={20} color="#FFFFFF" />
+          <View style={styles.tileChip}>
+            <Ionicons name={icon} size={20} color={BRAND.teal} />
           </View>
           <View style={styles.tileFooter}>
             <Text
-              style={[styles.tileLabel, { color: colors.text }]}
+              style={[styles.tileLabel, { color: BRAND.teal }]}
               numberOfLines={1}
             >
               {label}
             </Text>
-            <View style={[styles.tileArrow, { backgroundColor: withAlpha(tint, 0.2) }]}>
-              <Ionicons name="arrow-forward" size={13} color={tint} />
+            <View style={styles.tileArrow}>
+              <Ionicons name="arrow-forward" size={13} color={BRAND.lime} />
             </View>
           </View>
         </View>
@@ -1408,7 +1396,7 @@ function SectionHeader({
 
   return (
     <View style={[styles.sectionRow, { marginBottom: spacing.sm + 4 }]}>
-      <View style={[styles.sectionIcon, { backgroundColor: withAlpha(accent, 0.18) }]}>
+      <View style={styles.sectionIcon}>
         <Ionicons name={icon} size={15} color={accent} />
       </View>
       <Text
@@ -1422,7 +1410,7 @@ function SectionHeader({
       </Text>
       {!!badge && badge > 0 && (
         <View style={[styles.countPill, { backgroundColor: accent }]}>
-          <Text style={styles.countPillText}>{badge}</Text>
+          <Text style={[styles.countPillText, { color: BRAND.teal }]}>{badge}</Text>
         </View>
       )}
       <View style={{ flex: 1 }} />
@@ -1433,10 +1421,10 @@ function SectionHeader({
           accessibilityRole="button"
           style={styles.seeAll}
         >
-          <Text style={[typography.caption, { color: BRAND.violet, fontWeight: '800' }]}>
+          <Text style={[typography.caption, { color: colors.primary, fontWeight: '800' }]}>
             {action}
           </Text>
-          <Ionicons name="chevron-forward" size={13} color={BRAND.violet} />
+          <Ionicons name="chevron-forward" size={13} color={colors.primary} />
         </Pressable>
       )}
     </View>
@@ -1484,7 +1472,7 @@ function BirthdayBubble({
   }, [glow, today]);
 
   const ringColors: readonly [string, string, string] = today
-    ? [BRAND.gold, BRAND.magenta, BRAND.violet]
+    ? [BRAND.lime, BRAND.mint, BRAND.lavender]
     : [colors.border, colors.border, colors.border];
 
   return (
@@ -1524,12 +1512,12 @@ function BirthdayBubble({
                 <Image source={{ uri: person.profilePhotoUrl }} style={styles.bubbleImg} />
               ) : (
                 <LinearGradient
-                  colors={[BRAND.violet, BRAND.magenta]}
+                  colors={[BRAND.teal, BRAND.tealDark]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={[styles.bubbleImg, styles.center]}
                 >
-                  <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 20 }}>
+                  <Text style={{ color: BRAND.lime, fontWeight: '800', fontSize: 20 }}>
                     {initial}
                   </Text>
                 </LinearGradient>
@@ -1563,7 +1551,7 @@ function BirthdayBubble({
           style={[
             typography.caption,
             {
-              color: today ? BRAND.magenta : colors.textSecondary,
+              color: today ? colors.accent : colors.textSecondary,
               fontSize: 10,
               fontWeight: '700',
               maxWidth: 76,
@@ -1708,14 +1696,14 @@ function SavedPill({ label }: { label: string }) {
 /** Falling confetti inside the birthday card when someone has a birthday today. */
 const CONFETTI = [
   { x: 0.05, c: BRAND.gold, d: 3400, l: 0 },
-  { x: 0.16, c: BRAND.magenta, d: 4200, l: 600 },
-  { x: 0.27, c: BRAND.water, d: 3800, l: 1300 },
-  { x: 0.38, c: BRAND.violet, d: 4600, l: 300 },
+  { x: 0.16, c: BRAND.lavender, d: 4200, l: 600 },
+  { x: 0.27, c: BRAND.mint, d: 3800, l: 1300 },
+  { x: 0.38, c: BRAND.lavender, d: 4600, l: 300 },
   { x: 0.49, c: BRAND.gold, d: 3600, l: 1700 },
-  { x: 0.6, c: BRAND.magenta, d: 4000, l: 900 },
-  { x: 0.71, c: BRAND.water, d: 4400, l: 200 },
+  { x: 0.6, c: BRAND.lavender, d: 4000, l: 900 },
+  { x: 0.71, c: BRAND.mint, d: 4400, l: 200 },
   { x: 0.82, c: BRAND.gold, d: 3500, l: 1100 },
-  { x: 0.92, c: BRAND.violet, d: 4100, l: 500 },
+  { x: 0.92, c: BRAND.lavender, d: 4100, l: 500 },
 ];
 
 function ConfettiPiece({
@@ -1898,7 +1886,7 @@ function StickyBar({
       }}
     >
       <LinearGradient
-        colors={[BRAND.deep, BRAND.violet]}
+        colors={[BRAND.teal, BRAND.tealDark]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={{
@@ -1916,8 +1904,8 @@ function StickyBar({
           style={{
             width: 34,
             height: 34,
-            borderRadius: 17,
-            backgroundColor: BRAND.gold,
+            borderRadius: 12,
+            backgroundColor: BRAND.lime,
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -1971,7 +1959,7 @@ function StickyBar({
                 borderRadius: 9,
                 backgroundColor: '#FF5A47',
                 borderWidth: 2,
-                borderColor: BRAND.violet,
+                borderColor: BRAND.tealDark,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -2079,9 +2067,9 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: BRAND.tealDark,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.32)',
+    borderColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2093,9 +2081,9 @@ const styles = StyleSheet.create({
     height: 20,
     paddingHorizontal: 4,
     borderRadius: 10,
-    backgroundColor: '#FF5A47',
+    backgroundColor: '#FF6B57',
     borderWidth: 2,
-    borderColor: BRAND.violet,
+    borderColor: BRAND.tealDark,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2107,7 +2095,7 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 12,
     borderRadius: 20,
-    backgroundColor: 'rgba(201,138,20,0.96)',
+    backgroundColor: BRAND.lime,
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 10,
@@ -2118,13 +2106,13 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: BRAND.teal,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  warnTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+  warnTitle: { color: BRAND.teal, fontSize: 14, fontWeight: '800' },
   warnCta: {
-    color: '#FFFFFF',
+    color: BRAND.teal,
     fontSize: 12,
     marginTop: 2,
     textDecorationLine: 'underline',
@@ -2134,9 +2122,8 @@ const styles = StyleSheet.create({
   bento: { gap: 12, marginBottom: 22 },
   bentoRow: { flexDirection: 'row', gap: 12 },
   tile: {
-    height: 108,
-    borderRadius: 26,
-    borderWidth: 1,
+    height: 112,
+    borderRadius: 24,
     padding: 14,
     justifyContent: 'space-between',
     overflow: 'hidden',
@@ -2145,20 +2132,18 @@ const styles = StyleSheet.create({
   tileChip: {
     width: 42,
     height: 42,
-    borderRadius: 15,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
   },
   tileFooter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   tileLabel: { fontSize: 15, fontWeight: '800', flexShrink: 1 },
   tileArrow: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 9,
+    backgroundColor: BRAND.teal,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2224,7 +2209,7 @@ const styles = StyleSheet.create({
   dateChipMonth: {
     fontSize: 11,
     fontWeight: '800',
-    color: BRAND.magenta,
+    color: '#7B5FC7',
     textTransform: 'uppercase',
   },
   eventTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '800' },
@@ -2252,7 +2237,7 @@ const styles = StyleSheet.create({
   countSmall: {
     fontSize: 9,
     fontWeight: '800',
-    color: BRAND.magenta,
+    color: '#7B5FC7',
     textTransform: 'uppercase',
     maxWidth: 56,
   },
@@ -2272,12 +2257,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  // event art (when there is no cover image)
+  artLime: {
+    position: 'absolute',
+    top: -90,
+    left: -40,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: BRAND.lime,
+  },
+  artLavender: {
+    position: 'absolute',
+    bottom: -70,
+    right: -40,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: BRAND.lavender,
+  },
+  artMint: {
+    position: 'absolute',
+    top: 40,
+    right: 40,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: BRAND.mint,
+  },
+
   // section header
   sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   sectionIcon: {
-    width: 28,
-    height: 28,
+    width: 30,
+    height: 30,
     borderRadius: 10,
+    backgroundColor: BRAND.teal,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2369,7 +2384,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: BRAND.magenta,
+    backgroundColor: '#FF6B57',
   },
 
   // announcements timeline
