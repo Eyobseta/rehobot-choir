@@ -7,6 +7,7 @@ import {
   saveSubmissionDraft,
   submitForReview,
 } from './songs.service';
+import { ocrUpload, scanLyricsHandler } from './Ocr.service';
 import { ApiError } from '../utils/ApiError';
 
 const router = Router();
@@ -55,6 +56,9 @@ router.post('/submissions', upload.single('audio'), async (req, res, next) => {
     res.json(result);
   } catch (e) { next(e); }
 });
+
+// Scan handwritten / printed lyrics from photos → text (Gemini free tier)
+router.post('/ocr', ocrUpload.array('images', 4), scanLyricsHandler);
 
 router.post('/submissions/:id/submit', async (req, res, next) => {
   try {

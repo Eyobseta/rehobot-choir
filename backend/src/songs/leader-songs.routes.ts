@@ -18,6 +18,7 @@ import {
   approveSubmission,
   returnSubmission,
 } from './songs.service';
+import { ocrUpload, scanLyricsHandler } from './Ocr.service';
 import { ApiError } from '../utils/ApiError';
 
 const router = Router();
@@ -27,6 +28,9 @@ const upload = multer({
 });
 
 router.use(authenticate, touchLastActive, authorize('LEADER', 'ADMIN'));
+
+// --- Lyrics OCR (photo → text) ---
+router.post('/ocr', ocrUpload.array('images', 4), scanLyricsHandler);
 
 // --- Categories ---
 router.get('/song-categories', async (_req, res, next) => {
