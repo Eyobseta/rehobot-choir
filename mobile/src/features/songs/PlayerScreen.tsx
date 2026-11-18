@@ -35,9 +35,14 @@ export default function PlayerScreen({ route, navigation }: any) {
   const [status, setStatus] = useState<SimpleStatus>(getSnapshot());
   const [sliding, setSliding] = useState<number | null>(null);
   const hasLoadedOnceRef = useRef(false);
+  const closingRef = useRef(false);
 
   useEffect(() => {
-    if (status.isLoaded) hasLoadedOnceRef.current = true;
+    if (status.isLoaded) {
+      hasLoadedOnceRef.current = true;
+      // Safety: a fresh track means we are no longer in the middle of closing.
+      closingRef.current = false;
+    }
   }, [status.isLoaded]);
   useEffect(() => {
     const unsub = subscribe(setStatus);
@@ -103,7 +108,7 @@ export default function PlayerScreen({ route, navigation }: any) {
     Animated.spring(playScale, { toValue: v, speed: 40, bounciness: 8, useNativeDriver: true }).start();
 
   const hasTrack = getCurrentKey() !== null;
-  if (!hasLoadedOnceRef.current || !hasTrack) {
+  if (!closingRef.current && (!hasLoadedOnceRef.current || !hasTrack)) {
     return (
       <SafeAreaView
         edges={['top', 'bottom']}
@@ -144,9 +149,10 @@ export default function PlayerScreen({ route, navigation }: any) {
     status.isPlaying ? await pauseTrack() : await resumeTrack();
   };
   const onClose = async () => {
+    closingRef.current = true; // freeze the current UI while leaving
+    navigation.goBack();       // leave first
     await stopTrack();
     hasLoadedOnceRef.current = false;
-    navigation.goBack();
   };
   const onSeekStart = () => setSliding(status.positionMillis / 1000);
   const onSeekChange = (v: number) => setSliding(v);

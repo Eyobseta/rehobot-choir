@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useTheme } from '../../theme/ThemeContext';
 import { SongDetail } from '../../services/songs';
 import {
@@ -48,6 +49,204 @@ const YT = '#FF0000';
 // Escape user content before putting it into the PDF's HTML
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Turn the song title into a safe file name (keeps Amharic / any script)
+const safePdfName = (title: string) =>
+  title
+    .replace(/[\\/:*?"<>|\u0000-\u001F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80) || 'song';
+
+// ---------------------------------------------------------------------------
+// PDF lyrics parsing + HTML template
+// ---------------------------------------------------------------------------
+type LyricBlock = { kind: 'chorus' | 'verse'; lines: string[] };
+
+// "አዝ፦" (Amharic) / "Chorus:" marks the start of a chorus
+const CHORUS_RE = /^\s*(አዝ|chorus)\s*[:፦\-–]?\s*/i;
+// A line ending with (2x) / (x2) / (3x) closes a chorus that has no blank line after it
+const REPEAT_END_RE = /[\(\[]\s*(\d+\s*x|x\s*\d+)\s*[\)\]]\s*$/i;
+
+function parseLyrics(raw: string): LyricBlock[] {
+  const blocks: LyricBlock[] = [];
+  let cur: LyricBlock | null = null;
+  const flush = () => {
+    if (cur && cur.lines.length) blocks.push(cur);
+    cur = null;
+  };
+
+  for (const line of raw.replace(/\r\n/g, '\n').split('\n')) {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flush();
+      continue;
+    }
+
+    if (CHORUS_RE.test(trimmed)) {
+      flush();
+      cur = { kind: 'chorus', lines: [] };
+      const rest = trimmed.replace(CHORUS_RE, '').trim();
+      if (rest) cur.lines.push(rest);
+      if (rest && REPEAT_END_RE.test(rest)) flush();
+      continue;
+    }
+
+    if (!cur) cur = { kind: 'verse', lines: [] };
+    cur.lines.push(trimmed);
+    if (cur.kind === 'chorus' && REPEAT_END_RE.test(trimmed)) flush();
+  }
+  flush();
+  return blocks;
+}
+
+function buildSongPdfHtml(title: string, lyrics: string): string {
+  const C = {
+    deep: BRAND.deep,
+    lavender: BRAND.lavender,
+    gold: BRAND.gold,
+    mint: BRAND.mint,
+    ink: '#1F2430',
+    muted: '#7A8190',
+  };
+
+  let verseNo = 0;
+  const blocksHtml = parseLyrics(lyrics)
+    .map((b) => {
+      const body = b.lines.map((l) => `<div class="ln">${escapeHtml(l)}</div>`).join('');
+      if (b.kind === 'chorus') {
+        return `
+          <div class="block chorus">
+            <div class="badge"><span class="dot"></span>አዝ</div>
+            ${body}
+          </div>`;
+      }
+      verseNo += 1;
+      return `
+          <div class="block verse">
+            <div class="num">${verseNo}</div>
+            <div class="vbody">${body}</div>
+          </div>`;
+    })
+    .join('');
+
+  return `
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;600;800&family=Noto+Serif+Ethiopic:wght@500;700&family=Poppins:wght@500;700;800&display=swap" rel="stylesheet" />
+    <style>
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body {
+        margin: 0;
+        padding: 36px 34px 40px;
+        color: ${C.ink};
+        font-family: 'Noto Sans Ethiopic', 'Abyssinica SIL', Kefa, 'Nyala', 'Poppins', 'Helvetica Neue', Helvetica, sans-serif;
+        background: #FFFFFF;
+      }
+
+      /* ---------- Hero ---------- */
+      .hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 28px;
+        padding: 34px 28px 30px;
+        text-align: center;
+        color: #FFFFFF;
+        background: linear-gradient(135deg, ${C.deep} 0%, ${C.lavender} 100%);
+      }
+      .hero .orb1 { position: absolute; width: 190px; height: 190px; border-radius: 50%; right: -60px; top: -70px; background: ${withAlpha(C.gold, 0.28)}; }
+      .hero .orb2 { position: absolute; width: 150px; height: 150px; border-radius: 50%; left: -55px; bottom: -70px; background: ${withAlpha(C.mint, 0.25)}; }
+      .hero .orb3 { position: absolute; width: 70px; height: 70px; border-radius: 50%; left: 38px; top: 26px; background: rgba(255,255,255,0.10); }
+      .hero-inner { position: relative; }
+      .note {
+        width: 54px; height: 54px; border-radius: 18px; margin: 0 auto 14px;
+        background: rgba(255,255,255,0.16);
+        border: 1.5px solid rgba(255,255,255,0.35);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .overline {
+        font-family: 'Poppins', Helvetica, sans-serif;
+        font-size: 11px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase;
+        color: ${C.gold};
+      }
+      h1 {
+        margin: 10px 0 0;
+        font-family: 'Noto Serif Ethiopic', 'Noto Sans Ethiopic', 'Abyssinica SIL', Kefa, 'Poppins', Georgia, serif;
+        font-size: 36px; line-height: 1.25; font-weight: 700; letter-spacing: 0.3px;
+        color: #FFFFFF;
+      }
+      .rule { margin: 18px auto 0; width: 92px; height: 4px; border-radius: 4px;
+        background: linear-gradient(90deg, ${C.gold}, ${C.mint}); }
+
+      /* ---------- Lyrics ---------- */
+      .lyrics { margin-top: 30px; }
+      .block { page-break-inside: avoid; break-inside: avoid; margin-bottom: 16px; }
+      .ln { font-size: 17px; line-height: 1.85; }
+
+      .verse { display: flex; gap: 14px; align-items: flex-start; padding: 4px 6px 4px 0; }
+      .num {
+        flex: 0 0 auto; width: 30px; height: 30px; margin-top: 3px; border-radius: 50%;
+        background: ${withAlpha(C.lavender, 0.14)}; color: ${C.lavender};
+        font-family: 'Poppins', Helvetica, sans-serif; font-size: 13px; font-weight: 800;
+        text-align: center; line-height: 30px;
+      }
+      .vbody { flex: 1; }
+
+      .chorus {
+        position: relative;
+        padding: 16px 20px 14px 24px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, ${withAlpha(C.gold, 0.16)}, ${withAlpha(C.lavender, 0.12)});
+        border: 1.5px solid ${withAlpha(C.gold, 0.45)};
+      }
+      .chorus::before {
+        content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 6px;
+        border-radius: 0 6px 6px 0; background: linear-gradient(180deg, ${C.gold}, ${C.lavender});
+      }
+      .chorus .ln { font-weight: 800; color: ${C.deep}; }
+      .badge {
+        display: inline-block; margin-bottom: 6px; padding: 3px 12px; border-radius: 999px;
+        background: ${C.deep}; color: #FFFFFF; font-size: 12px; font-weight: 800; letter-spacing: 0.5px;
+      }
+      .badge .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${C.gold}; margin-right: 7px; vertical-align: middle; }
+
+      /* ---------- Footer ---------- */
+      .footer { margin-top: 34px; text-align: center; page-break-inside: avoid; }
+      .footer .line { height: 1.5px; width: 60%; margin: 0 auto 14px;
+        background: linear-gradient(90deg, transparent, ${withAlpha(C.lavender, 0.5)}, transparent); }
+      .footer .brand {
+        font-family: 'Poppins', Helvetica, sans-serif; font-size: 12px; font-weight: 700;
+        letter-spacing: 3px; text-transform: uppercase; color: ${C.deep};
+      }
+      .footer .brand i { color: ${C.gold}; font-style: normal; margin: 0 8px; }
+    </style>
+  </head>
+  <body>
+    <div class="hero">
+      <div class="orb1"></div><div class="orb2"></div><div class="orb3"></div>
+      <div class="hero-inner">
+        <div class="note">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+        </div>
+        <div class="overline">Rehobot Choir</div>
+        <h1>${escapeHtml(title)}</h1>
+        <div class="rule"></div>
+      </div>
+    </div>
+
+    <div class="lyrics">${blocksHtml}</div>
+
+    <div class="footer">
+      <div class="line"></div>
+      <div class="brand"><i>♪</i>Rehobot Choir<i>♪</i></div>
+    </div>
+  </body>
+</html>`;
+}
 
 export default function SongDetailScreen({ route, navigation }: any) {
   const { t } = useTranslation();
@@ -244,28 +443,25 @@ export default function SongDetailScreen({ route, navigation }: any) {
         return;
       }
 
-      const html = `
-        <html>
-          <head>
-            <meta charset="utf-8" />
-            <style>
-              body { font-family: Helvetica, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
-              h1 { color: #1D4550; text-align: center; font-size: 28px; margin-bottom: 5px; }
-              h2 { color: #7B5FC7; text-align: center; font-size: 16px; font-weight: normal; margin-top: 0; margin-bottom: 30px; }
-              .lyrics { font-size: 16px; font-style: italic; white-space: pre-wrap; text-align: center; margin-top: 40px; }
-              .footer { text-align: center; margin-top: 60px; font-size: 12px; color: #999; }
-            </style>
-          </head>
-          <body>
-            <h1>${escapeHtml(item.title)}</h1>
-            ${item.category ? `<h2>${escapeHtml(item.category.name)}</h2>` : ''}
-            <div class="lyrics">${escapeHtml(item.lyrics)}</div>
-            <div class="footer">Rehobot Choir</div>
-          </body>
-        </html>
-      `;
+      const html = buildSongPdfHtml(item.title, item.lyrics);
       const { uri } = await Print.printToFileAsync({ html });
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+
+      // Rename the generated file to the song title so it shares as "<song name>.pdf"
+      let shareUri = uri;
+      try {
+        const dest = `${FileSystem.cacheDirectory}${safePdfName(item.title)}.pdf`;
+        await FileSystem.deleteAsync(dest, { idempotent: true });
+        await FileSystem.moveAsync({ from: uri, to: dest });
+        shareUri = dest;
+      } catch {
+        // fall back to the original temp file if renaming fails
+      }
+
+      await Sharing.shareAsync(shareUri, {
+        UTI: '.pdf',
+        mimeType: 'application/pdf',
+        dialogTitle: item.title,
+      });
     } catch (e) {
       Alert.alert(
         t('common.error', { defaultValue: 'Error' }),
