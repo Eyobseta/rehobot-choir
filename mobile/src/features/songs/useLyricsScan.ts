@@ -10,6 +10,48 @@ const MAX_WIDTH = 1600;
 
 type Choice<T> = { text: string; value: T; style?: 'cancel' | 'default' | 'destructive' };
 
+/**
+ * One place that turns a scan failure code (from the backend OR from the
+ * network layer) into a friendly, translated message.
+ */
+export function scanErrorMessage(t: any, code: string): string {
+  switch (code) {
+    case 'OCR_BUSY':
+      return t('zema.scanBusy', {
+        defaultValue: 'The scanning service is busy right now. Please wait a minute and try again.',
+      });
+    case 'OCR_RATE_LIMITED':
+      return t('zema.scanRateLimited', {
+        defaultValue: 'Scan limit reached for now. Please try again in a few minutes, or type the lyrics.',
+      });
+    case 'OCR_NO_TEXT':
+      return t('zema.scanNoText', {
+        defaultValue: 'No readable text found. Try a clearer, closer photo.',
+      });
+    case 'OCR_UNREADABLE':
+      return t('zema.scanUnreadable', {
+        defaultValue:
+          "We couldn't read this handwriting. Take the photo in good light, without shadows, holding the phone straight above one page at a time. You can also type the lyrics.",
+      });
+    case 'OCR_UNAVAILABLE':
+      return t('zema.scanUnavailable', {
+        defaultValue: 'Scanning is not available right now. Please type the lyrics.',
+      });
+    case 'OCR_TOO_LARGE':
+      return t('zema.scanTooLarge', { defaultValue: 'The photo is too large. Please try again.' });
+    case 'TIMEOUT':
+      return t('zema.scanTimeout', {
+        defaultValue: 'It took too long. The server may be waking up, please try again.',
+      });
+    case 'NETWORK_ERROR':
+      return t('zema.scanOffline', {
+        defaultValue: 'No internet connection. Check your connection and try again.',
+      });
+    default:
+      return t('zema.scanFailed', { defaultValue: 'Could not read the photo. Please try again.' });
+  }
+}
+
 /** Promise wrapper around Alert so the flow reads top-to-bottom. */
 export function askChoice<T>(title: string, message: string | undefined, choices: Choice<T>[]) {
   return new Promise<T | null>((resolve) => {

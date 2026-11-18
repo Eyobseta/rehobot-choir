@@ -17,7 +17,7 @@ import {
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
-import { useLyricsScan, askChoice } from '../songs/useLyricsScan';
+import { useLyricsScan, askChoice, scanErrorMessage } from '../songs/useLyricsScan'; // adjust the folder name if yours differs
 import {
   playTrack, pauseTrack, resumeTrack, subscribe,
   getSnapshot, getCurrentKey, SimpleStatus,
@@ -49,25 +49,11 @@ export default function SongEditorScreen({ route, navigation }: any) {
   // ---- Lyrics scan (photo -> text). Result is only a draft the leader must review. ----
   const { scan, scanning } = useLyricsScan('leader');
   const [scanReview, setScanReview] = useState(false);
+  const [scanPoor, setScanPoor] = useState(false);
   const unclearCount = (lyrics.match(/\[\?\]/g) ?? []).length;
   const AMBER_TINT = '#F59E0B';
 
-  const scanErrorText = (code: string) =>
-    code === 'OCR_RATE_LIMITED'
-      ? t('zema.scanRateLimited', {
-          defaultValue: 'Scan limit reached for now. Please try again in a few minutes, or type the lyrics.',
-        })
-      : code === 'OCR_NO_TEXT'
-        ? t('zema.scanNoText', {
-            defaultValue: 'No readable text found. Try a clearer, closer photo.',
-          })
-        : code === 'OCR_UNAVAILABLE'
-          ? t('zema.scanUnavailable', {
-              defaultValue: 'Scanning is not available right now. Please type the lyrics.',
-            })
-          : t('zema.scanFailed', {
-              defaultValue: 'Could not read the photo. Please try again.',
-            });
+  const scanErrorText = (code: string) => scanErrorMessage(t, code);
 
   const onScanLyrics = async () => {
     setError(null);
@@ -79,6 +65,7 @@ export default function SongEditorScreen({ route, navigation }: any) {
       const apply = (next: string) => {
         setLyrics(next);
         setScanReview(true);
+        setScanPoor(out.quality === 'poor');
       };
       if (!lyrics.trim()) return apply(out.text);
 
@@ -94,7 +81,7 @@ export default function SongEditorScreen({ route, navigation }: any) {
       if (mode === 'replace') apply(out.text);
       else if (mode === 'append') apply(`${lyrics.trimEnd()}\n\n${out.text}`);
     } catch (e) {
-      setError((e as Error)?.message ?? t('zema.scanFailed', { defaultValue: 'Could not read the photo. Please try again.' }));
+      setError(scanErrorText((e as { code?: string })?.code ?? 'OCR_FAILED'));
     }
   };
 
@@ -305,6 +292,11 @@ export default function SongEditorScreen({ route, navigation }: any) {
                     defaultValue:
                       'The scan may contain mistakes. Compare it with your paper and fix any errors before saving.',
                   })}
+                  {scanPoor
+                    ? ` ${t('zema.scanReviewPoor', {
+                        defaultValue: 'Parts of this were hard to read, so please check every line carefully.',
+                      })}`
+                    : ''}
                   {unclearCount > 0
                     ? ` ${t('zema.scanUnclear', {
                         count: unclearCount,

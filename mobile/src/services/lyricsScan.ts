@@ -6,7 +6,7 @@ import { http } from './api';
  * message for each failure code.
  */
 export type ScanOutcome =
-  | { ok: true; text: string; uncertain: number }
+  | { ok: true; text: string; uncertain: number; quality?: 'good' | 'fair' | 'poor' }
   | { ok: false; code: string };
 
 /**
