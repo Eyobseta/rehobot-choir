@@ -64,7 +64,7 @@ const safePdfName = (title: string) =>
 type LyricBlock = { kind: 'chorus' | 'verse'; lines: string[] };
 
 // "አዝ፦" (Amharic) / "Chorus:" marks the start of a chorus
-const CHORUS_RE = /^\s*(አዝ|chorus)\s*[:፦\-–]?\s*/i;
+const CHORUS_RE = /^\s*(አዝ|chorus)(?:\s*[:፦\-–.።]+\s*|\s+|$)/i;
 // A line ending with (2x) / (x2) / (3x) closes a chorus that has no blank line after it
 const REPEAT_END_RE = /[\(\[]\s*(\d+\s*x|x\s*\d+)\s*[\)\]]\s*$/i;
 
