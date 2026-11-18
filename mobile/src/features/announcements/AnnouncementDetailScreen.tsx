@@ -105,7 +105,7 @@ export default function AnnouncementDetailScreen({ route, navigation }: any) {
             />
           ) : (
             <View style={{ backgroundColor: BRAND.teal, overflow: 'hidden',  flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-<View pointerEvents="none" style={{ position: 'absolute', top: -40, left: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
+<View pointerEvents="none" style={{ position: 'absolute', bottom: -50, left: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
 <View pointerEvents="none" style={{ position: 'absolute', bottom: -50, right: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: BRAND.lavender }} />
 
               <Ionicons name="megaphone" size={120} color="rgba(255,255,255,0.18)" />

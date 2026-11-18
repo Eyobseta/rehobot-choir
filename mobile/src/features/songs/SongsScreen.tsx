@@ -18,7 +18,6 @@ import { useTheme } from '../../theme/ThemeContext';
 import { SongSummary, zemaIsTeamMember } from '../../services/songs';
 import { BRAND, ErrorBanner } from '../auth/Auth_UI';
 import { useMe } from '../chat/chatSession';
-import GlassBackButton from '../../components/GlassBackButton';
 import {
   useSongsQuery,
   useSongCategoriesQuery,
@@ -38,6 +37,8 @@ import {
   IconName,
 } from './Songs_Kit';
 
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList) as unknown as typeof FlatList;
+
 export default function SongsScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -52,10 +53,19 @@ export default function SongsScreen({ navigation }: any) {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [isZema, setIsZema] = useState(false);
   const [focused, setFocused] = useState(false);
-  const [view, setView] = useState<'list' | 'grid'>('grid');
+  const [view, setView] = useState<'list' | 'grid'>('list');
   const { width: screenW } = useWindowDimensions();
   const grid = view === 'grid';
   const tileW = (screenW - spacing.lg * 2 - 12) / 2;
+
+  // Home-style scroll behaviour: hero fades, a compact bar slides in.
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const listRef = useRef<FlatList<SongSummary>>(null);
+  const [barOn, setBarOn] = useState(false);
+  const barOnRef = useRef(false);
+  const heroFade = scrollY.interpolate({ inputRange: [0, 180], outputRange: [1, 0.3], extrapolate: 'clamp' });
+  const barOpacity = scrollY.interpolate({ inputRange: [120, 210], outputRange: [0, 1], extrapolate: 'clamp' });
+  const barShift = scrollY.interpolate({ inputRange: [120, 210], outputRange: [-24, 0], extrapolate: 'clamp' });
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(search.trim()), 300);
@@ -86,13 +96,17 @@ export default function SongsScreen({ navigation }: any) {
   }, [items, qc, userId]);
 
   const filtered = categoryId ? items.filter((s) => s.category?.id === categoryId) : items;
+  const countLabel = (n: number) =>
+    n === 1
+      ? t('songs.countOne', { defaultValue: '1 song' })
+      : t('songs.count', { count: n, defaultValue: '{{count}} songs' });
 
   // NOTE: the hero is passed to the list as an ELEMENT (not a component
   // function). Defining `const ListHeader = () => ...` inside the screen
   // makes React remount it on every keystroke, which dismisses the keyboard
   // while typing in the search box.
   const header = (
-    <View style={{ marginHorizontal: -spacing.lg, marginTop: -spacing.md }}>
+    <Animated.View style={{ marginHorizontal: -spacing.lg, marginTop: -spacing.md, opacity: heroFade }}>
       <ScreenHero
         icon="musical-notes"
         overline={t('tabs.songs', { defaultValue: 'Songs' })}
@@ -108,8 +122,8 @@ export default function SongsScreen({ navigation }: any) {
             paddingHorizontal: 14,
             borderRadius: 18,
             borderWidth: 1.5,
-            borderColor: focused ? BRAND.gold : 'rgba(255,255,255,0.28)',
-            backgroundColor: 'rgba(255,255,255,0.16)',
+            borderColor: focused ? BRAND.gold : 'rgba(255,255,255,0.18)',
+            backgroundColor: BRAND.tealDark,
             marginTop: 16,
           }}
         >
@@ -196,7 +210,7 @@ export default function SongsScreen({ navigation }: any) {
           {!firstLoad ? (
             <HeroPill
               icon="musical-notes"
-              text={t('songs.count', { count: filtered.length, defaultValue: '{{count}} songs' })}
+              text={countLabel(filtered.length)}
             />
           ) : (
             <View />
@@ -216,18 +230,25 @@ export default function SongsScreen({ navigation }: any) {
           )}
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Floating Back Button (stays on top while scrolling) */}
-      <View style={{ position: 'absolute', top: insets.top + 16, right: 16, zIndex: 10 }}>
-        <GlassBackButton onPress={() => navigation.goBack()} size={44} />
-      </View>
-
-      <FlatList
+      <AnimatedFlatList
+        ref={listRef}
         key={view}
+        scrollEventThrottle={16}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: true,
+          listener: (e: any) => {
+            const on = e.nativeEvent.contentOffset.y > 170;
+            if (on !== barOnRef.current) {
+              barOnRef.current = on;
+              setBarOn(on);
+            }
+          },
+        })}
         data={firstLoad ? [] : filtered}
         keyExtractor={(item) => item.id}
         numColumns={grid ? 2 : 1}
@@ -279,7 +300,112 @@ export default function SongsScreen({ navigation }: any) {
           )
         }
       />
+
+      <SongsStickyBar
+        top={insets.top}
+        opacity={barOpacity}
+        shift={barShift}
+        on={barOn}
+        title={t('songs.lyrics', { defaultValue: 'Library' })}
+        subtitle={firstLoad ? '' : countLabel(filtered.length)}
+        onSearch={() => listRef.current?.scrollToOffset({ offset: 0, animated: true })}
+        searchLabel={t('songs.searchPlaceholder')}
+      />
     </View>
+  );
+}
+
+function SongsStickyBar({
+  top,
+  opacity,
+  shift,
+  on,
+  title,
+  subtitle,
+  onSearch,
+  searchLabel,
+}: {
+  top: number;
+  opacity: Animated.AnimatedInterpolation<number>;
+  shift: Animated.AnimatedInterpolation<number>;
+  on: boolean;
+  title: string;
+  subtitle: string;
+  onSearch: () => void;
+  searchLabel: string;
+}) {
+  return (
+    <Animated.View
+      pointerEvents={on ? 'auto' : 'none'}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        opacity,
+        transform: [{ translateY: shift }],
+        shadowColor: BRAND.deep,
+        shadowOpacity: 0.35,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 6 },
+        elevation: 10,
+      }}
+    >
+      <View
+        style={{
+          backgroundColor: BRAND.teal,
+          paddingTop: top + 8,
+          paddingBottom: 10,
+          paddingHorizontal: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          borderBottomLeftRadius: 22,
+          borderBottomRightRadius: 22,
+        }}
+      >
+        <View
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 12,
+            backgroundColor: BRAND.lime,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="musical-notes" size={17} color={BRAND.deep} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }} numberOfLines={1}>
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '700' }} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+        <Pressable
+          onPress={onSearch}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={searchLabel}
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 13,
+            backgroundColor: BRAND.tealDark,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.18)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="search" size={18} color="#FFFFFF" />
+        </Pressable>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -310,9 +436,9 @@ function HeroAction({
           paddingVertical: 11,
           paddingHorizontal: 8,
           borderRadius: 16,
-          backgroundColor: 'rgba(255,255,255,0.16)',
+          backgroundColor: BRAND.tealDark,
           borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.28)',
+          borderColor: 'rgba(255,255,255,0.18)',
         }}
       >
         <Ionicons name={icon} size={15} color={BRAND.gold} />
@@ -349,8 +475,8 @@ function CategoryChip({
           paddingVertical: 8,
           borderRadius: 999,
           borderWidth: 1,
-          backgroundColor: active ? BRAND.gold : 'rgba(255,255,255,0.14)',
-          borderColor: active ? BRAND.gold : 'rgba(255,255,255,0.3)',
+          backgroundColor: active ? BRAND.gold : BRAND.tealDark,
+          borderColor: active ? BRAND.gold : 'rgba(255,255,255,0.18)',
         }}
       >
         <Text

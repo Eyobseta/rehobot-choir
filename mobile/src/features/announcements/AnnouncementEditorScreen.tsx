@@ -298,11 +298,11 @@ export default function AnnouncementEditorScreen({ route, navigation }: any) {
             pointerEvents="none"
             style={{
               position: 'absolute',
-              top: -65,
-              right: -45,
-              width: 130,
-              height: 130,
-              borderRadius: 65,
+              top: insets.top,
+              right: -42,
+              width: 110,
+              height: 110,
+              borderRadius: 55,
               backgroundColor: BRAND.lime,
             }}
           />

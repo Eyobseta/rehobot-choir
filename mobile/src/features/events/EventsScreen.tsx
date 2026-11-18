@@ -45,8 +45,7 @@ export default function EventsScreen({ navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ backgroundColor: BRAND.teal,  paddingHorizontal: 16, paddingTop: insets.top + 16, paddingBottom: 22, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' }}>
-        <View pointerEvents="none" style={{ position: 'absolute', top: -65, right: -45, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
-        <View pointerEvents="none" style={{ position: 'absolute', bottom: -70, left: -45, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lavender }} />
+        <View pointerEvents="none" style={{ position: 'absolute', top: insets.top, right: -42, width: 110, height: 110, borderRadius: 55, backgroundColor: BRAND.lime }} />
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center' }}>
@@ -64,7 +63,7 @@ export default function EventsScreen({ navigation }: any) {
           <GlassBackButton onPress={() => navigation.goBack()} accessibilityLabel={t('common.back', { defaultValue: 'Back' })} />
         </View>
 
-        <View style={{ flexDirection: 'row', padding: 4, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', marginTop: 18 }}>
+        <View style={{ flexDirection: 'row', padding: 4, borderRadius: 20, backgroundColor: BRAND.tealDark, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', marginTop: 18 }}>
           <HeroSegBtn icon="sparkles" label={t('events.upcoming')} active={scope === 'upcoming'} onPress={() => setScope('upcoming')} />
           <HeroSegBtn icon="time" label={t('events.past')} active={scope === 'past'} onPress={() => setScope('past')} />
         </View>

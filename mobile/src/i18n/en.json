@@ -211,7 +211,7 @@
     "profileEntries": "Profile"
   },
   "directory": {
-    "title": "Directory",
+    "title": "Members",
     "searchPlaceholder": "Search by name",
     "empty": "No members found.",
     "online": "Online",

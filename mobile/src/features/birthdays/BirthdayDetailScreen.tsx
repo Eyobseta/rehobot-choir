@@ -142,7 +142,7 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
   if (firstLoad) {
     return (
       <View style={{ backgroundColor: BRAND.teal, overflow: 'hidden',  flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-<View pointerEvents="none" style={{ position: 'absolute', top: -40, left: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
+<View pointerEvents="none" style={{ position: 'absolute', bottom: -50, left: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
 <View pointerEvents="none" style={{ position: 'absolute', bottom: -50, right: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: BRAND.lavender }} />
 
         <Text style={{ fontSize: 44 }}>🎂</Text>
@@ -227,24 +227,12 @@ export default function BirthdayDetailScreen({ route, navigation }: any) {
             pointerEvents="none"
             style={{
               position: 'absolute',
-              top: -60,
-              left: -70,
-              width: 130,
-              height: 130,
-              borderRadius: 65,
+              top: insets.top,
+              right: -42,
+              width: 110,
+              height: 110,
+              borderRadius: 55,
               backgroundColor: BRAND.lime,
-            }}
-          />
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              bottom: -80,
-              right: -60,
-              width: 130,
-              height: 130,
-              borderRadius: 65,
-              backgroundColor: BRAND.lavender,
             }}
           />
           <Confetti />

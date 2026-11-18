@@ -162,7 +162,7 @@ export default function PlayerScreen({ route, navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: BRAND.teal }}>
       {/* flat stage shapes */}
-      <View pointerEvents="none" style={{ position: 'absolute', top: -120, right: -80, width: 270, height: 270, borderRadius: 135, backgroundColor: BRAND.lime }} />
+      <View pointerEvents="none" style={{ position: 'absolute', top: insets.top, right: -70, width: 190, height: 190, borderRadius: 95, backgroundColor: BRAND.lime }} />
       <View pointerEvents="none" style={{ position: 'absolute', top: 250, left: -80, width: 170, height: 170, borderRadius: 85, backgroundColor: withAlpha(BRAND.lavender, 0.2) }} />
       <View pointerEvents="none" style={{ position: 'absolute', top: 140, right: 26, width: 18, height: 18, borderRadius: 5, backgroundColor: BRAND.mint, transform: [{ rotate: '45deg' }] }} />
 

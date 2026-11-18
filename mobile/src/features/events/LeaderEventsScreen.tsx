@@ -40,7 +40,7 @@ export default function LeaderEventsScreen({ navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ backgroundColor: BRAND.teal,  paddingHorizontal: 16, paddingTop: insets.top + 16, paddingBottom: 22, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' }}>
-        <View pointerEvents="none" style={{ position: 'absolute', top: -65, right: -45, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
+        <View pointerEvents="none" style={{ position: 'absolute', top: insets.top, right: -42, width: 110, height: 110, borderRadius: 55, backgroundColor: BRAND.lime }} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="calendar" size={22} color={BRAND.deep} />

@@ -73,8 +73,7 @@ export default function MemberProfileScreen({ route, navigation }: Props) {
   return (
     <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: spacing.xxl }} showsVerticalScrollIndicator={false}>
       <View style={{ backgroundColor: BRAND.teal,  paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 28, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden', alignItems: 'center' }}>
-        <View pointerEvents="none" style={{ position: 'absolute', top: -70, left: -70, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lime }} />
-        <View pointerEvents="none" style={{ position: 'absolute', bottom: -70, right: -60, width: 130, height: 130, borderRadius: 65, backgroundColor: BRAND.lavender }} />
+        <View pointerEvents="none" style={{ position: 'absolute', top: insets.top, right: -42, width: 110, height: 110, borderRadius: 55, backgroundColor: BRAND.lime }} />
 
         <View pointerEvents="box-none" style={{ alignSelf: 'flex-end', marginBottom: 8 }}>
           <GlassBackButton onPress={() => navigation.goBack()} accessibilityLabel={t('common.back', { defaultValue: 'Back' })} />

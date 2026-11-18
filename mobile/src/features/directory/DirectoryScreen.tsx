@@ -174,24 +174,12 @@ export default function DirectoryScreen({ navigation }: Props) {
           pointerEvents="none"
           style={{
             position: 'absolute',
-            top: -65,
-            right: -45,
-            width: 130,
-            height: 130,
-            borderRadius: 65,
+            top: insets.top,
+            right: -42,
+            width: 110,
+            height: 110,
+            borderRadius: 55,
             backgroundColor: BRAND.lime,
-          }}
-        />
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            bottom: -70,
-            left: -45,
-            width: 130,
-            height: 130,
-            borderRadius: 65,
-            backgroundColor: BRAND.lavender,
           }}
         />
 
@@ -245,8 +233,8 @@ export default function DirectoryScreen({ navigation }: Props) {
             paddingHorizontal: 14,
             borderRadius: 16,
             borderWidth: 1.5,
-            borderColor: focused ? BRAND.gold : 'rgba(255,255,255,0.28)',
-            backgroundColor: 'rgba(255,255,255,0.16)',
+            borderColor: focused ? BRAND.gold : 'rgba(255,255,255,0.18)',
+            backgroundColor: BRAND.tealDark,
             marginTop: 18,
           }}
         >
@@ -465,19 +453,6 @@ function MemberTile({
           overflow: 'hidden',
         }}
       >
-        {/* pastel wash behind the avatar */}
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: -46,
-            width: 150,
-            height: 110,
-            borderRadius: 75,
-            backgroundColor: palette[0],
-            opacity: 0.55,
-          }}
-        />
 
         <View style={{ width: 78, height: 78 }}>
           <View
@@ -526,6 +501,7 @@ function MemberTile({
           {item.fullName}
         </Text>
 
+        {seen.online || seen.label ? (
         <View
           style={{
             marginTop: 8,
@@ -548,6 +524,7 @@ function MemberTile({
             {seen.online ? onlineLabel : seen.label}
           </Text>
         </View>
+        ) : null}
       </Pressable>
     </Animated.View>
   );

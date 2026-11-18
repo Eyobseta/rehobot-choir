@@ -41,7 +41,11 @@ export default function FavoritesScreen({ navigation }: any) {
         {!firstLoad && (
           <HeroPill
             icon="heart"
-            text={t('songs.count', { count: items.length, defaultValue: '{{count}} songs' })}
+            text={
+              items.length === 1
+                ? t('songs.countOne', { defaultValue: '1 song' })
+                : t('songs.count', { count: items.length, defaultValue: '{{count}} songs' })
+            }
           />
         )}
       </ScreenHero>

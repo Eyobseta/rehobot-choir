@@ -339,24 +339,12 @@ export default function SongDetailScreen({ route, navigation }: any) {
             pointerEvents="none"
             style={{
               position: 'absolute',
-              top: -60,
-              left: -70,
-              width: 130,
-              height: 130,
-              borderRadius: 65,
+              top: insets.top,
+              right: -42,
+              width: 110,
+              height: 110,
+              borderRadius: 55,
               backgroundColor: BRAND.lime,
-            }}
-          />
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              bottom: -80,
-              right: -60,
-              width: 130,
-              height: 130,
-              borderRadius: 65,
-              backgroundColor: BRAND.lavender,
             }}
           />
 

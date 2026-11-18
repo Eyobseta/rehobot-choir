@@ -211,24 +211,12 @@ export function ScreenHero({
         pointerEvents="none"
         style={{
           position: 'absolute',
-          top: -60,
-          right: -40,
-          width: 130,
-          height: 130,
-          borderRadius: 65,
+          top: insets.top,
+          right: -42,
+          width: 110,
+          height: 110,
+          borderRadius: 55,
           backgroundColor: BRAND.lime,
-        }}
-      />
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          bottom: -80,
-          left: -50,
-          width: 130,
-          height: 130,
-          borderRadius: 65,
-          backgroundColor: BRAND.lavender,
         }}
       />
       {/* faint floating notes */}
@@ -309,9 +297,9 @@ export function HeroPill({ icon, text }: { icon: IconName; text: string }) {
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 999,
-        backgroundColor: 'rgba(255,255,255,0.18)',
+        backgroundColor: BRAND.tealDark,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.24)',
+        borderColor: 'rgba(255,255,255,0.18)',
       }}
     >
       <Ionicons name={icon} size={13} color={BRAND.gold} />
