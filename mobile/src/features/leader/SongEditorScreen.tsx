@@ -17,6 +17,7 @@ import {
 import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
+import { useLyricsScan, askChoice } from '../songs/useLyricsScan';
 import {
   playTrack, pauseTrack, resumeTrack, subscribe,
   getSnapshot, getCurrentKey, SimpleStatus,
@@ -44,6 +45,58 @@ export default function SongEditorScreen({ route, navigation }: any) {
   const [audioUri, setAudioUri] = useState<string | null>(null);
   const [audioName, setAudioName] = useState<string | null>(null);
   const [audioMime, setAudioMime] = useState<string | null>(null);
+
+  // ---- Lyrics scan (photo -> text). Result is only a draft the leader must review. ----
+  const { scan, scanning } = useLyricsScan('leader');
+  const [scanReview, setScanReview] = useState(false);
+  const unclearCount = (lyrics.match(/\[\?\]/g) ?? []).length;
+  const AMBER_TINT = '#F59E0B';
+
+  const scanErrorText = (code: string) =>
+    code === 'OCR_RATE_LIMITED'
+      ? t('zema.scanRateLimited', {
+          defaultValue: 'Scan limit reached for now. Please try again in a few minutes, or type the lyrics.',
+        })
+      : code === 'OCR_NO_TEXT'
+        ? t('zema.scanNoText', {
+            defaultValue: 'No readable text found. Try a clearer, closer photo.',
+          })
+        : code === 'OCR_UNAVAILABLE'
+          ? t('zema.scanUnavailable', {
+              defaultValue: 'Scanning is not available right now. Please type the lyrics.',
+            })
+          : t('zema.scanFailed', {
+              defaultValue: 'Could not read the photo. Please try again.',
+            });
+
+  const onScanLyrics = async () => {
+    setError(null);
+    try {
+      const out = await scan();
+      if (!out) return;
+      if (!out.ok) return setError(scanErrorText(out.code));
+
+      const apply = (next: string) => {
+        setLyrics(next);
+        setScanReview(true);
+      };
+      if (!lyrics.trim()) return apply(out.text);
+
+      const mode = await askChoice<'replace' | 'append'>(
+        t('zema.scanKeepTitle', { defaultValue: 'You already have lyrics' }),
+        undefined,
+        [
+          { text: t('zema.scanReplace', { defaultValue: 'Replace' }), value: 'replace', style: 'destructive' },
+          { text: t('zema.scanAppend', { defaultValue: 'Add to the end' }), value: 'append' },
+          { text: t('register.cancel'), value: null as any, style: 'cancel' },
+        ],
+      );
+      if (mode === 'replace') apply(out.text);
+      else if (mode === 'append') apply(`${lyrics.trimEnd()}\n\n${out.text}`);
+    } catch (e) {
+      setError((e as Error)?.message ?? t('zema.scanFailed', { defaultValue: 'Could not read the photo. Please try again.' }));
+    }
+  };
 
   const [playerStatus, setPlayerStatus] = useState<SimpleStatus>(getSnapshot());
   useEffect(() => {
@@ -84,6 +137,19 @@ export default function SongEditorScreen({ route, navigation }: any) {
   const onSave = async (publish: boolean) => {
     setError(null);
     if (!title.trim()) return setError(t('register.fieldRequired'));
+    if (unclearCount > 0) {
+      const go = await askChoice<boolean>(
+        t('zema.unclearTitle', { defaultValue: 'Unclear words remain' }),
+        t('zema.unclearBody', {
+          defaultValue: 'Some words are still marked [?]. Fix them first, or save anyway.',
+        }),
+        [
+          { text: t('zema.unclearFix', { defaultValue: 'Go back and fix' }), value: false, style: 'cancel' },
+          { text: t('zema.unclearSubmit', { defaultValue: 'Save anyway' }), value: true },
+        ],
+      );
+      if (!go) return;
+    }
     setBusy(true);
     try {
       if (editingId) {
@@ -184,7 +250,86 @@ export default function SongEditorScreen({ route, navigation }: any) {
               ))}
             </View>
             <Field label={t('leaderSongs.youtubeField')} value={youtubeUrl} onChange={setYoutubeUrl} placeholder="https://www.youtube.com/watch?v=..." autoCapitalize="none" icon="logo-youtube" />
+            <Pressable
+              onPress={() => void onScanLyrics()}
+              disabled={scanning}
+              accessibilityRole="button"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                marginTop: spacing.md,
+                paddingVertical: 13,
+                borderRadius: 16,
+                borderWidth: 1.5,
+                borderStyle: 'dashed',
+                borderColor: withAlpha(BRAND.violet, 0.6),
+                backgroundColor: withAlpha(BRAND.violet, 0.08),
+                opacity: scanning ? 0.8 : 1,
+              }}
+            >
+              {scanning ? (
+                <ActivityIndicator size="small" color={BRAND.violet} />
+              ) : (
+                <Ionicons name="scan" size={20} color={BRAND.violet} />
+              )}
+              <Text style={{ color: BRAND.violet, fontWeight: '800', fontSize: 14 }}>
+                {scanning
+                  ? t('zema.scanning', { defaultValue: 'Reading your photo… this can take up to a minute' })
+                  : t('zema.scanButton', { defaultValue: 'Scan lyrics from paper' })}
+              </Text>
+            </Pressable>
+
             <Field label={t('leaderSongs.lyricsField')} value={lyrics} onChange={setLyrics} multiline icon="document-text" />
+
+            {scanReview && (
+              <View
+                style={{
+                  marginTop: spacing.md,
+                  padding: spacing.md,
+                  borderRadius: 16,
+                  borderLeftWidth: 4,
+                  borderLeftColor: AMBER_TINT,
+                  backgroundColor: withAlpha(AMBER_TINT, 0.1),
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="eye" size={18} color={AMBER_TINT} />
+                  <Text style={[typography.bodySmall, { color: colors.text, fontWeight: '800', flex: 1 }]}>
+                    {t('zema.scanReviewTitle', { defaultValue: 'Please check the scanned text' })}
+                  </Text>
+                </View>
+                <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 6, lineHeight: 18 }]}>
+                  {t('zema.scanReviewBody', {
+                    defaultValue:
+                      'The scan may contain mistakes. Compare it with your paper and fix any errors before saving.',
+                  })}
+                  {unclearCount > 0
+                    ? ` ${t('zema.scanUnclear', {
+                        count: unclearCount,
+                        defaultValue: '{{count}} unclear word(s) are marked [?].',
+                      })}`
+                    : ''}
+                </Text>
+                <Pressable
+                  onPress={() => setScanReview(false)}
+                  accessibilityRole="button"
+                  style={{
+                    alignSelf: 'flex-start',
+                    marginTop: 10,
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 999,
+                    backgroundColor: BRAND.violet,
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12.5 }}>
+                    {t('zema.scanChecked', { defaultValue: "I've checked it" })}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
           </Card>
 
           <Card>
