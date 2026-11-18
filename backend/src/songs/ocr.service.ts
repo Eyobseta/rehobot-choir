@@ -7,8 +7,8 @@ import { ApiError } from '../utils/ApiError';
  *
  * Env:
  *   GEMINI_API_KEY          (required) key from https://aistudio.google.com/apikey
- *   GEMINI_MODEL            (optional) primary model.   default: gemini-3.8-flash
- *   GEMINI_FALLBACK_MODEL   (optional) fallback model.  default: gemini-3.6-flash
+ *   GEMINI_MODEL            (optional) primary model.   default: gemini-3.5-flash
+ *   GEMINI_FALLBACK_MODEL   (optional) fallback model.  default: gemini-3.5-flash-lite
  *   GEMINI_MODELS           (optional) comma list, overrides the two above,
  *                           e.g. "gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash-lite"
  *
@@ -18,7 +18,7 @@ import { ApiError } from '../utils/ApiError';
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const MAX_IMAGES = 4;
-const PER_ATTEMPT_TIMEOUT_MS = 45_000;
+const PER_ATTEMPT_TIMEOUT_MS = 30_000; // a healthy model answers in well under 30 s
 const TOTAL_BUDGET_MS = 100_000; // the app waits up to 120 s
 const RETRY_DELAY_MS = 2_500;
 const ATTEMPTS_PER_MODEL = 2; // retry once when a model is busy (503 / timeout)
@@ -159,8 +159,8 @@ function modelList(): string[] {
   const list = fromList.length
     ? fromList
     : [
-        process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-        process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.6-flash',
+        process.env.GEMINI_MODEL || 'gemini-3.5-flash',
+        process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite',
       ];
   return list.filter((m, i, a) => a.indexOf(m) === i);
 }
