@@ -317,24 +317,25 @@ function QuoteRow({
             pointerEvents="none"
             style={{
               position: 'absolute',
-              top: -50,
-              right: -40,
+              bottom: -60,
+              right: -44,
               width: 150,
               height: 150,
               borderRadius: 75,
-              backgroundColor: withAlpha(BRAND.gold, 0.16),
+              backgroundColor: withAlpha(BRAND.lavender, 0.14),
             }}
           />
           <View
             pointerEvents="none"
             style={{
               position: 'absolute',
-              top: -20,
-              right: -10,
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: BRAND.lime,
+              bottom: 30,
+              right: 30,
+              width: 14,
+              height: 14,
+              borderRadius: 4,
+              backgroundColor: withAlpha(BRAND.lime, 0.6),
+              transform: [{ rotate: '45deg' }],
             }}
           />
         </>

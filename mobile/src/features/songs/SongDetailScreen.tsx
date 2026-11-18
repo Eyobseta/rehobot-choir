@@ -588,17 +588,17 @@ export default function SongDetailScreen({ route, navigation }: any) {
               }}
             >
               {/* Gradient header strip */}
-              <View style={{ backgroundColor: BRAND.teal,  paddingHorizontal: 16, paddingVertical: 14 }}>
+              <View style={{ backgroundColor: BRAND.teal, paddingHorizontal: 16, paddingVertical: 14, overflow: 'hidden' }}>
                 <View
                   pointerEvents="none"
                   style={{
                     position: 'absolute',
-                    top: -40,
-                    right: -30,
-                    width: 120,
-                    height: 120,
-                    borderRadius: 60,
-                    backgroundColor: BRAND.lime,
+                    top: -34,
+                    right: -26,
+                    width: 84,
+                    height: 84,
+                    borderRadius: 42,
+                    backgroundColor: withAlpha(BRAND.lavender, 0.16),
                   }}
                 />
 
@@ -664,7 +664,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                       width: 34,
                       height: 34,
                       borderRadius: 17,
-                      backgroundColor: 'rgba(255,255,255,0.22)',
+                      backgroundColor: 'rgba(255,255,255,0.14)',
                       alignItems: 'center',
                       justifyContent: 'center',
                       marginLeft: 8,
@@ -679,7 +679,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                       width: 32,
                       height: 32,
                       borderRadius: 16,
-                      backgroundColor: 'rgba(255,255,255,0.22)',
+                      backgroundColor: 'rgba(255,255,255,0.14)',
                       alignItems: 'center',
                       justifyContent: 'center',
                       marginLeft: 8,

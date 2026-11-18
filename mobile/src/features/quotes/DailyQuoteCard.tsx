@@ -204,52 +204,35 @@ export default function DailyQuoteCard() {
           style={{ borderRadius: 30, padding: 20, overflow: 'hidden' }}
         >
           {/* ---------- Decoration ---------- */}
-          {/* rising sun */}
+          {/* soft sun, tucked into the bottom corner so nothing sits behind the header buttons */}
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              bottom: -70,
+              right: -50,
+              width: 170,
+              height: 170,
+              borderRadius: 85,
+              backgroundColor: withAlpha(BRAND.lavender, 0.14),
+              transform: [
+                { scale: sun.interpolate({ inputRange: [0, 1], outputRange: [1, 1.1] }) },
+              ],
+            }}
+          />
           <View
             pointerEvents="none"
             style={{
               position: 'absolute',
-              top: -46,
-              right: -40,
-              width: 170,
-              height: 170,
-              alignItems: 'center',
-              justifyContent: 'center',
+              bottom: 34,
+              right: 34,
+              width: 16,
+              height: 16,
+              borderRadius: 4,
+              backgroundColor: withAlpha(BRAND.lime, 0.6),
+              transform: [{ rotate: '45deg' }],
             }}
-          >
-            <Animated.View
-              style={{
-                position: 'absolute',
-                width: 170,
-                height: 170,
-                borderRadius: 85,
-                backgroundColor: withAlpha(BRAND.gold, 0.1),
-                transform: [
-                  { scale: sun.interpolate({ inputRange: [0, 1], outputRange: [1, 1.14] }) },
-                ],
-              }}
-            />
-            <Animated.View
-              style={{
-                position: 'absolute',
-                width: 120,
-                height: 120,
-                borderRadius: 60,
-                backgroundColor: withAlpha(BRAND.gold, 0.16),
-                transform: [
-                  { scale: sun.interpolate({ inputRange: [0, 1], outputRange: [1.08, 1] }) },
-                ],
-              }}
-            />
-            <View
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 36,
-                backgroundColor: withAlpha(BRAND.gold, 0.5),
-              }}
-            />
-          </View>
+          />
 
           {/* giant quote mark */}
           <Text
@@ -267,20 +250,6 @@ export default function DailyQuoteCard() {
           >
             “
           </Text>
-
-          {/* soft horizon glow */}
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              bottom: -90,
-              left: -60,
-              width: 220,
-              height: 220,
-              borderRadius: 110,
-              backgroundColor: 'rgba(211,195,248,0.16)',
-            }}
-          />
 
           {/* light sweep */}
           {w > 0 && !reduce ? (
@@ -377,7 +346,7 @@ export default function DailyQuoteCard() {
                 paddingRight: 7,
                 paddingVertical: 6,
                 borderRadius: 14,
-                backgroundColor: pressed ? 'rgba(0,0,0,0.34)' : 'rgba(0,0,0,0.22)',
+                backgroundColor: pressed ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.13)',
                 borderWidth: 1,
                 borderColor: 'rgba(255,255,255,0.22)',
               })}
