@@ -28,6 +28,7 @@ import { ApiError } from '../../services/api';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import { AMBER, IconName, ScreenHero } from './Songs_Kit';
+import { useLyricsScan, askChoice } from './useLyricsScan';
 
 export default function ZemaEditorScreen({ route, navigation }: any) {
   const { t } = useTranslation();
@@ -52,6 +53,57 @@ export default function ZemaEditorScreen({ route, navigation }: any) {
   const [audioMime, setAudioMime] = useState<string | null>(null);
 
   const readOnly = current?.status === 'PENDING_REVIEW' || current?.status === 'APPROVED';
+
+  // ---- Lyrics scan (photo -> text). Result is only a draft the user must review. ----
+  const { scan, scanning } = useLyricsScan();
+  const [scanReview, setScanReview] = useState(false);
+  const unclearCount = (lyrics.match(/\[\?\]/g) ?? []).length;
+
+  const scanErrorText = (code: string) =>
+    code === 'OCR_RATE_LIMITED'
+      ? t('zema.scanRateLimited', {
+          defaultValue: 'Scan limit reached for now. Please try again in a few minutes, or type the lyrics.',
+        })
+      : code === 'OCR_NO_TEXT'
+        ? t('zema.scanNoText', {
+            defaultValue: 'No readable text found. Try a clearer, closer photo.',
+          })
+        : code === 'OCR_UNAVAILABLE'
+          ? t('zema.scanUnavailable', {
+              defaultValue: 'Scanning is not available right now. Please type the lyrics.',
+            })
+          : t('zema.scanFailed', {
+              defaultValue: 'Could not read the photo. Please try again.',
+            });
+
+  const onScanLyrics = async () => {
+    setError(null);
+    try {
+      const out = await scan();
+      if (!out) return;
+      if (!out.ok) return setError(scanErrorText(out.code));
+
+      const apply = (next: string) => {
+        setLyrics(next);
+        setScanReview(true);
+      };
+      if (!lyrics.trim()) return apply(out.text);
+
+      const mode = await askChoice<'replace' | 'append'>(
+        t('zema.scanKeepTitle', { defaultValue: 'You already have lyrics' }),
+        undefined,
+        [
+          { text: t('zema.scanReplace', { defaultValue: 'Replace' }), value: 'replace', style: 'destructive' },
+          { text: t('zema.scanAppend', { defaultValue: 'Add to the end' }), value: 'append' },
+          { text: t('register.cancel'), value: null as any, style: 'cancel' },
+        ],
+      );
+      if (mode === 'replace') apply(out.text);
+      else if (mode === 'append') apply(`${lyrics.trimEnd()}\n\n${out.text}`);
+    } catch (e) {
+      setError((e as Error)?.message ?? t('zema.scanFailed', { defaultValue: 'Could not read the photo. Please try again.' }));
+    }
+  };
 
   useEffect(() => {
     void (async () => {
@@ -129,6 +181,19 @@ export default function ZemaEditorScreen({ route, navigation }: any) {
     if (!title.trim()) {
       setTitleError(true);
       return setError(t('register.fieldRequired'));
+    }
+    if (unclearCount > 0) {
+      const go = await askChoice<boolean>(
+        t('zema.unclearTitle', { defaultValue: 'Unclear words remain' }),
+        t('zema.unclearBody', {
+          defaultValue: 'Some words are still marked [?]. Fix them first, or submit anyway.',
+        }),
+        [
+          { text: t('zema.unclearFix', { defaultValue: 'Go back and fix' }), value: false, style: 'cancel' },
+          { text: t('zema.unclearSubmit', { defaultValue: 'Submit anyway' }), value: true },
+        ],
+      );
+      if (!go) return;
     }
     setBusy(true);
     try {
@@ -460,6 +525,39 @@ export default function ZemaEditorScreen({ route, navigation }: any) {
               ) : null
             }
           >
+            {!readOnly && (
+              <Pressable
+                onPress={() => void onScanLyrics()}
+                disabled={scanning}
+                accessibilityRole="button"
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  marginBottom: spacing.md,
+                  paddingVertical: 13,
+                  borderRadius: 16,
+                  borderWidth: 1.5,
+                  borderStyle: 'dashed',
+                  borderColor: withAlpha(colors.primary, 0.6),
+                  backgroundColor: withAlpha(colors.primary, 0.08),
+                  opacity: scanning ? 0.8 : 1,
+                }}
+              >
+                {scanning ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Ionicons name="scan" size={20} color={colors.primary} />
+                )}
+                <Text style={{ color: colors.primary, fontWeight: '800', fontSize: 14 }}>
+                  {scanning
+                    ? t('zema.scanning', { defaultValue: 'Reading your photo… this can take up to a minute' })
+                    : t('zema.scanButton', { defaultValue: 'Scan lyrics from paper' })}
+                </Text>
+              </Pressable>
+            )}
+
             <Field
               label={t('zema.lyricsField')}
               value={lyrics}
@@ -468,6 +566,54 @@ export default function ZemaEditorScreen({ route, navigation }: any) {
               editable={!readOnly}
               icon="document-text"
             />
+
+            {scanReview && !readOnly && (
+              <View
+                style={{
+                  marginTop: spacing.md,
+                  padding: spacing.md,
+                  borderRadius: 16,
+                  borderLeftWidth: 4,
+                  borderLeftColor: AMBER,
+                  backgroundColor: withAlpha(AMBER, 0.1),
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="eye" size={18} color={AMBER} />
+                  <Text style={[typography.bodySmall, { color: colors.text, fontWeight: '800', flex: 1 }]}>
+                    {t('zema.scanReviewTitle', { defaultValue: 'Please check the scanned text' })}
+                  </Text>
+                </View>
+                <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 6, lineHeight: 18 }]}>
+                  {t('zema.scanReviewBody', {
+                    defaultValue:
+                      'The scan may contain mistakes. Compare it with your paper and fix any errors before submitting.',
+                  })}
+                  {unclearCount > 0
+                    ? ` ${t('zema.scanUnclear', {
+                        count: unclearCount,
+                        defaultValue: '{{count}} unclear word(s) are marked [?].',
+                      })}`
+                    : ''}
+                </Text>
+                <Pressable
+                  onPress={() => setScanReview(false)}
+                  accessibilityRole="button"
+                  style={{
+                    alignSelf: 'flex-start',
+                    marginTop: 10,
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 999,
+                    backgroundColor: colors.primary,
+                  }}
+                >
+                  <Text style={{ color: colors.primaryText, fontWeight: '800', fontSize: 12.5 }}>
+                    {t('zema.scanChecked', { defaultValue: "I've checked it" })}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
           </Section>
 
           {error && (
