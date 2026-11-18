@@ -45,7 +45,7 @@ export default function EventsScreen({ navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ backgroundColor: BRAND.teal,  paddingHorizontal: 16, paddingTop: insets.top + 16, paddingBottom: 22, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' }}>
-        <View pointerEvents="none" style={{ position: 'absolute', top: insets.top, right: -42, width: 110, height: 110, borderRadius: 55, backgroundColor: BRAND.lime }} />
+        <View pointerEvents="none" style={{ position: 'absolute', top: insets.top - 22, right: -52, width: 150, height: 150, borderRadius: 75, backgroundColor: withAlpha(BRAND.lime, 0.14) }} />
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center' }}>

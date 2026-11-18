@@ -290,12 +290,12 @@ export default function HomeScreen({ navigation }: any) {
             style={[
               styles.blob,
               {
-                top: -95,
-                right: -62,
-                width: 175,
-                height: 175,
-                borderRadius: 88,
-                backgroundColor: BRAND.lime,
+                top: insets.top - 22,
+                right: -52,
+                width: 150,
+                height: 150,
+                borderRadius: 75,
+                backgroundColor: withAlpha(BRAND.lime, 0.14),
                 transform: [
                   { translateY: parallax },
                   {

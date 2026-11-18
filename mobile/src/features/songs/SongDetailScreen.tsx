@@ -339,12 +339,12 @@ export default function SongDetailScreen({ route, navigation }: any) {
             pointerEvents="none"
             style={{
               position: 'absolute',
-              top: insets.top,
-              right: -42,
-              width: 110,
-              height: 110,
-              borderRadius: 55,
-              backgroundColor: BRAND.lime,
+              top: insets.top - 22,
+              right: -52,
+              width: 150,
+              height: 150,
+              borderRadius: 75,
+              backgroundColor: withAlpha(BRAND.lime, 0.14),
             }}
           />
 
@@ -662,11 +662,19 @@ export default function SongDetailScreen({ route, navigation }: any) {
                   </Pressable>
 
                   {/* Inline collapse chevron */}
-                  <View
+                  <Pressable
+                    onPress={() => setLyricsOpen((o) => !o)}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      lyricsOpen
+                        ? t('songs.tapToCollapse', { defaultValue: 'Tap to collapse' })
+                        : t('songs.tapToExpand', { defaultValue: 'Tap to expand' })
+                    }
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
                       backgroundColor: 'rgba(255,255,255,0.14)',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -678,7 +686,7 @@ export default function SongDetailScreen({ route, navigation }: any) {
                       size={18}
                       color="#FFFFFF"
                     />
-                  </View>
+                  </Pressable>
                 </View>
               </View>
 

@@ -211,12 +211,12 @@ export function ScreenHero({
         pointerEvents="none"
         style={{
           position: 'absolute',
-          top: insets.top,
-          right: -42,
-          width: 110,
-          height: 110,
-          borderRadius: 55,
-          backgroundColor: BRAND.lime,
+          top: insets.top - 22,
+          right: -52,
+          width: 150,
+          height: 150,
+          borderRadius: 75,
+          backgroundColor: withAlpha(BRAND.lime, 0.14),
         }}
       />
       {/* faint floating notes */}
