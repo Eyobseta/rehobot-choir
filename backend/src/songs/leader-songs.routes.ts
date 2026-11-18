@@ -18,7 +18,7 @@ import {
   approveSubmission,
   returnSubmission,
 } from './songs.service';
-import { ocrUpload, scanLyricsHandler } from './Ocr.service';
+import { ocrUpload, scanLyricsHandler } from './ocr.service';
 import { ApiError } from '../utils/ApiError';
 
 const router = Router();
