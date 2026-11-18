@@ -199,7 +199,11 @@ export async function extractLyricsFromImages(images: OcrImage[]): Promise<OcrRe
 
       const out = await callGemini(model, key, images, Math.min(PER_ATTEMPT_TIMEOUT_MS, remaining));
 
-      if (out.kind === 'ok') return judge(out.text);
+      if (out.kind === 'ok') {
+        const result = judge(out.text);
+        console.log('[ocr] done', model, result.ok ? `quality=${result.quality}` : result.code);
+        return result;
+      }
       if (out.kind === 'config') return { ok: false, code: 'OCR_UNAVAILABLE' };
       if (out.kind === 'blocked') return { ok: false, code: 'OCR_FAILED' };
 
