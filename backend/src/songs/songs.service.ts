@@ -305,6 +305,22 @@ export async function updateSong(
     },
   });
 
+  if (newStatus === SongStatus.PUBLISHED) {
+    // Publishing directly from the leader editor = approving the member's
+    // submission too, otherwise the member keeps seeing "Pending review".
+    await prisma.songSubmission.updateMany({
+      where: {
+        songId: id,
+        status: { in: [SubmissionStatus.PENDING_REVIEW, SubmissionStatus.RETURNED] },
+      },
+      data: {
+        status: SubmissionStatus.APPROVED,
+        reviewedAt: new Date(),
+        returnReason: null,
+      },
+    });
+  }
+
   if (!wasPublished && newStatus === SongStatus.PUBLISHED) {
     await fanOutNotification(updated.id, updated.title);
   }
@@ -383,7 +399,35 @@ export async function isZemaMember(userId: string): Promise<boolean> {
 
 // ---------- Zema submissions ----------
 
+/**
+ * A PUBLISHED song must never have a submission still "waiting for review".
+ * That state appears when a leader publishes the song straight from the
+ * leader song editor instead of using Review → Approve. This repairs such
+ * rows (also the ones created before the fix in updateSong) and is safe to
+ * run any number of times.
+ */
+async function healPublishedSubmissions(userId?: string): Promise<void> {
+  try {
+    await prisma.songSubmission.updateMany({
+      where: {
+        ...(userId ? { submittedByUserId: userId } : {}),
+        status: SubmissionStatus.PENDING_REVIEW,
+        song: { status: SongStatus.PUBLISHED },
+      },
+      data: {
+        status: SubmissionStatus.APPROVED,
+        reviewedAt: new Date(),
+        returnReason: null,
+      },
+    });
+  } catch (e) {
+    // Never let a repair problem break the list itself.
+    console.error('[songs] healPublishedSubmissions failed', (e as Error).message);
+  }
+}
+
 export async function listMySubmissions(userId: string) {
+  await healPublishedSubmissions(userId);
   return prisma.songSubmission.findMany({
     where: { submittedByUserId: userId },
     orderBy: { updatedAt: 'desc' },
@@ -531,6 +575,7 @@ export async function submitForReview(userId: string, submissionId: string) {
 // ---------- Leader review queue ----------
 
 export async function listPendingSubmissions() {
+  await healPublishedSubmissions();
   return prisma.songSubmission.findMany({
     where: { status: SubmissionStatus.PENDING_REVIEW },
     orderBy: { updatedAt: 'asc' },
