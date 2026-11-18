@@ -96,6 +96,7 @@ export function createApp(): Application {
   api.use('/funding', donationRoutes);
   api.use('/admin/funding', fundingAdminRoutes);
   api.use('/help', helpRoutes);
+  app.set('trust proxy', 1);
 
   app.use('/api/v1', api);
 

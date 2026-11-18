@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,9 @@ import {
   ScrollView,
   Animated,
   Easing,
+  AppState,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -44,7 +46,30 @@ export default function ZemaSubmissionsScreen({ navigation }: any) {
   const q = useQuery({
     queryKey: [...queryKeys.songsList(userId), 'zema-submissions'],
     queryFn: zemaListMySubmissions,
+    // A submission's status is changed by a LEADER on another phone, so this
+    // list can never be trusted as "fresh". Always re-check when it is shown.
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnReconnect: 'always',
+    // While anything is waiting for review, quietly re-check every 30 s.
+    refetchInterval: (query) =>
+      query.state.data?.some((s) => s.status === 'PENDING_REVIEW') ? 30_000 : false,
   });
+
+  // Re-check whenever the screen comes into view (back from the editor, tab switch)...
+  const { refetch } = q;
+  useFocusEffect(
+    useCallback(() => {
+      void refetch({ cancelRefetch: false });
+    }, [refetch]),
+  );
+  // ...and whenever the app returns from the background.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refetch({ cancelRefetch: false });
+    });
+    return () => sub.remove();
+  }, [refetch]);
 
   const items = q.data ?? [];
   const firstLoad = q.isPending && q.data === undefined;
