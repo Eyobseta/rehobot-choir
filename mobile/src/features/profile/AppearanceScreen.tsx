@@ -1,33 +1,25 @@
 import React from 'react';
 import { Animated, ScrollView, StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
-import { WaterDrops, BRAND } from '../auth/Auth_UI';
+import { darkColors, lightColors } from '../../theme/colors';
 import { ScreenHero, SelectionCard, fadeUp, useMotion } from './SettingsKit';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
-const previewTokens = {
-  light: { background: '#F4F7FA', surface: '#FFFFFF', text: '#253040', muted: '#6B7785', border: '#D9E1E8', accent: BRAND.violet, accentSoft: '#6C3FE01F' },
-  dark:  { background: '#17171D', surface: '#25252D', text: '#F2F2F5', muted: '#9494A3', border: '#3C3C47', accent: '#B6A0FF', accentSoft: '#B6A0FF1F' },
-};
-const dots = ['#B6A0FF', '#6EDBD5', '#EE9BBD'];
+// Pastel tile fills, same as PALETTES in Songs_Kit.
+const dots = ['#D3C3F8', '#BDEBCB', '#DDF59B'];
 
+/** Mini app preview drawn from the real light/dark palettes, so it can never drift. */
 function ThemePreview({ dark }: { dark: boolean }) {
-  const p = dark ? previewTokens.dark : previewTokens.light;
+  const p = dark ? darkColors : lightColors;
   return (
     <View style={[styles.preview, { backgroundColor: p.background, borderColor: p.border }]}>
       <View style={styles.previewTop}>
-        <LinearGradient
-          colors={[BRAND.violet, BRAND.magenta]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.previewLogo}
-        >
-          <Ionicons name={dark ? 'moon' : 'sunny'} size={20} color="#FFFFFF" />
-        </LinearGradient>
+        <View style={[styles.previewLogo, { backgroundColor: p.primary }]}>
+          <Ionicons name={dark ? 'moon' : 'sunny'} size={20} color={p.primaryText} />
+        </View>
         <View style={styles.previewLines}>
           <View style={[styles.line, { backgroundColor: p.text, width: '66%' }]} />
           <View style={[styles.line, { backgroundColor: p.border, width: '43%', marginTop: 8 }]} />
@@ -44,16 +36,11 @@ function ThemePreview({ dark }: { dark: boolean }) {
         ))}
       </View>
 
-      <LinearGradient
-        colors={[BRAND.violet, BRAND.magenta]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.previewButton}
-      />
+      <View style={[styles.previewButton, { backgroundColor: p.primary }]} />
 
       <View style={styles.previewNavigation}>
         {(['home-outline', 'musical-notes-outline', 'person-circle'] as IconName[]).map((name, index) => (
-          <Ionicons key={name} name={name} size={20} color={index === 2 ? p.accent : p.muted} />
+          <Ionicons key={name} name={name} size={20} color={index === 2 ? p.primary : p.textSecondary} />
         ))}
       </View>
     </View>
@@ -75,13 +62,14 @@ export default function AppearanceScreen({ navigation }: any) {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenHero
         icon="color-palette"
+        overline={t('tabs.profile', { defaultValue: 'Profile' })}
         title={t('settings.appearanceTitle')}
         subtitle={t('settings.appearanceSubtitle', { defaultValue: 'Choose how Rehobot Choir looks on your phone.' })}
         onBack={() => navigation.goBack()}
       />
 
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: spacing.xl, paddingTop: 24, paddingBottom: 40 }}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: spacing.lg, paddingTop: 20, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
         <View accessibilityRole="radiogroup">
@@ -100,7 +88,6 @@ export default function AppearanceScreen({ navigation }: any) {
           ))}
         </View>
       </ScrollView>
-      <WaterDrops />
     </View>
   );
 }

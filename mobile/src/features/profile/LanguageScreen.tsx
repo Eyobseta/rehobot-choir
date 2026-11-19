@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 import { changeLanguage, getCurrentLanguage, type SupportedLanguage } from '../../i18n';
-import { WaterDrops, BRAND, withAlpha } from '../auth/Auth_UI';
+import { BRAND, withAlpha } from '../auth/Auth_UI';
 import { ScreenHero, SelectionCard, fadeUp, useMotion } from './SettingsKit';
 
 export default function LanguageScreen({ navigation }: any) {
@@ -25,29 +24,31 @@ export default function LanguageScreen({ navigation }: any) {
 
   const { reduceMotion, enter } = useMotion();
 
+  // [pastel fill, accent] pairs, same as PALETTES in Songs_Kit.
   const options: {
     value: SupportedLanguage;
     label: string;
     glyph: string;
     sample: string;
+    fill: string;
     accent: string;
-    gradient: readonly [string, string];
   }[] = [
-    { value: 'en', label: t('settings.english'), glyph: 'Aa', sample: 'Welcome to the choir family', accent: '#6EDBD5', gradient: [BRAND.water, BRAND.violet] },
-    { value: 'am', label: t('settings.amharic'), glyph: 'አ', sample: 'እንኳን ወደ መዘምራኑ ቤተሰብ በደህና መጡ', accent: '#B6A0FF', gradient: [BRAND.magenta, BRAND.gold] },
+    { value: 'en', label: t('settings.english'), glyph: 'Aa', sample: 'Welcome to the choir family', fill: '#D3C3F8', accent: '#7B5FC7' },
+    { value: 'am', label: t('settings.amharic'), glyph: 'አ', sample: 'እንኳን ወደ መዘምራኑ ቤተሰብ በደህና መጡ', fill: '#BDEBCB', accent: '#2E9E5B' },
   ];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenHero
         icon="language"
+        overline={t('tabs.profile', { defaultValue: 'Profile' })}
         title={t('settings.languageTitle')}
         subtitle={t('settings.languageSubtitle', { defaultValue: 'Choose the language of the app.' })}
         onBack={() => navigation.goBack()}
       />
 
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: spacing.xl, paddingTop: 24, paddingBottom: 40 }}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: spacing.lg, paddingTop: 20, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
         <View accessibilityRole="radiogroup">
@@ -60,16 +61,16 @@ export default function LanguageScreen({ navigation }: any) {
                 onPress={() => onSelect(option.value)}
               >
                 <View style={styles.specimen}>
-                  <LinearGradient
-                    colors={option.gradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.glyphTile}
-                  >
+                  <View style={[styles.glyphTile, { backgroundColor: option.fill }]}>
                     <Text style={styles.glyph}>{option.glyph}</Text>
-                  </LinearGradient>
+                  </View>
 
-                  <View style={[styles.bubble, { backgroundColor: withAlpha(option.accent, 0.14), borderColor: withAlpha(option.accent, 0.35) }]}>
+                  <View
+                    style={[
+                      styles.bubble,
+                      { backgroundColor: withAlpha(option.accent, 0.12), borderColor: withAlpha(option.accent, 0.35) },
+                    ]}
+                  >
                     <Ionicons name="chatbubble-ellipses" size={16} color={option.accent} />
                     <Text style={[styles.sample, { color: colors.text }]} numberOfLines={3}>
                       {option.sample}
@@ -81,15 +82,14 @@ export default function LanguageScreen({ navigation }: any) {
           ))}
         </View>
       </ScrollView>
-      <WaterDrops />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   specimen: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 84 },
-  glyphTile: { width: 84, height: 84, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  glyph: { fontSize: 38, lineHeight: 56, fontWeight: '800', color: '#FFFFFF' },
+  glyphTile: { width: 84, height: 84, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  glyph: { fontSize: 38, lineHeight: 56, fontWeight: '800', color: BRAND.teal },
   bubble: {
     flex: 1,
     flexDirection: 'row',

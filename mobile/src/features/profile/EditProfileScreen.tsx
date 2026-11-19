@@ -11,39 +11,30 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  KeyboardAwareScroll,
-  AuthField,
-  AvatarRing,
-  PrimaryButton,
-  ErrorBanner,
-  BRAND,
-  withAlpha,
-} from '../auth/Auth_UI';
+import { KeyboardAwareScroll, AuthField, AvatarRing, ErrorBanner, BRAND } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import {
   useOwnProfileQuery,
   useUpdateOwnProfileMutation,
   useUploadProfilePhotoMutation,
 } from './useProfile';
+import {
+  ActionButton,
+  FieldIcon,
+  HeroShell,
+  StaffLines,
+  SuccessBanner,
+} from './SettingsKit';
 
-const accents = {
-  cyan: '#6EDBD5',
-  pink: '#EE9BBD',
-  gold: '#E6C779',
-  lime: '#B8E986',
-};
+const AVATAR = 128;
 
 export default function EditProfileScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
-  const insets = useSafeAreaInsets();
 
   const q = useOwnProfileQuery();
   const updateMut = useUpdateOwnProfileMutation();
@@ -236,7 +227,7 @@ export default function EditProfileScreen({ navigation }: any) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -253,104 +244,71 @@ export default function EditProfileScreen({ navigation }: any) {
     ],
   });
 
-  const fieldIcon = (
-    name: React.ComponentProps<typeof Ionicons>['name'],
-    tint: string,
-  ) => (
-    <View style={[styles.fieldIcon, { backgroundColor: withAlpha(tint, 0.18) }]}>
-      <Ionicons name={name} size={16} color={tint} />
-    </View>
-  );
-
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <KeyboardAwareScroll contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}>
+      <KeyboardAwareScroll drops={false} contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}>
         <Animated.View style={fadeUp(0)}>
-          <LinearGradient
-            colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.hero, { paddingTop: insets.top + 16 }]}
-          >
-            <View
-              pointerEvents="none"
-              style={[
-                styles.blob,
-                {
-                  top: -50,
-                  right: -50,
-                  backgroundColor: withAlpha(BRAND.gold, 0.18),
-                },
-              ]}
-            />
-            <View
-              pointerEvents="none"
-              style={[
-                styles.blob,
-                {
-                  bottom: -70,
-                  left: -50,
-                  backgroundColor: withAlpha(BRAND.water, 0.2),
-                },
-              ]}
-            />
-
+          <HeroShell paddingBottom={28} radiusBottom={32}>
             <View style={styles.heroTopRow}>
               <View style={{ flex: 1 }} />
               <GlassBackButton
                 onPress={() => navigation.goBack()}
                 accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+                size={44}
               />
             </View>
 
-            <PressScale onPress={pickPhoto} disabled={busy}>
-              <AvatarRing
-                size={160}
-                uri={photoUrl}
-                gapColor={BRAND.deep}
-                fallback={
-                  <Ionicons
-                    name="person"
-                    size={52}
-                    color={withAlpha('#FFFFFF', 0.6)}
-                  />
-                }
-              >
-                {uploadMut.isPending ? (
-                  <View style={styles.busyOverlay}>
-                    <ActivityIndicator color="#FFFFFF" />
-                  </View>
-                ) : null}
-                <Animated.View
-                  style={[
-                    styles.camBadge,
-                    {
-                      transform: [
-                        {
-                          translateY: camBob.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, -3],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
+            <View style={styles.avatarWrap}>
+              <StaffLines top={AVATAR / 2 - 20} />
+              <PressScale onPress={pickPhoto} disabled={busy} label={t('myProfile.editPhoto')}>
+                <AvatarRing
+                  size={AVATAR}
+                  uri={photoUrl}
+                  gapColor={BRAND.teal}
+                  fallback={<Ionicons name="person" size={52} color="rgba(255,255,255,0.6)" />}
                 >
-                  <Ionicons name="camera" size={20} color={BRAND.deep} />
-                </Animated.View>
-              </AvatarRing>
-            </PressScale>
+                  {uploadMut.isPending ? (
+                    <View style={styles.busyOverlay}>
+                      <ActivityIndicator color="#FFFFFF" />
+                    </View>
+                  ) : null}
+                  <Animated.View
+                    style={[
+                      styles.camBadge,
+                      {
+                        transform: [
+                          {
+                            translateY: camBob.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0, -3],
+                            }),
+                          },
+                        ],
+                      },
+                    ]}
+                  >
+                    <Ionicons name="camera" size={19} color={BRAND.teal} />
+                  </Animated.View>
+                </AvatarRing>
+              </PressScale>
+            </View>
 
-            <Pressable onPress={pickPhoto} disabled={busy} style={styles.chip}>
-              <Ionicons name="image" size={13} color={BRAND.gold} />
-              <Text style={{ color: BRAND.gold, fontSize: 13, fontWeight: '700' }}>
+            <Pressable
+              onPress={pickPhoto}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={t('myProfile.editPhoto')}
+              style={styles.chip}
+            >
+              <Ionicons name="image" size={13} color={BRAND.lime} />
+              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
                 {t('myProfile.editPhoto')}
               </Text>
             </Pressable>
-          </LinearGradient>
+          </HeroShell>
         </Animated.View>
 
-        <View style={{ paddingHorizontal: spacing.xl }}>
+        <View style={{ paddingHorizontal: spacing.lg }}>
           <Animated.View
             style={[
               styles.card,
@@ -360,7 +318,7 @@ export default function EditProfileScreen({ navigation }: any) {
           >
             <AuthField
               label={t('register.phone')}
-              iconNode={fieldIcon('call', accents.lime)}
+              iconNode={<FieldIcon name="call" tone="mint" />}
               showCheck
               value={phone}
               onChangeText={setPhone}
@@ -369,7 +327,7 @@ export default function EditProfileScreen({ navigation }: any) {
             />
             <AuthField
               label={t('register.email')}
-              iconNode={fieldIcon('mail', accents.cyan)}
+              iconNode={<FieldIcon name="mail" tone="lavender" />}
               showCheck
               value={email}
               onChangeText={setEmail}
@@ -378,7 +336,7 @@ export default function EditProfileScreen({ navigation }: any) {
             />
             <AuthField
               label={t('register.emergencyContactName')}
-              iconNode={fieldIcon('heart', accents.pink)}
+              iconNode={<FieldIcon name="heart" tone="peach" />}
               showCheck
               value={emgName}
               onChangeText={setEmgName}
@@ -386,7 +344,7 @@ export default function EditProfileScreen({ navigation }: any) {
             />
             <AuthField
               label={t('register.emergencyContactPhone')}
-              iconNode={fieldIcon('medkit', accents.gold)}
+              iconNode={<FieldIcon name="medkit" tone="lime" />}
               showCheck
               value={emgPhone}
               onChangeText={setEmgPhone}
@@ -395,51 +353,33 @@ export default function EditProfileScreen({ navigation }: any) {
           </Animated.View>
 
           {error && (
-            <Animated.View
-              style={{ marginTop: spacing.lg, transform: [{ translateX: shake }] }}
-            >
+            <Animated.View style={{ marginTop: spacing.lg, transform: [{ translateX: shake }] }}>
               <ErrorBanner message={error} />
             </Animated.View>
           )}
           {saved && (
-            <Animated.View
-              style={[
-                styles.savedBox,
-                {
-                  borderLeftColor: colors.success,
-                  backgroundColor: withAlpha(colors.success, 0.14),
-                  opacity: savedPop,
-                  transform: [
-                    {
-                      scale: savedPop.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.8, 1],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-              <Text
-                style={[
-                  typography.bodySmall,
-                  { color: colors.success, flex: 1, fontWeight: '600' },
-                ]}
-              >
-                {t('myProfile.saved')}
-              </Text>
-            </Animated.View>
+            <SuccessBanner
+              text={t('myProfile.saved')}
+              animatedStyle={{
+                opacity: savedPop,
+                transform: [
+                  {
+                    scale: savedPop.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.8, 1],
+                    }),
+                  },
+                ],
+              }}
+            />
           )}
 
           <Animated.View style={[{ marginTop: 28 }, fadeUp(2)]}>
-            <PrimaryButton
+            <ActionButton
+              icon="save-outline"
               label={t('myProfile.saveChanges')}
               onPress={onSave}
               busy={busy}
-              iconNode={
-                <Ionicons name="save-outline" size={18} color="#FFFFFF" />
-              }
             />
           </Animated.View>
         </View>
@@ -448,7 +388,7 @@ export default function EditProfileScreen({ navigation }: any) {
   );
 }
 
-function PressScale({ onPress, children, disabled }: any) {
+function PressScale({ onPress, children, disabled, label }: any) {
   const s = useRef(new Animated.Value(1)).current;
   const to = (v: number) =>
     Animated.spring(s, {
@@ -463,6 +403,8 @@ function PressScale({ onPress, children, disabled }: any) {
       disabled={disabled}
       onPressIn={() => to(0.95)}
       onPressOut={() => to(1)}
+      accessibilityRole="button"
+      accessibilityLabel={label}
     >
       <Animated.View style={{ transform: [{ scale: s }] }}>{children}</Animated.View>
     </Pressable>
@@ -470,31 +412,18 @@ function PressScale({ onPress, children, disabled }: any) {
 }
 
 const styles = StyleSheet.create({
-  hero: {
-    alignItems: 'center',
-    paddingBottom: 28,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    overflow: 'hidden',
-  },
-  heroTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'stretch',
-    marginBottom: 4,
-  },
-  blob: { position: 'absolute', width: 190, height: 190, borderRadius: 95 },
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', marginBottom: 4 },
+  avatarWrap: { alignSelf: 'stretch', alignItems: 'center', marginTop: 6 },
   camBadge: {
     position: 'absolute',
     right: 0,
     bottom: 0,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     borderWidth: 3,
-    borderColor: BRAND.deep,
-    backgroundColor: BRAND.gold,
+    borderColor: BRAND.teal,
+    backgroundColor: BRAND.lime,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -510,35 +439,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chip: {
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    minHeight: 36,
     paddingHorizontal: 14,
-    paddingVertical: 7,
     borderRadius: 999,
     marginTop: 14,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: BRAND.tealDark,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   card: {
     borderWidth: 1,
     borderRadius: 24,
     padding: 16,
     marginTop: 20,
-  },
-  fieldIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  savedBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 12,
-    borderLeftWidth: 4,
   },
 });

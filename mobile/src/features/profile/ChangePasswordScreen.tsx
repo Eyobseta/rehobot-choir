@@ -5,15 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 import { changePassword } from '../../services/auth';
 import { ApiError } from '../../services/api';
-import {
-  KeyboardAwareScroll,
-  AuthField,
-  PrimaryButton,
-  ErrorBanner,
-  BRAND,
-  withAlpha,
-} from '../auth/Auth_UI';
-import { ScreenHero } from './SettingsKit';
+import { KeyboardAwareScroll, AuthField, ErrorBanner } from '../auth/Auth_UI';
+import { ActionButton, FieldIcon, ScreenHero, SuccessBanner } from './SettingsKit';
 
 function strengthOf(p: string): number {
   if (!p) return 0;
@@ -78,7 +71,7 @@ export default function ChangePasswordScreen({ navigation, forced, onPasswordCha
     t('password.strengthGood', { defaultValue: 'Good' }),
     t('password.strengthStrong', { defaultValue: 'Strong' }),
   ];
-  const barColors = [colors.border, colors.error, '#F59E0B', '#6EDBD5', colors.success];
+  const barColors = [colors.border, colors.error, colors.warning, colors.primary, colors.success];
 
   useEffect(() => {
     Animated.timing(enter, { toValue: 1, duration: 650, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
@@ -109,12 +102,6 @@ export default function ChangePasswordScreen({ navigation, forced, onPasswordCha
     transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [24 + i * 10, 0] }) }],
   });
 
-  const fieldIcon = (name: React.ComponentProps<typeof Ionicons>['name'], tint: string) => (
-    <View style={[styles.fieldIcon, { backgroundColor: withAlpha(tint, 0.18) }]}>
-      <Ionicons name={name} size={16} color={tint} />
-    </View>
-  );
-
   const matches = confirm.length > 0 && confirm === next;
   const mismatch = confirm.length > 0 && confirm !== next;
 
@@ -123,26 +110,27 @@ export default function ChangePasswordScreen({ navigation, forced, onPasswordCha
       {!forced && (
         <ScreenHero
           icon="lock-closed"
+          overline={t('tabs.profile', { defaultValue: 'Profile' })}
           title={t('password.changeTitle')}
           subtitle={t('password.changeSubtitle', { defaultValue: 'Keep your account safe with a strong password.' })}
           onBack={() => navigation.goBack()}
         />
       )}
       {forced && (
-        <View style={{ padding: spacing.xl, paddingTop: 60, alignItems: 'center' }}>
-          <Text style={[typography.h2, { color: colors.text, textAlign: 'center' }]}>
-            {t('password.banner', { defaultValue: 'You are using a temporary password. Please change it.' })}
-          </Text>
-        </View>
+        <ScreenHero
+          icon="lock-closed"
+          title={t('password.changeTitle')}
+          subtitle={t('password.banner', { defaultValue: 'You are using a temporary password. Please change it.' })}
+        />
       )}
 
-      <KeyboardAwareScroll contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.xl * 2 }}>
+      <KeyboardAwareScroll drops={false} contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.xl * 2 }}>
         <Animated.View
           style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, fadeUp(1)]}
         >
           <AuthField
             label={t('password.current')}
-            iconNode={fieldIcon('key', '#E6C779')}
+            iconNode={<FieldIcon name="key" tone="peach" />}
             value={current}
             onChangeText={setCurrent}
             secureTextEntry
@@ -150,7 +138,7 @@ export default function ChangePasswordScreen({ navigation, forced, onPasswordCha
           />
           <AuthField
             label={t('password.new')}
-            iconNode={fieldIcon('lock-closed', '#B6A0FF')}
+            iconNode={<FieldIcon name="lock-closed" tone="lavender" />}
             value={next}
             onChangeText={setNext}
             secureTextEntry
@@ -180,7 +168,7 @@ export default function ChangePasswordScreen({ navigation, forced, onPasswordCha
 
           <AuthField
             label={t('password.confirm')}
-            iconNode={fieldIcon('shield-checkmark', '#6EDBD5')}
+            iconNode={<FieldIcon name="shield-checkmark" tone="mint" />}
             showCheck={matches}
             value={confirm}
             onChangeText={setConfirm}
@@ -213,30 +201,21 @@ export default function ChangePasswordScreen({ navigation, forced, onPasswordCha
           </Animated.View>
         )}
         {success && (
-          <Animated.View
-            style={[
-              styles.successBox,
-              {
-                borderLeftColor: colors.success,
-                backgroundColor: withAlpha(colors.success, 0.14),
-                opacity: successPop,
-                transform: [{ scale: successPop.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }],
-              },
-            ]}
-          >
-            <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-            <Text style={[typography.bodySmall, { color: colors.success, flex: 1, fontWeight: '600' }]}>
-              {success}
-            </Text>
-          </Animated.View>
+          <SuccessBanner
+            text={success}
+            animatedStyle={{
+              opacity: successPop,
+              transform: [{ scale: successPop.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }],
+            }}
+          />
         )}
 
         <Animated.View style={[{ marginTop: 28 }, fadeUp(2)]}>
-          <PrimaryButton
+          <ActionButton
+            icon="shield-checkmark-outline"
             label={t('password.submit')}
             onPress={onSubmit}
             busy={busy}
-            iconNode={<Ionicons name="shield-checkmark-outline" size={18} color="#FFFFFF" />}
           />
         </Animated.View>
       </KeyboardAwareScroll>
@@ -246,16 +225,6 @@ export default function ChangePasswordScreen({ navigation, forced, onPasswordCha
 
 const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 24, padding: 16 },
-  fieldIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   track: { height: 6, borderRadius: 3, overflow: 'hidden' },
   matchRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: -4 },
-  successBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-  },
 });
