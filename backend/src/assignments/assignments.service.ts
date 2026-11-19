@@ -7,7 +7,6 @@ import {
   AssignmentRole,
   AssignmentStatus,
   ReassignmentStatus,
-  UserRole,
 } from '@prisma/client';
 
 // ==========================================
@@ -18,7 +17,6 @@ export async function getMyAssignments(userId: string) {
   const todayEth = ethTodayFromInstant(new Date());
   const todayUtc = ethToUtcDate(todayEth);
 
-  // Fetch future or today's assignments, plus their reassignment requests
   const assignments = await prisma.serviceAssignment.findMany({
     where: {
       assignedUserId: userId,
@@ -47,6 +45,7 @@ export async function getMyAssignments(userId: string) {
     role: a.role,
     status: a.status,
     assignedBy: a.assignedByUser.memberProfile?.fullName ?? 'Leader',
+    assignedById: a.assignedByUserId,
     pendingRequest: a.reassignmentRequests[0] || null,
   }));
 }
@@ -78,7 +77,6 @@ export async function requestReassignment(
     throw ApiError.badRequest('Cannot request reassignment for a past event.');
   }
 
-  // Check for existing pending request
   const existing = await prisma.reassignmentRequest.findFirst({
     where: { assignmentId, status: ReassignmentStatus.PENDING },
   });
@@ -96,7 +94,6 @@ export async function requestReassignment(
       },
     });
 
-    // Notify the leader who assigned it
     await tx.notification.create({
       data: {
         recipientId: assignment.assignedByUserId,
@@ -155,17 +152,22 @@ export async function createAssignment(
         },
       });
 
-      // Notify the assigned member
-      await tx.notification.create({
-        data: {
-          recipientId: data.assignedUserId,
+      // 🟢 BROADCAST NOTIFICATION TO EVERYONE
+      const allActiveUsers = await tx.user.findMany({
+        where: { status: 'APPROVED', deletedAt: null },
+        select: { id: true },
+      });
+
+      await tx.notification.createMany({
+        data: allActiveUsers.map((u) => ({
+          recipientId: u.id,
           type: 'SERVICE_ASSIGNMENT',
           title: 'New Service Assignment',
-          body: `You have been assigned as ${data.role.replace('_', ' ')} for ${data.gatheringType.replace('_', ' ')}.`,
+          body: `A new assignment has been scheduled for ${data.gatheringType.replace('_', ' ')} on ${data.date.month}/${data.date.day}.`,
           relatedEntityType: 'ServiceAssignment',
           relatedEntityId: newAssignment.id,
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        },
+        })),
       });
 
       return newAssignment;
@@ -173,7 +175,6 @@ export async function createAssignment(
 
     return assignment;
   } catch (err: any) {
-    // Prisma unique constraint violation (P2002) - e.g., two prayer leaders assigned to same day
     if (err.code === 'P2002') {
       throw ApiError.conflict(`Another member is already assigned as ${data.role.replace('_', ' ')} for this gathering and date.`);
     }
@@ -182,20 +183,31 @@ export async function createAssignment(
 }
 
 export async function getLeaderAssignments() {
-  const todayUtc = ethToUtcDate(ethTodayFromInstant(new Date()));
+  const todayEth = ethTodayFromInstant(new Date());
+  
+  // Calculate 2 months ago for history
+  const twoMonthsAgoEth = { ...todayEth };
+  twoMonthsAgoEth.month -= 2;
+  if (twoMonthsAgoEth.month <= 0) {
+    twoMonthsAgoEth.month += 13;
+    twoMonthsAgoEth.year -= 1;
+  }
+  const twoMonthsAgoUtc = ethToUtcDate(twoMonthsAgoEth);
 
-  // Get upcoming assignments
+  // Get assignments from the last 2 months (including upcoming)
   const assignments = await prisma.serviceAssignment.findMany({
-    where: { dateGregorian: { gte: todayUtc } },
-    orderBy: { dateGregorian: 'asc' },
+    where: { dateGregorian: { gte: twoMonthsAgoUtc } },
+    orderBy: { dateGregorian: 'desc' }, // Most recent/upcoming first
     include: {
       assignedUser: {
         select: { id: true, memberProfile: { select: { fullName: true, profilePhotoUrl: true } } },
       },
+      assignedByUser: {
+         select: { memberProfile: { select: { fullName: true } } }
+      }
     },
   });
 
-  // Get pending reassignment requests
   const requests = await prisma.reassignmentRequest.findMany({
     where: { status: ReassignmentStatus.PENDING },
     orderBy: { createdAt: 'desc' },
@@ -224,7 +236,6 @@ export async function resolveReassignment(
   }
 
   const result = await prisma.$transaction(async (tx) => {
-    // 1. Update request status
     const updatedRequest = await tx.reassignmentRequest.update({
       where: { id: requestId },
       data: {
@@ -234,7 +245,6 @@ export async function resolveReassignment(
       },
     });
 
-    // 2. If approved, cancel the original assignment (Leader will create a new one manually)
     if (status === 'APPROVED') {
       await tx.serviceAssignment.update({
         where: { id: request.assignmentId },
@@ -242,7 +252,6 @@ export async function resolveReassignment(
       });
     }
 
-    // 3. Notify the member
     await tx.notification.create({
       data: {
         recipientId: request.requesterId,

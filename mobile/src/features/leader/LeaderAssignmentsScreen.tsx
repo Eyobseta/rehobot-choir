@@ -1,4 +1,3 @@
-// mobile/src/features/leader/LeaderAssignmentsScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Modal, FlatList, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,9 +8,8 @@ import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
 import { useLeaderAssignmentsQuery, useCreateAssignmentMutation, useResolveReassignmentMutation } from '../assignments/useAssignments';
-import { formatEthDate } from '../../utils/ethiopianCalendar';
+import { formatEthDate, ethTodayFromInstant } from '../../utils/ethiopianCalendar';
 import { GatheringType, AssignmentRole } from '../../services/assignments';
-// Using chatStore's member loader since it's already configured in your app
 import { loadAllMembers } from '../chat/chatStore'; 
 
 export default function LeaderAssignmentsScreen({ navigation }: any) {
@@ -21,22 +19,37 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
 
-  const [activeTab, setActiveTab] = useState<'assignments' | 'requests'>('assignments');
+  const [activeTab, setActiveTab] = useState<'assignments' | 'requests' | 'history'>('assignments');
   
   const { data, isLoading } = useLeaderAssignmentsQuery();
-  const assignments = data?.assignments ?? [];
+  const allAssignments = data?.assignments ?? [];
   const requests = data?.requests ?? [];
+
+  const todayUtc = ethTodayFromInstant(new Date()); // Helper to get today
+  // Filter for the main tab (upcoming or today)
+  const upcomingAssignments = allAssignments.filter((a) => {
+    const aDate = { year: a.dateEthYear, month: a.dateEthMonth, day: a.dateEthDay };
+    return (aDate.year > todayUtc.year) || 
+           (aDate.year === todayUtc.year && aDate.month > todayUtc.month) || 
+           (aDate.year === todayUtc.year && aDate.month === todayUtc.month && aDate.day >= todayUtc.day);
+  });
+
+  // Filter for history tab (past assignments)
+  const historyAssignments = allAssignments.filter((a) => {
+    const aDate = { year: a.dateEthYear, month: a.dateEthMonth, day: a.dateEthDay };
+    return (aDate.year < todayUtc.year) || 
+           (aDate.year === todayUtc.year && aDate.month < todayUtc.month) || 
+           (aDate.year === todayUtc.year && aDate.month === todayUtc.month && aDate.day < todayUtc.day);
+  });
 
   const resolveMut = useResolveReassignmentMutation();
   const createMut = useCreateAssignmentMutation();
 
-  // Form State
   const [showForm, setShowForm] = useState(false);
   const [formGathering, setFormGathering] = useState<GatheringType>('THURSDAY_CHOIR');
   const [formRole, setFormRole] = useState<AssignmentRole>('PRAYER_LEADER');
-  const [formDate, setFormDate] = useState({ year: 2016, month: 1, day: 1 });
+  const [formDate, setFormDate] = useState({ year: todayUtc.year, month: todayUtc.month, day: todayUtc.day });
   
-  // Member Picker State
   const [members, setMembers] = useState<any[]>([]);
   const [showMemberPicker, setShowMemberPicker] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
@@ -62,6 +75,23 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
   const handleCreate = () => {
     if (!selectedMember) return Alert.alert('Error', 'Please select a member first.');
     
+    // 🟢 Warning check
+    const recentlyServed = historyAssignments.filter(h => h.assignedUser.id === selectedMember.userId).length;
+    if (recentlyServed > 0) {
+      Alert.alert(
+        'Notice',
+        `${selectedMember.fullName} has served ${recentlyServed} time(s) in the last 2 months. Are you sure you want to assign them again?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Yes, Assign', onPress: () => executeCreate() }
+        ]
+      );
+    } else {
+      executeCreate();
+    }
+  };
+
+  const executeCreate = () => {
     createMut.mutate({
       gatheringType: formGathering,
       role: formRole,
@@ -100,13 +130,15 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
           <GlassBackButton onPress={() => navigation.goBack()} size={44} />
         </View>
 
-        {/* Tabs */}
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 20 }}>
           <Pressable onPress={() => setActiveTab('assignments')} style={{ flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12, backgroundColor: activeTab === 'assignments' ? BRAND.lime : 'rgba(255,255,255,0.15)' }}>
-            <Text style={{ color: activeTab === 'assignments' ? BRAND.deep : '#FFF', fontWeight: '800' }}>{t('leaderAssignments.tabAssignments')}</Text>
+            <Text style={{ color: activeTab === 'assignments' ? BRAND.deep : '#FFF', fontWeight: '800', fontSize: 13 }}>Upcoming</Text>
           </Pressable>
           <Pressable onPress={() => setActiveTab('requests')} style={{ flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12, backgroundColor: activeTab === 'requests' ? BRAND.lime : 'rgba(255,255,255,0.15)' }}>
-            <Text style={{ color: activeTab === 'requests' ? BRAND.deep : '#FFF', fontWeight: '800' }}>{t('leaderAssignments.tabRequests')} ({requests.length})</Text>
+            <Text style={{ color: activeTab === 'requests' ? BRAND.deep : '#FFF', fontWeight: '800', fontSize: 13 }}>Requests ({requests.length})</Text>
+          </Pressable>
+          <Pressable onPress={() => setActiveTab('history')} style={{ flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12, backgroundColor: activeTab === 'history' ? BRAND.lime : 'rgba(255,255,255,0.15)' }}>
+            <Text style={{ color: activeTab === 'history' ? BRAND.deep : '#FFF', fontWeight: '800', fontSize: 13 }}>History</Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -125,7 +157,6 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
               {showForm && (
                 <View style={{ backgroundColor: colors.surface, padding: 16, borderRadius: 16, marginBottom: 20, borderWidth: 1, borderColor: colors.border }}>
                   
-                  {/* Role Picker */}
                   <Text style={{ fontWeight: '700', color: colors.textSecondary, marginBottom: 8 }}>Role</Text>
                   <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
                     <Pressable onPress={() => setFormRole('PRAYER_LEADER')} style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: formRole === 'PRAYER_LEADER' ? withAlpha(colors.primary, 0.2) : colors.background, borderWidth: 1, borderColor: formRole === 'PRAYER_LEADER' ? colors.primary : colors.border }}>
@@ -136,7 +167,6 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
                     </Pressable>
                   </View>
 
-                  {/* Member Picker Button */}
                   <Text style={{ fontWeight: '700', color: colors.textSecondary, marginBottom: 8 }}>Member</Text>
                   <Pressable onPress={() => setShowMemberPicker(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background, borderRadius: 8, padding: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
                     <Text style={{ color: selectedMember ? colors.text : colors.textSecondary }}>
@@ -151,7 +181,7 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
                 </View>
               )}
 
-              {assignments.map((a) => (
+              {upcomingAssignments.map((a) => (
                 <View key={a.id} style={{ backgroundColor: colors.surface, padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center' }}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16 }}>{a.role.replace('_', ' ')}</Text>
@@ -162,6 +192,25 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
                 </View>
               ))}
             </View>
+          )}
+
+          {activeTab === 'history' && (
+             <View>
+               {historyAssignments.length === 0 ? (
+                 <Text style={{ textAlign: 'center', color: colors.textSecondary, marginTop: 40 }}>No history in the last 2 months.</Text>
+               ) : (
+                 historyAssignments.map((a) => (
+                   <View key={a.id} style={{ backgroundColor: colors.surface, padding: 16, borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', opacity: 0.8 }}>
+                     <View style={{ flex: 1 }}>
+                       <Text style={{ color: colors.text, fontWeight: '800', fontSize: 16 }}>{a.role.replace('_', ' ')}</Text>
+                       <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{formatEthDate({ year: a.dateEthYear, month: a.dateEthMonth, day: a.dateEthDay }, lang)}</Text>
+                       <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 4 }}>Served: {a.assignedUser.memberProfile?.fullName || 'Unknown'}</Text>
+                     </View>
+                     <Ionicons name="time-outline" size={24} color={colors.textSecondary} />
+                   </View>
+                 ))
+               )}
+             </View>
           )}
 
           {activeTab === 'requests' && (
@@ -192,7 +241,6 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
         </ScrollView>
       )}
 
-      {/* 🟢 MEMBER PICKER MODAL */}
       <Modal visible={showMemberPicker} transparent animationType="slide" onRequestClose={() => setShowMemberPicker(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '80%' }}>

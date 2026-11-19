@@ -8,28 +8,54 @@ import { BRAND, withAlpha } from '../auth/Auth_UI';
 import { useMyAssignmentsQuery, useRequestReassignmentMutation } from '../assignments/useAssignments';
 import { formatEthDate } from '../../utils/ethiopianCalendar';
 import { Assignment } from '../../services/assignments';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AssignmentsCard({ navigation }: { navigation: any }) {
   const { t, i18n } = useTranslation();
   const lang = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { theme } = useTheme();
-  const { colors, spacing, typography } = theme;
+  const { colors, typography } = theme;
 
-  const { data: assignments, isLoading } = useMyAssignmentsQuery();
+  const { data: assignments, isLoading, isError } = useMyAssignmentsQuery();
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [reassignReason, setReassignReason] = useState('');
   
   const reassignMut = useRequestReassignmentMutation();
 
-  if (isLoading || !assignments || assignments.length === 0) return null;
+  // 🟢 DEBUG: Show loading state
+  if (isLoading) {
+    return (
+      <View style={{ padding: 20, alignItems: 'center' }}>
+        <ActivityIndicator color={BRAND.teal} />
+        <Text style={{ marginTop: 8, color: colors.textSecondary }}>Loading assignments...</Text>
+      </View>
+    );
+  }
 
-  // Show only the most immediate upcoming assignment
+  // 🟢 DEBUG: Show error state
+  if (isError) {
+    return (
+      <View style={{ padding: 20, backgroundColor: withAlpha(colors.error, 0.1), borderRadius: 12, marginBottom: 16 }}>
+        <Text style={{ color: colors.error, textAlign: 'center' }}>Failed to load assignments. Check your internet.</Text>
+      </View>
+    );
+  }
+
+  // 🟢 DEBUG: Show empty state instead of returning null
+  if (!assignments || assignments.length === 0) {
+    return (
+      <LinearGradient
+        colors={[withAlpha(BRAND.teal, 0.1), withAlpha(BRAND.teal, 0.05)]}
+        style={{ borderRadius: 24, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: withAlpha(BRAND.teal, 0.2), alignItems: 'center' }}
+      >
+        <Ionicons name="mic-off-outline" size={24} color={colors.textSecondary} />
+        <Text style={{ color: colors.textSecondary, marginTop: 8, fontWeight: '600' }}>No upcoming service assignments</Text>
+      </LinearGradient>
+    );
+  }
+
   const nextAssignment = assignments[0]; 
 
   const handleContactLeader = () => {
-    // Assuming your chat system takes a userId to start a DM
-    // Adjust this if your chat navigates by conversationId directly
     navigation.navigate('Chat', { 
       screen: 'NewChat', 
       params: { initialUserId: nextAssignment.assignedById } 
@@ -60,7 +86,7 @@ export default function AssignmentsCard({ navigation }: { navigation: any }) {
   const roleLabel = nextAssignment.role === 'PRAYER_LEADER' ? t('home.prayerLeader') : t('home.worshipLeader');
   const gatheringLabel = nextAssignment.gatheringType === 'SPECIAL_EVENT' 
     ? nextAssignment.customGatheringName 
-    : t(`home.${nextAssignment.gatheringType.toLowerCase().replace('_zema', 'Zema').replace('_choir', 'Choir')}` as any);
+    : t(`home.${nextAssignment.gatheringType.toLowerCase().replace('_zema', 'Zema').replace('_choir', 'Choir')}` as any, { defaultValue: nextAssignment.gatheringType });
 
   return (
     <>
