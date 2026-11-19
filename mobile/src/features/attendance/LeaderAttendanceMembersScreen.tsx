@@ -5,37 +5,35 @@ import {
   TextInput,
   FlatList,
   Pressable,
-  Image,
-  ActivityIndicator,
   Animated,
   Easing,
-  StyleSheet,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { DirectoryMember } from '../../services/members';
-import { BRAND, withAlpha, ErrorBanner } from '../auth/Auth_UI';
-import GlassBackButton from '../../components/GlassBackButton';
+import { BRAND, ErrorBanner } from '../auth/Auth_UI';
 import { useDirectoryQuery } from '../directory/useDirectory';
+import {
+  Avatar,
+  EmptyState,
+  SavedPill,
+  ScaleTap,
+  ScreenHero,
+  SkeletonRows,
+} from './Attendance_Kit';
 
-const AVATAR_PALETTE: readonly [string, string][] = [
-  [BRAND.violet, BRAND.magenta],
-  [BRAND.water, BRAND.violet],
-  [BRAND.magenta, '#F59E0B'],
-  [BRAND.deep, BRAND.violet],
-];
+// Flat avatar tints, cycled by row index.
+const AVATAR_TINTS = [BRAND.lavender, BRAND.mint, BRAND.lime, BRAND.lavenderSoft] as const;
 
 export default function LeaderAttendanceMembersScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, typography } = theme;
-  const insets = useSafeAreaInsets();
+  const { colors, spacing } = theme;
 
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
+  const [focused, setFocused] = useState(false);
 
   useEffect(() => {
     const id = setTimeout(() => setDebounced(search.trim()), 300);
@@ -49,152 +47,91 @@ export default function LeaderAttendanceMembersScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Hero */}
-      <LinearGradient
-        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.hero, { paddingTop: insets.top + 16 }]}
+      {/* Hero with search */}
+      <ScreenHero
+        icon="people"
+        overline={t('attendance.title', { defaultValue: 'Attendance' })}
+        title={t('attendance.memberPicker', { defaultValue: 'Pick a member' })}
+        onBack={() => navigation.goBack()}
+        backLabel={t('common.back', { defaultValue: 'Back' })}
       >
         <View
-          pointerEvents="none"
-          style={[
-            styles.blob,
-            {
-              top: -60,
-              right: -40,
-              backgroundColor: withAlpha(BRAND.gold, 0.22),
-            },
-          ]}
-        />
-        <View
-          pointerEvents="none"
-          style={[
-            styles.blob,
-            {
-              bottom: -70,
-              left: -50,
-              backgroundColor: withAlpha(BRAND.water, 0.22),
-            },
-          ]}
-        />
-
-        <View style={styles.heroRow}>
-          <View style={styles.heroIcon}>
-            <Ionicons name="people" size={22} color={BRAND.deep} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.heroKicker}>
-              {t('attendance.title', { defaultValue: 'Attendance' })}
-            </Text>
-            <Text style={styles.heroTitle} numberOfLines={1}>
-              {t('attendance.memberPicker', { defaultValue: 'Pick a member' })}
-            </Text>
-          </View>
-
-          <GlassBackButton
-            onPress={() => navigation.goBack()}
-            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            minHeight: 50,
+            paddingHorizontal: 14,
+            borderRadius: 18,
+            borderWidth: 1.5,
+            marginTop: 16,
+            borderColor: focused ? BRAND.lime : 'rgba(255,255,255,0.18)',
+            backgroundColor: BRAND.tealDark,
+          }}
+        >
+          <Ionicons
+            name="search"
+            size={18}
+            color={focused ? BRAND.lime : 'rgba(255,255,255,0.85)'}
           />
-        </View>
-
-        <View style={styles.searchWrap}>
-          <Ionicons name="search" size={18} color="rgba(255,255,255,0.85)" />
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder={t('attendance.searchMember')}
             placeholderTextColor="rgba(255,255,255,0.65)"
             autoCapitalize="words"
-            style={styles.searchInput}
-            selectionColor={BRAND.gold}
+            selectionColor={BRAND.lime}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            accessibilityLabel={t('attendance.searchMember')}
+            style={{ flex: 1, color: '#FFFFFF', fontSize: 15, paddingVertical: 11 }}
           />
           {search.length > 0 && (
-            <Pressable onPress={() => setSearch('')} hitSlop={10}>
-              <Ionicons
-                name="close-circle"
-                size={18}
-                color="rgba(255,255,255,0.85)"
-              />
+            <Pressable
+              onPress={() => setSearch('')}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.cancel', { defaultValue: 'Cancel' })}
+            >
+              <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.85)" />
             </Pressable>
           )}
         </View>
-      </LinearGradient>
+      </ScreenHero>
 
       {showingSavedData && (
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-          <View
-            style={{
-              alignSelf: 'flex-start',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 999,
-              backgroundColor: withAlpha('#F59E0B', 0.14),
-              borderWidth: 1,
-              borderColor: withAlpha('#F59E0B', 0.4),
-            }}
-          >
-            <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
-            <Text
-              style={[
-                typography.caption,
-                { color: '#F59E0B', fontWeight: '800' },
-              ]}
-            >
-              {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
-            </Text>
-          </View>
+          <SavedPill text={t('home.showingSavedData', { defaultValue: 'Showing saved data' })} />
         </View>
       )}
 
       {q.isError && q.data === undefined && (
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
           <ErrorBanner
-            message={
-              (q.error as { message?: string })?.message ?? 'Something went wrong.'
-            }
+            message={(q.error as { message?: string })?.message ?? 'Something went wrong.'}
           />
         </View>
       )}
 
       {firstLoad ? (
-        <View
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-        >
-          <ActivityIndicator size="large" color={BRAND.violet} />
+        <View style={{ padding: spacing.lg }}>
+          <SkeletonRows count={7} height={72} />
         </View>
       ) : (
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={{
             padding: spacing.lg,
             paddingBottom: spacing.xl * 2,
           }}
           ListEmptyComponent={
-            <View style={{ padding: spacing.xl, alignItems: 'center' }}>
-              <Ionicons
-                name="person-outline"
-                size={40}
-                color={colors.textSecondary}
-              />
-              <Text
-                style={[
-                  typography.body,
-                  {
-                    color: colors.textSecondary,
-                    marginTop: 10,
-                    textAlign: 'center',
-                  },
-                ]}
-              >
-                {t('directory.empty', { defaultValue: 'No members found.' })}
-              </Text>
-            </View>
+            <EmptyState
+              icon="person-outline"
+              text={t('directory.empty', { defaultValue: 'No members found.' })}
+            />
           }
           renderItem={({ item, index }) => (
             <MemberCard
@@ -230,10 +167,9 @@ function MemberCard({
 }) {
   const { theme } = useTheme();
   const { colors, typography } = theme;
-  const palette = AVATAR_PALETTE[index % AVATAR_PALETTE.length];
+  const tint = AVATAR_TINTS[index % AVATAR_TINTS.length];
 
   const enter = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const a = Animated.timing(enter, {
@@ -247,20 +183,10 @@ function MemberCard({
     return () => a.stop();
   }, [enter, index]);
 
-  const to = (v: number) =>
-    Animated.spring(scale, {
-      toValue: v,
-      speed: 40,
-      bounciness: 6,
-      useNativeDriver: true,
-    }).start();
-
-  const initial = item.fullName.trim().charAt(0).toUpperCase();
-
   return (
     <Animated.View
       style={{
-        marginBottom: 12,
+        marginBottom: 10,
         opacity: enter,
         transform: [
           {
@@ -269,54 +195,31 @@ function MemberCard({
               outputRange: [22, 0],
             }),
           },
-          { scale },
         ],
       }}
     >
-      <Pressable
+      <ScaleTap
         onPress={onPress}
-        onPressIn={() => to(0.98)}
-        onPressOut={() => to(1)}
-        accessibilityRole="button"
-        accessibilityLabel={item.fullName}
-        style={[
-          styles.card,
-          { backgroundColor: colors.surface, borderColor: colors.border },
-        ]}
+        to={0.98}
+        accessibilityLabel={`${item.fullName}, ${chevronLabel}`}
+        pressableStyle={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          minHeight: 72,
+          padding: 12,
+          borderRadius: 20,
+          borderWidth: 1,
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        }}
       >
-        <LinearGradient
-          colors={palette}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.cardBar}
+        <Avatar
+          uri={item.profilePhotoUrl}
+          name={item.fullName}
+          tone={tint}
+          ink={BRAND.teal}
+          size={48}
         />
-
-        <View style={styles.avatarWrap}>
-          <LinearGradient
-            colors={palette}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.avatarRing}
-          >
-            {item.profilePhotoUrl ? (
-              <Image
-                source={{ uri: item.profilePhotoUrl }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <View
-                style={[
-                  styles.avatarFallback,
-                  { backgroundColor: colors.surface },
-                ]}
-              >
-                <Text style={[styles.avatarInitial, { color: palette[0] }]}>
-                  {initial}
-                </Text>
-              </View>
-            )}
-          </LinearGradient>
-        </View>
 
         <View style={{ flex: 1, marginLeft: 14 }}>
           <Text
@@ -326,108 +229,27 @@ function MemberCard({
             {item.fullName}
           </Text>
           <Text
-            style={[
-              typography.caption,
-              { color: colors.textSecondary, marginTop: 2 },
-            ]}
+            style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}
             numberOfLines={1}
           >
             {chevronLabel}
           </Text>
         </View>
 
-        <View style={[styles.go, { backgroundColor: withAlpha(palette[1], 0.16) }]}>
-          <Ionicons name="chevron-forward" size={18} color={palette[1]} />
+        <View
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginLeft: 8,
+            backgroundColor: colors.surfaceAlt,
+          }}
+        >
+          <Ionicons name="chevron-forward" size={18} color={colors.accent} />
         </View>
-      </Pressable>
+      </ScaleTap>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  hero: {
-    paddingHorizontal: 16,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    overflow: 'hidden',
-  },
-  blob: { position: 'absolute', width: 180, height: 180, borderRadius: 90 },
-  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  heroIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
-    backgroundColor: BRAND.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroKicker: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-  },
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    minHeight: 48,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.28)',
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    marginTop: 18,
-  },
-  searchInput: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 15,
-    paddingVertical: 10,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    paddingLeft: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  cardBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 },
-  avatarWrap: { width: 48, height: 48 },
-  avatarRing: { width: 48, height: 48, borderRadius: 24, padding: 2 },
-  avatarImage: { width: '100%', height: '100%', borderRadius: 22 },
-  avatarFallback: {
-    flex: 1,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: { fontSize: 18, fontWeight: '800' },
-  go: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-  },
-});

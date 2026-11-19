@@ -2,17 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   ScrollView,
-  Image,
-  ActivityIndicator,
   Modal,
   Animated,
   Easing,
-  StyleSheet,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,8 +18,15 @@ import {
   GatheringType,
 } from '../../services/attendance';
 import AttendanceGrid, { GridCell } from './AttendanceGrid';
-import { BRAND, withAlpha } from '../auth/Auth_UI';
-import GlassBackButton from '../../components/GlassBackButton';
+import {
+  BRAND,
+  withAlpha,
+  onColor,
+  ErrorBanner,
+  PrimaryButton,
+  SecondaryButton,
+  FIELD_RADIUS,
+} from '../auth/Auth_UI';
 import {
   EthDate,
   ethTodayFromInstant,
@@ -38,6 +40,19 @@ import {
   useLeaderAttendanceGridQuery,
   useRecordAttendanceMutation,
 } from './useAttendance';
+import {
+  Avatar,
+  Banner,
+  Card,
+  EmptyState,
+  HeroPill,
+  IconName,
+  MIN_TOUCH_SIZE,
+  ScaleTap,
+  ScreenHero,
+  SectionTitle,
+  SkeletonRows,
+} from './Attendance_Kit';
 
 const GATHERINGS: GatheringType[] = [
   'TUESDAY_ZEMA',
@@ -45,15 +60,18 @@ const GATHERINGS: GatheringType[] = [
   'SATURDAY_CHOIR',
 ];
 
-const GATHERING_TINTS: Record<GatheringType, readonly [string, string]> = {
-  TUESDAY_ZEMA: ['#6EDBD5', '#2E9A93'],
-  THURSDAY_CHOIR: ['#B6A0FF', '#7B5CFF'],
-  SATURDAY_CHOIR: ['#EE9BBD', '#D14879'],
+// One flat brand colour per gathering (shown as a dot / active chip fill).
+const GATHERING_TINTS: Record<GatheringType, string> = {
+  TUESDAY_ZEMA: BRAND.lavender,
+  THURSDAY_CHOIR: BRAND.mint,
+  SATURDAY_CHOIR: BRAND.lime,
 };
 
+const SAVE_BAR_HEIGHT = 92;
+
 export default function LeaderAttendanceScreen({ navigation }: any) {
-   const { t, i18n } = useTranslation();
- const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
+  const { t, i18n } = useTranslation();
+  const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { theme } = useTheme();
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
@@ -175,89 +193,51 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
     return { date: d.date, count: d.present, state };
   });
 
-  const tint = GATHERING_TINTS[gathering];
   const presentCount = rows.filter((r) => getStatus(r.id) === 'PRESENT').length;
+  const absentCount = rows.filter((r) => getStatus(r.id) === 'ABSENT').length;
+  const unmarkedCount = rows.length - presentCount - absentCount;
   const busy = recordMut.isPending;
+
+  const showSaveBar = view === 'record' && !loading && !locked;
 
   // ------------------ render ------------------
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}
+        contentContainerStyle={{
+          paddingBottom: showSaveBar ? SAVE_BAR_HEIGHT + insets.bottom + spacing.lg : spacing.xl * 2,
+        }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* ---------- Gradient hero ---------- */}
-        <LinearGradient
-          colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.hero, { paddingTop: insets.top + 16 }]}
+        {/* ---------- Hero ---------- */}
+        <ScreenHero
+          icon="calendar"
+          overline={t('attendance.title', { defaultValue: 'Attendance' })}
+          title={t('attendance.record', { defaultValue: 'Record attendance' })}
+          onBack={() => navigation.goBack()}
+          backLabel={t('common.back', { defaultValue: 'Back' })}
         >
-          <View
-            pointerEvents="none"
-            style={[
-              styles.blob,
-              {
-                top: -60,
-                right: -40,
-                backgroundColor: withAlpha(BRAND.gold, 0.22),
-              },
-            ]}
-          />
-          <View
-            pointerEvents="none"
-            style={[
-              styles.blob,
-              {
-                bottom: -80,
-                left: -50,
-                backgroundColor: withAlpha(BRAND.water, 0.22),
-              },
-            ]}
-          />
-
-          <View style={styles.heroRow}>
-            <View style={styles.heroIcon}>
-              <Ionicons name="calendar" size={22} color={BRAND.deep} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.heroKicker}>
-                {t('attendance.title', { defaultValue: 'Attendance' })}
-              </Text>
-              <Text style={styles.heroTitle}>
-                {t('attendance.record', { defaultValue: 'Record attendance' })}
-              </Text>
-            </View>
-
-            <GlassBackButton
-              onPress={() => navigation.goBack()}
-              accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
-            />
-          </View>
-
           {presentCount > 0 && (
-            <View style={styles.heroBadge}>
-              <Ionicons
-                name="checkmark-circle"
-                size={13}
-                color="#FFFFFF"
-              />
-              <Text style={styles.heroBadgeText}>{presentCount}</Text>
-            </View>
+            <HeroPill
+              icon="checkmark-circle"
+              text={`${presentCount} ${t('attendance.present')}`}
+            />
           )}
-        </LinearGradient>
+        </ScreenHero>
 
         <View style={{ padding: spacing.lg }}>
           {/* ---------- Gathering selector ---------- */}
-          <SectionLabel
-            icon="people"
-            tint={BRAND.magenta}
-            text={t('attendance.gathering')}
-          />
-          <View style={styles.gatheringRow}>
+          <Text
+            style={[
+              typography.bodySmall,
+              { color: colors.textSecondary, fontWeight: '700', marginBottom: 10 },
+            ]}
+          >
+            {t('attendance.gathering')}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
             {GATHERINGS.map((g) => {
-              const active = gathering === g;
               const key =
                 g === 'TUESDAY_ZEMA'
                   ? 'attendance.tuesdayZema'
@@ -268,8 +248,8 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
                 <GatheringChip
                   key={g}
                   label={t(key)}
-                  active={active}
-                  gradient={GATHERING_TINTS[g]}
+                  active={gathering === g}
+                  tint={GATHERING_TINTS[g]}
                   onPress={() => {
                     setGathering(g);
                     setView('record');
@@ -281,131 +261,107 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
 
           {/* ---------- Segmented control ---------- */}
           <View
-            style={[
-              styles.segment,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
+            style={{
+              flexDirection: 'row',
+              padding: 4,
+              borderRadius: FIELD_RADIUS + 2,
+              borderWidth: 1,
+              marginBottom: 14,
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            }}
           >
             <SegmentBtn
               icon="create"
               label={t('attendance.record')}
               active={view === 'record'}
-              tint={tint[0]}
               onPress={() => setView('record')}
             />
             <SegmentBtn
               icon="grid"
               label={t('attendance.grid')}
               active={view === 'grid'}
-              tint={tint[0]}
               onPress={() => setView('grid')}
             />
           </View>
 
           {/* ---------- Banners ---------- */}
-          {error && (
-            <View
-              style={[
-                styles.banner,
-                {
-                  backgroundColor: withAlpha(colors.error, 0.12),
-                  borderColor: withAlpha(colors.error, 0.4),
-                },
-              ]}
-            >
-              <Ionicons name="alert-circle" size={16} color={colors.error} />
-              <Text
-                style={[
-                  typography.bodySmall,
-                  { color: colors.error, flex: 1, fontWeight: '700' },
-                ]}
-              >
-                {error}
-              </Text>
-            </View>
-          )}
-          {saved && (
-            <View
-              style={[
-                styles.banner,
-                {
-                  backgroundColor: withAlpha(colors.success, 0.12),
-                  borderColor: withAlpha(colors.success, 0.4),
-                },
-              ]}
-            >
-              <Ionicons
-                name="checkmark-circle"
-                size={16}
-                color={colors.success}
-              />
-              <Text
-                style={[
-                  typography.bodySmall,
-                  { color: colors.success, flex: 1, fontWeight: '700' },
-                ]}
-              >
-                {t('attendance.saved')}
-              </Text>
-            </View>
-          )}
+          {error && <ErrorBanner message={error} />}
+          {saved && <Banner tone="success" icon="checkmark-circle" text={t('attendance.saved')} />}
 
-          <Pressable
+          {/* ---------- Members shortcut ---------- */}
+          <ScaleTap
             onPress={() => navigation.navigate('LeaderAttendanceMembers')}
-            style={[
-              styles.outlineBtn,
-              {
-                borderColor: tint[0],
-                backgroundColor: withAlpha(tint[0], 0.08),
-              },
-            ]}
+            accessibilityLabel={t('attendance.members')}
+            pressableStyle={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              minHeight: 56,
+              paddingHorizontal: 14,
+              borderRadius: FIELD_RADIUS + 2,
+              borderWidth: 1,
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            }}
           >
-            <Ionicons name="person-add" size={16} color={tint[0]} />
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.surfaceAlt,
+              }}
+            >
+              <Ionicons name="person-add" size={17} color={colors.accent} />
+            </View>
             <Text
-              style={[
-                typography.caption,
-                { color: tint[0], fontWeight: '800', marginLeft: 8 },
-              ]}
+              style={[typography.body, { color: colors.text, fontWeight: '700', flex: 1 }]}
+              numberOfLines={1}
             >
               {t('attendance.members')}
             </Text>
-          </Pressable>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </ScaleTap>
         </View>
 
         {/* ================= RECORD VIEW ================= */}
         {view === 'record' && (
           <>
             <View style={{ paddingHorizontal: spacing.lg }}>
-              <SectionLabel
-                icon="calendar"
-                tint={BRAND.gold}
-                text={t('attendance.date')}
-              />
-              <Pressable
-                onPress={() => setPickerOpen(true)}
+              <Text
                 style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    minHeight: 50,
-                  },
+                  typography.bodySmall,
+                  { color: colors.textSecondary, fontWeight: '700', marginBottom: 8 },
                 ]}
               >
-                <Text style={{ color: colors.text, fontSize: 15 }}>
+                {t('attendance.date')}
+              </Text>
+              <Pressable
+                onPress={() => setPickerOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`${t('attendance.date')}: ${formatEthDate(date, lang)}`}
+                style={{
+                  minHeight: 52,
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingHorizontal: spacing.md,
+                  borderRadius: FIELD_RADIUS,
+                  borderWidth: 1.5,
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text style={[typography.body, { color: colors.text, fontWeight: '600' }]}>
                   {formatEthDate(date, lang)}
                 </Text>
-                <Ionicons
-                  name="calendar-outline"
-                  size={20}
-                  color={colors.textSecondary}
-                />
+                <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
               </Pressable>
 
-              <View style={styles.quickRow}>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
                 <QuickAction
                   icon="checkmark-done"
                   label={t('attendance.markAllPresent')}
@@ -423,45 +379,48 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
               </View>
 
               {locked && (
-                <View
-                  style={[
-                    styles.banner,
-                    {
-                      backgroundColor: withAlpha(colors.warning, 0.12),
-                      borderColor: withAlpha(colors.warning, 0.4),
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name="lock-closed"
-                    size={16}
-                    color={colors.warning}
-                  />
-                  <Text
-                    style={[
-                      typography.bodySmall,
-                      { color: colors.warning, flex: 1, fontWeight: '700' },
-                    ]}
-                  >
-                    {t('attendance.locked')}
-                  </Text>
+                <View style={{ marginTop: 12 }}>
+                  <Banner tone="warning" icon="lock-closed" text={t('attendance.locked')} />
                 </View>
               )}
             </View>
 
             {loading ? (
-              <View
-                style={{ padding: spacing.xl * 2, alignItems: 'center' }}
-              >
-                <ActivityIndicator size="large" color={BRAND.violet} />
+              <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.lg }}>
+                <SkeletonRows count={6} height={64} />
               </View>
             ) : (
-              <View
-                style={{
-                  paddingHorizontal: spacing.lg,
-                  marginTop: spacing.md,
-                }}
-              >
+              <View style={{ paddingHorizontal: spacing.lg }}>
+                <SectionTitle
+                  title={t('attendance.members')}
+                  count={rows.length}
+                  tint={colors.accent}
+                />
+
+                {rows.length > 0 && (
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                    <CountChip
+                      label={t('attendance.present')}
+                      value={presentCount}
+                      tone={colors.success}
+                    />
+                    <CountChip
+                      label={t('attendance.absent')}
+                      value={absentCount}
+                      tone={colors.error}
+                    />
+                    <CountChip
+                      label={t('attendance.notMarked')}
+                      value={unmarkedCount}
+                      tone={colors.textSecondary}
+                    />
+                  </View>
+                )}
+
+                {rows.length === 0 && (
+                  <EmptyState icon="people-outline" text={t('directory.empty', { defaultValue: 'No members found.' })} />
+                )}
+
                 {rows.map((item, index) => (
                   <RosterRow
                     key={item.id}
@@ -476,12 +435,6 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
                 ))}
               </View>
             )}
-
-            {!loading && !locked && (
-              <View style={{ padding: spacing.lg }}>
-                <SaveButton busy={busy} onPress={onSave} gradient={tint} />
-              </View>
-            )}
           </>
         )}
 
@@ -489,28 +442,45 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
         {view === 'grid' && (
           <View style={{ paddingHorizontal: spacing.lg }}>
             {gridLoading ? (
-              <View
-                style={{ padding: spacing.xl * 2, alignItems: 'center' }}
-              >
-                <ActivityIndicator size="large" color={BRAND.violet} />
-              </View>
+              <SkeletonRows count={1} height={260} />
             ) : (
-              <LinearGradient
-                colors={[BRAND.deep, BRAND.violet]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gridCard}
-              >
+              <Card>
                 <AttendanceGrid
                   cells={gridCells}
-                  onPressCell={(date) => void openDay(date)}
+                  onPressCell={(d) => void openDay(d)}
                   showCount
                 />
-              </LinearGradient>
+              </Card>
             )}
           </View>
         )}
       </ScrollView>
+
+      {/* ---------- Sticky save bar ---------- */}
+      {showSaveBar && (
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.md,
+            paddingBottom: insets.bottom + spacing.md,
+            backgroundColor: colors.background,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+          }}
+        >
+          <PrimaryButton
+            label={t('attendance.save', { defaultValue: 'Save attendance' })}
+            onPress={onSave}
+            busy={busy}
+            disabled={presentCount + absentCount === 0}
+            iconNode={<Ionicons name="cloud-upload" size={18} color={colors.primaryText} />}
+          />
+        </View>
+      )}
 
       {/* ---------- Day-detail modal ---------- */}
       <Modal
@@ -519,31 +489,49 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
         animationType="slide"
         onRequestClose={() => setDayOpen(null)}
       >
-        <View style={styles.backdrop}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: colors.overlay,
+            justifyContent: 'flex-end',
+          }}
+        >
           <View
-            style={[
-              styles.sheet,
-              {
-                backgroundColor: colors.background,
-                paddingBottom: insets.bottom + spacing.lg,
-              },
-            ]}
+            style={{
+              padding: 20,
+              maxHeight: '85%',
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              backgroundColor: colors.background,
+              paddingBottom: insets.bottom + spacing.lg,
+            }}
           >
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
+            <View
+              style={{
+                width: 44,
+                height: 4,
+                borderRadius: 2,
+                alignSelf: 'center',
+                marginBottom: 14,
+                backgroundColor: colors.border,
+              }}
+            />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View
-                style={[
-                  styles.sheetIcon,
-                  { backgroundColor: withAlpha(BRAND.violet, 0.16) },
-                ]}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 13,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: colors.surfaceAlt,
+                }}
               >
-                <Ionicons name="calendar" size={20} color={BRAND.violet} />
+                <Ionicons name="calendar" size={20} color={colors.accent} />
               </View>
               <Text
-                style={[
-                  typography.h3,
-                  { color: colors.text, flex: 1, fontWeight: '800' },
-                ]}
+                accessibilityRole="header"
+                style={[typography.h3, { color: colors.text, flex: 1, fontWeight: '800' }]}
                 numberOfLines={1}
               >
                 {t('attendance.dayDetail', {
@@ -558,7 +546,7 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
             </View>
 
             <ScrollView
-              style={{ marginTop: spacing.md }}
+              style={{ marginTop: spacing.lg }}
               showsVerticalScrollIndicator={false}
             >
               <DayGroup
@@ -598,17 +586,12 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
               )}
             </ScrollView>
 
-            <Pressable
-              onPress={() => setDayOpen(null)}
-              style={[
-                styles.outlineBtn,
-                { borderColor: colors.border, marginTop: spacing.lg },
-              ]}
-            >
-              <Text style={[typography.button, { color: colors.text }]}>
-                {t('common.cancel')}
-              </Text>
-            </Pressable>
+            <View style={{ marginTop: spacing.lg }}>
+              <SecondaryButton
+                label={t('common.close', { defaultValue: 'Close' })}
+                onPress={() => setDayOpen(null)}
+              />
+            </View>
           </View>
         </View>
       </Modal>
@@ -630,101 +613,59 @@ export default function LeaderAttendanceScreen({ navigation }: any) {
   );
 }
 
-// ---------- Sub-components (unchanged) ----------
-
-function SectionLabel({
-  icon,
-  tint,
-  text,
-}: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  tint: string;
-  text: string;
-}) {
-  const { theme } = useTheme();
-  const { colors, typography } = theme;
-  return (
-    <View style={styles.sectionLabel}>
-      <View style={[styles.sectionBar, { backgroundColor: tint }]} />
-      <Ionicons name={icon} size={14} color={tint} />
-      <Text
-        style={[
-          typography.caption,
-          {
-            color: colors.textSecondary,
-            letterSpacing: 1.2,
-            textTransform: 'uppercase',
-            fontWeight: '800',
-          },
-        ]}
-      >
-        {text}
-      </Text>
-    </View>
-  );
-}
+// ---------- Sub-components ----------
 
 function GatheringChip({
   label,
   active,
-  gradient,
+  tint,
   onPress,
 }: {
   label: string;
   active: boolean;
-  gradient: readonly [string, string];
+  tint: string;
   onPress: () => void;
 }) {
   const { theme } = useTheme();
   const { colors } = theme;
-  const scale = useRef(new Animated.Value(1)).current;
-  const to = (v: number) =>
-    Animated.spring(scale, {
-      toValue: v,
-      speed: 40,
-      bounciness: 8,
-      useNativeDriver: true,
-    }).start();
+  const ink = active ? onColor(tint) : colors.text;
 
   return (
-    <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={() => to(0.96)}
-        onPressOut={() => to(1)}
-        style={{ flex: 1 }}
+    <ScaleTap
+      onPress={onPress}
+      to={0.96}
+      style={{ flex: 1 }}
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+      pressableStyle={{
+        minHeight: 64,
+        borderRadius: FIELD_RADIUS + 2,
+        borderWidth: 1.5,
+        paddingHorizontal: 8,
+        paddingVertical: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        backgroundColor: active ? tint : colors.surface,
+        borderColor: active ? tint : colors.border,
+      }}
+    >
+      {/* colour dot identifies the gathering even when not selected */}
+      <View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: active ? ink : tint,
+        }}
+      />
+      <Text
+        style={{ color: ink, fontSize: 12, fontWeight: '800', textAlign: 'center' }}
+        numberOfLines={2}
       >
-        {active ? (
-          <LinearGradient
-            colors={gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.gatheringChip, { borderColor: 'transparent' }]}
-          >
-            <Text
-              style={[styles.gatheringText, { color: '#FFFFFF' }]}
-              numberOfLines={2}
-            >
-              {label}
-            </Text>
-          </LinearGradient>
-        ) : (
-          <View
-            style={[
-              styles.gatheringChip,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <Text
-              style={[styles.gatheringText, { color: colors.text }]}
-              numberOfLines={2}
-            >
-              {label}
-            </Text>
-          </View>
-        )}
-      </Pressable>
-    </Animated.View>
+        {label}
+      </Text>
+    </ScaleTap>
   );
 }
 
@@ -732,41 +673,35 @@ function SegmentBtn({
   icon,
   label,
   active,
-  tint,
   onPress,
 }: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: IconName;
   label: string;
   active: boolean;
-  tint: string;
   onPress: () => void;
 }) {
   const { theme } = useTheme();
   const { colors, typography } = theme;
+  const ink = active ? colors.primaryText : colors.textSecondary;
   return (
     <Pressable
       onPress={onPress}
-      style={[
-        styles.segmentBtn,
-        active
-          ? { backgroundColor: withAlpha(tint, 0.16) }
-          : { backgroundColor: 'transparent' },
-      ]}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      style={{
+        flex: 1,
+        minHeight: 42,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        borderRadius: FIELD_RADIUS - 2,
+        backgroundColor: active ? colors.primary : 'transparent',
+      }}
     >
-      <Ionicons
-        name={icon}
-        size={16}
-        color={active ? tint : colors.textSecondary}
-      />
+      <Ionicons name={icon} size={16} color={ink} />
       <Text
-        style={[
-          typography.caption,
-          {
-            color: active ? tint : colors.textSecondary,
-            fontWeight: active ? '800' : '600',
-            marginLeft: 6,
-          },
-        ]}
+        style={[typography.bodySmall, { color: ink, fontWeight: active ? '800' : '600' }]}
         numberOfLines={1}
       >
         {label}
@@ -782,7 +717,7 @@ function QuickAction({
   disabled,
   onPress,
 }: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: IconName;
   label: string;
   tint: string;
   disabled?: boolean;
@@ -790,42 +725,69 @@ function QuickAction({
 }) {
   const { theme } = useTheme();
   const { typography } = theme;
-  const scale = useRef(new Animated.Value(1)).current;
-  const to = (v: number) =>
-    Animated.spring(scale, {
-      toValue: v,
-      speed: 40,
-      bounciness: 6,
-      useNativeDriver: true,
-    }).start();
   return (
-    <Animated.View style={{ flex: 1, transform: [{ scale }] }}>
-      <Pressable
-        onPress={onPress}
-        disabled={disabled}
-        onPressIn={() => to(0.96)}
-        onPressOut={() => to(1)}
-        style={[
-          styles.quickAction,
-          {
-            borderColor: withAlpha(tint, 0.45),
-            backgroundColor: withAlpha(tint, 0.1),
-            opacity: disabled ? 0.5 : 1,
-          },
-        ]}
+    <ScaleTap
+      onPress={onPress}
+      disabled={disabled}
+      to={0.96}
+      style={{ flex: 1, opacity: disabled ? 0.5 : 1 }}
+      accessibilityLabel={label}
+      pressableStyle={{
+        minHeight: MIN_TOUCH_SIZE,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingHorizontal: 8,
+        borderRadius: FIELD_RADIUS,
+        borderWidth: 1.5,
+        borderColor: withAlpha(tint, 0.45),
+        backgroundColor: withAlpha(tint, 0.1),
+      }}
+    >
+      <Ionicons name={icon} size={16} color={tint} />
+      <Text
+        style={[typography.caption, { color: tint, fontWeight: '800', flexShrink: 1 }]}
+        numberOfLines={1}
       >
-        <Ionicons name={icon} size={16} color={tint} />
-        <Text
-          style={[
-            typography.caption,
-            { color: tint, fontWeight: '800', marginLeft: 6, flexShrink: 1 },
-          ]}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
-      </Pressable>
-    </Animated.View>
+        {label}
+      </Text>
+    </ScaleTap>
+  );
+}
+
+function CountChip({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: string;
+}) {
+  const { theme } = useTheme();
+  const { colors } = theme;
+  return (
+    <View
+      style={{
+        flex: 1,
+        paddingVertical: 8,
+        paddingHorizontal: 8,
+        borderRadius: 14,
+        alignItems: 'center',
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.border,
+      }}
+    >
+      <Text style={{ color: tone, fontSize: 18, fontWeight: '800' }}>{value}</Text>
+      <Text
+        style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '700', marginTop: 1 }}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -861,7 +823,6 @@ function RosterRow({
     return () => a.stop();
   }, [enter, index]);
 
-  const initial = item.fullName.trim().charAt(0).toUpperCase();
   const tone =
     item.status === 'PRESENT'
       ? colors.success
@@ -885,35 +846,42 @@ function RosterRow({
       }}
     >
       <View
-        style={[
-          styles.rosterCard,
-          { backgroundColor: colors.surface, borderColor: colors.border },
-        ]}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: 10,
+          paddingLeft: 16,
+          borderRadius: 18,
+          borderWidth: 1,
+          overflow: 'hidden',
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        }}
       >
-        <View style={[styles.rosterBar, { backgroundColor: tone }]} />
-
+        {/* status stripe: grey = not marked */}
         <View
-          style={[
-            styles.rosterAvatar,
-            { backgroundColor: withAlpha(tone, 0.16) },
-          ]}
-        >
-          {item.profilePhotoUrl ? (
-            <Image
-              source={{ uri: item.profilePhotoUrl }}
-              style={styles.rosterAvatarImg}
-            />
-          ) : (
-            <Text style={{ color: tone, fontWeight: '800', fontSize: 16 }}>
-              {initial}
-            </Text>
-          )}
-        </View>
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 5,
+            backgroundColor: item.status ? tone : colors.border,
+          }}
+        />
+
+        <Avatar
+          uri={item.profilePhotoUrl}
+          name={item.fullName}
+          tone={item.status ? withAlpha(tone, 0.2) : colors.surfaceAlt}
+          ink={item.status ? tone : colors.textSecondary}
+          size={42}
+        />
 
         <Text
           style={[
             typography.body,
-            { color: colors.text, flex: 1, marginLeft: 12, fontWeight: '700' },
+            { color: colors.text, flex: 1, marginHorizontal: 12, fontWeight: '700' },
           ]}
           numberOfLines={1}
         >
@@ -942,6 +910,7 @@ function RosterRow({
 }
 
 function StatusBtn({
+  label,
   icon,
   active,
   tint,
@@ -949,116 +918,33 @@ function StatusBtn({
   onPress,
 }: {
   label: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: IconName;
   active: boolean;
   tint: string;
   disabled?: boolean;
   onPress: () => void;
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const to = (v: number) =>
-    Animated.spring(scale, {
-      toValue: v,
-      speed: 40,
-      bounciness: 8,
-      useNativeDriver: true,
-    }).start();
-
   return (
-    <Animated.View style={{ transform: [{ scale }], marginLeft: 6 }}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={() => to(0.9)}
-        onPressOut={() => to(1)}
-        disabled={disabled}
-        style={{ opacity: disabled ? 0.5 : 1 }}
-      >
-        {active ? (
-          <LinearGradient
-            colors={[tint, withAlpha(tint, 0.75)]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.statusBtn}
-          >
-            <Ionicons name={icon} size={14} color="#FFFFFF" />
-          </LinearGradient>
-        ) : (
-          <View
-            style={[
-              styles.statusBtn,
-              { borderWidth: 1.5, borderColor: withAlpha(tint, 0.6) },
-            ]}
-          >
-            <Ionicons name={icon} size={14} color={tint} />
-          </View>
-        )}
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-function SaveButton({
-  busy,
-  onPress,
-  gradient,
-}: {
-  busy: boolean;
-  onPress: () => void;
-  gradient: readonly [string, string];
-}) {
-  const { t } = useTranslation();
-  const { typography } = useTheme().theme;
-  const scale = useRef(new Animated.Value(1)).current;
-  const to = (v: number) =>
-    Animated.spring(scale, {
-      toValue: v,
-      speed: 40,
-      bounciness: 6,
-      useNativeDriver: true,
-    }).start();
-
-  return (
-    <Animated.View
-      style={{
-        transform: [{ scale }],
-        shadowColor: gradient[1],
-        shadowOpacity: 0.45,
-        shadowRadius: 14,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 6,
+    <ScaleTap
+      onPress={onPress}
+      disabled={disabled}
+      to={0.9}
+      style={{ marginLeft: 6, opacity: disabled ? 0.5 : 1 }}
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
+      pressableStyle={{
+        width: MIN_TOUCH_SIZE,
+        height: MIN_TOUCH_SIZE,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: active ? tint : 'transparent',
+        borderWidth: active ? 0 : 1.5,
+        borderColor: withAlpha(tint, 0.6),
       }}
     >
-      <Pressable
-        onPress={onPress}
-        disabled={busy}
-        onPressIn={() => to(0.97)}
-        onPressOut={() => to(1)}
-        style={{ opacity: busy ? 0.7 : 1 }}
-      >
-        <LinearGradient
-          colors={gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.saveBtn}
-        >
-          {busy ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <>
-              <Ionicons name="cloud-upload" size={18} color="#FFFFFF" />
-              <Text
-                style={[
-                  typography.button,
-                  { color: '#FFFFFF', fontWeight: '800', marginLeft: 8 },
-                ]}
-              >
-                {t('attendance.save', { defaultValue: 'Save attendance' })}
-              </Text>
-            </>
-          )}
-        </LinearGradient>
-      </Pressable>
-    </Animated.View>
+      <Ionicons name={icon} size={18} color={active ? onColor(tint) : tint} />
+    </ScaleTap>
   );
 }
 
@@ -1069,7 +955,7 @@ function DayGroup({
   names,
 }: {
   tone: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: IconName;
   label: string;
   names: string[];
 }) {
@@ -1077,235 +963,40 @@ function DayGroup({
   const { colors, typography } = theme;
   if (names.length === 0) return null;
   return (
-    <View style={{ marginBottom: 14 }}>
-      <View style={styles.dayGroupHeader}>
+    <View style={{ marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
         <Ionicons name={icon} size={16} color={tone} />
-        <Text
-          style={[
-            typography.bodySmall,
-            { color: tone, fontWeight: '800', marginLeft: 6 },
-          ]}
-        >
-          {label}
-        </Text>
+        <Text style={[typography.bodySmall, { color: tone, fontWeight: '800' }]}>{label}</Text>
       </View>
-      {names.map((n, i) => (
-        <View key={`${n}-${i}`} style={styles.dayRow}>
-          <View style={[styles.dayBullet, { backgroundColor: tone }]} />
-          <Text
-            style={[typography.body, { color: colors.text, flex: 1 }]}
-            numberOfLines={1}
+      <View
+        style={{
+          borderRadius: 16,
+          borderWidth: 1,
+          paddingHorizontal: 14,
+          paddingVertical: 4,
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        }}
+      >
+        {names.map((n, i) => (
+          <View
+            key={`${n}-${i}`}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              paddingVertical: 10,
+              borderTopWidth: i === 0 ? 0 : 1,
+              borderTopColor: colors.border,
+            }}
           >
-            {n}
-          </Text>
-        </View>
-      ))}
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: tone }} />
+            <Text style={[typography.body, { color: colors.text, flex: 1 }]} numberOfLines={1}>
+              {n}
+            </Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  hero: {
-    paddingHorizontal: 16,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    overflow: 'hidden',
-  },
-  blob: { position: 'absolute', width: 180, height: 180, borderRadius: 90 },
-  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-  },
-  heroIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
-    backgroundColor: BRAND.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroKicker: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  heroBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignSelf: 'flex-start',
-    marginTop: 14,
-  },
-  heroBadgeText: { color: '#FFFFFF', fontWeight: '800', fontSize: 12 },
-
-  sectionLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-    marginBottom: 10,
-  },
-  sectionBar: { width: 4, height: 14, borderRadius: 2 },
-
-  gatheringRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  gatheringChip: {
-    minHeight: 62,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gatheringText: { fontSize: 12, fontWeight: '800', textAlign: 'center' },
-
-  segment: {
-    flexDirection: 'row',
-    padding: 4,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 14,
-  },
-  segmentBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-
-  outlineBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-
-  input: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-
-  quickRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  quickAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-
-  rosterCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    paddingLeft: 16,
-    borderRadius: 18,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  rosterBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 },
-  rosterAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  rosterAvatarImg: { width: '100%', height: '100%' },
-  statusBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  saveBtn: {
-    minHeight: 54,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  gridCard: { borderRadius: 22, padding: 14 },
-
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    padding: 20,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    maxHeight: '85%',
-  },
-  sheetHandle: {
-    width: 44,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(150,150,150,0.4)',
-    alignSelf: 'center',
-    marginBottom: 14,
-  },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  sheetIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayGroupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  dayRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 6,
-  },
-  dayBullet: { width: 6, height: 6, borderRadius: 3 },
-});

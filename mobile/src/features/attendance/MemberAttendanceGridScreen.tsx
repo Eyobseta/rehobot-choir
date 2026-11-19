@@ -1,27 +1,23 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  ActivityIndicator,
-  StyleSheet,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { View, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import AttendanceGrid, { GridCell } from './AttendanceGrid';
-import { BRAND, withAlpha } from '../auth/Auth_UI';
-import GlassBackButton from '../../components/GlassBackButton';
+import { ErrorBanner } from '../auth/Auth_UI';
 import { ethTodayFromInstant, addEthDays } from '../../utils/ethiopianCalendar';
 import { useMemberAttendanceGridQuery } from './useAttendance';
+import {
+  Card,
+  EmptyState,
+  HeroStat,
+  ScreenHero,
+  SkeletonRows,
+} from './Attendance_Kit';
 
 export default function MemberAttendanceGridScreen({ route, navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, typography } = theme;
-  const insets = useSafeAreaInsets();
+  const { colors, spacing } = theme;
   const { memberId, memberName } = route.params;
 
   const today = ethTodayFromInstant(new Date());
@@ -45,214 +41,52 @@ export default function MemberAttendanceGridScreen({ route, navigation }: any) {
   const rate = total > 0 ? Math.round((present / total) * 100) : 0;
 
   return (
-    <ScrollView
-      contentContainerStyle={{
-        paddingBottom: spacing.xl * 2,
-        backgroundColor: colors.background,
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Hero */}
-      <LinearGradient
-        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.hero, { paddingTop: insets.top + 16 }]}
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}
+        showsVerticalScrollIndicator={false}
       >
-        <View
-          pointerEvents="none"
-          style={[
-            styles.blob,
-            {
-              top: -60,
-              right: -40,
-              backgroundColor: withAlpha(BRAND.gold, 0.22),
-            },
-          ]}
-        />
-        <View
-          pointerEvents="none"
-          style={[
-            styles.blob,
-            {
-              bottom: -70,
-              left: -50,
-              backgroundColor: withAlpha(BRAND.water, 0.22),
-            },
-          ]}
-        />
-
-        <View style={styles.heroRow}>
-          <View style={styles.heroIcon}>
-            <Ionicons name="person" size={22} color={BRAND.deep} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.heroKicker}>
-              {t('attendance.historyTitle', {
-                defaultValue: 'Attendance history',
-              })}
-            </Text>
-            <Text style={styles.heroTitle} numberOfLines={1}>
-              {memberName}
-            </Text>
-          </View>
-
-          <GlassBackButton
-            onPress={() => navigation.goBack()}
-            accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
-          />
-        </View>
-
-        {!firstLoad && total > 0 && (
-          <View style={styles.heroStats}>
-            <HeroStat
-              label={t('attendance.present')}
-              value={present}
-              tint="#FFFFFF"
-            />
-            <HeroStat
-              label={t('attendance.rateLabel', { defaultValue: 'Rate' })}
-              value={`${rate}%`}
-              tint={BRAND.gold}
-            />
-            <HeroStat
-              label={t('attendance.absent')}
-              value={total - present}
-              tint="#FFFFFF"
-            />
-          </View>
-        )}
-      </LinearGradient>
-
-      {firstLoad ? (
-        <View style={{ padding: spacing.xl * 2, alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={BRAND.violet} />
-        </View>
-      ) : (
-        <View style={{ padding: spacing.lg }}>
-          {error && (
-            <Text
-              style={[
-                typography.bodySmall,
-                { color: colors.error, marginBottom: spacing.md },
-              ]}
-            >
-              {error}
-            </Text>
-          )}
-
-          {total > 0 && (
-            <LinearGradient
-              colors={[BRAND.deep, BRAND.violet]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.gridCard}
-            >
-              <AttendanceGrid cells={cells} />
-            </LinearGradient>
-          )}
-
-          {total === 0 && (
-            <View style={{ alignItems: 'center', padding: spacing.xl }}>
-              <Ionicons
-                name="calendar-outline"
-                size={40}
-                color={colors.textSecondary}
+        {/* Hero */}
+        <ScreenHero
+          icon="person"
+          overline={t('attendance.historyTitle', { defaultValue: 'Attendance history' })}
+          title={memberName}
+          onBack={() => navigation.goBack()}
+          backLabel={t('common.back', { defaultValue: 'Back' })}
+        >
+          {!firstLoad && total > 0 && (
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+              <HeroStat label={t('attendance.present')} value={present} />
+              <HeroStat
+                label={t('attendance.rateLabel', { defaultValue: 'Rate' })}
+                value={`${rate}%`}
+                accent
               />
-              <Text
-                style={[
-                  typography.body,
-                  {
-                    color: colors.textSecondary,
-                    marginTop: 10,
-                    textAlign: 'center',
-                  },
-                ]}
-              >
-                {t('attendance.empty')}
-              </Text>
+              <HeroStat label={t('attendance.absent')} value={total - present} />
             </View>
           )}
-        </View>
-      )}
-    </ScrollView>
-  );
-}
+        </ScreenHero>
 
-function HeroStat({
-  label,
-  value,
-  tint,
-}: {
-  label: string;
-  value: number | string;
-  tint: string;
-}) {
-  return (
-    <View style={styles.statBox}>
-      <Text style={[styles.statValue, { color: tint }]}>{value}</Text>
-      <Text style={styles.statLabel} numberOfLines={1}>
-        {label}
-      </Text>
+        {firstLoad ? (
+          <View style={{ padding: spacing.lg }}>
+            <SkeletonRows count={1} height={280} />
+          </View>
+        ) : (
+          <View style={{ padding: spacing.lg }}>
+            {error && <ErrorBanner message={error} />}
+
+            {total > 0 && (
+              <Card>
+                <AttendanceGrid cells={cells} />
+              </Card>
+            )}
+
+            {total === 0 && (
+              <EmptyState icon="calendar-outline" text={t('attendance.empty')} />
+            )}
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  hero: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    overflow: 'hidden',
-  },
-  blob: { position: 'absolute', width: 180, height: 180, borderRadius: 90 },
-  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  heroIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
-    backgroundColor: BRAND.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroKicker: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  heroTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-  },
-  heroStats: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  statBox: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    alignItems: 'center',
-  },
-  statValue: { fontSize: 20, fontWeight: '800' },
-  statLabel: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  gridCard: { borderRadius: 22, padding: 14 },
-});

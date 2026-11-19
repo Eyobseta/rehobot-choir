@@ -300,6 +300,7 @@
   },
   "attendance": {
     "title": "Attendance",
+    "weekdaysShort": ["S", "M", "T", "W", "T", "F", "S"],
     "record": "Record attendance",
     "history": "My attendance",
     "historyTitle": "Attendance history",

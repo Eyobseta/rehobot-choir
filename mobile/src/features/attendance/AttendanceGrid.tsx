@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Pressable, Animated, Easing, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, Pressable, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
-import { BRAND, withAlpha } from '../auth/Auth_UI';
+import { onColor } from '../auth/Auth_UI';
 
 export type GridCellState = 'PRESENT' | 'ABSENT' | 'EMPTY';
 
@@ -19,7 +19,7 @@ type Props = {
   showCount?: boolean;
 };
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAYS_DEFAULT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 function todayISO(): string {
   const d = new Date();
@@ -30,8 +30,9 @@ function todayISO(): string {
 }
 
 export default function AttendanceGrid({ cells, onPressCell, showCount }: Props) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, typography } = theme;
 
   // Entrance animation for the whole grid
   const enter = useRef(new Animated.Value(0)).current;
@@ -45,16 +46,19 @@ export default function AttendanceGrid({ cells, onPressCell, showCount }: Props)
     }).start();
   }, [enter, cells]);
 
+  // Single-letter weekday headers (Sunday first), translated.
+  const wdRaw = t('attendance.weekdaysShort', {
+    returnObjects: true,
+    defaultValue: WEEKDAYS_DEFAULT,
+  }) as unknown;
+  const weekdays: string[] =
+    Array.isArray(wdRaw) && wdRaw.length === 7 ? (wdRaw as string[]) : WEEKDAYS_DEFAULT;
+
   if (cells.length === 0) {
     return (
       <View style={{ padding: spacing.md, alignItems: 'center' }}>
         <Ionicons name="calendar-outline" size={32} color={colors.textSecondary} />
-        <Text
-          style={[
-            typography.bodySmall,
-            { color: colors.textSecondary, marginTop: 8 },
-          ]}
-        >
+        <Text style={[typography.bodySmall, { color: colors.textSecondary, marginTop: 8 }]}>
           —
         </Text>
       </View>
@@ -102,20 +106,16 @@ export default function AttendanceGrid({ cells, onPressCell, showCount }: Props)
       }}
     >
       {/* Weekday header */}
-      <View style={styles.weekdayRow}>
-        {WEEKDAYS.map((d) => (
-          <View key={d} style={styles.weekdayCell}>
+      <View style={{ flexDirection: 'row' }}>
+        {weekdays.map((d, i) => (
+          <View key={i} style={{ flex: 1, alignItems: 'center', paddingVertical: 6 }}>
             <Text
               style={[
                 typography.caption,
-                {
-                  color: colors.textSecondary,
-                  fontWeight: '800',
-                  fontSize: 10,
-                },
+                { color: colors.textSecondary, fontWeight: '800', fontSize: 11 },
               ]}
             >
-              {d.slice(0, 1)}
+              {d}
             </Text>
           </View>
         ))}
@@ -123,7 +123,7 @@ export default function AttendanceGrid({ cells, onPressCell, showCount }: Props)
 
       {/* Weeks */}
       {weeks.map((week, wi) => (
-        <View key={wi} style={styles.weekRow}>
+        <View key={wi} style={{ flexDirection: 'row' }}>
           {week.map((date) => {
             const cell = byDate.get(date);
             const state: GridCellState = cell?.state ?? 'EMPTY';
@@ -145,20 +145,18 @@ export default function AttendanceGrid({ cells, onPressCell, showCount }: Props)
       ))}
 
       {/* Legend */}
-      <View style={styles.legendRow}>
-        <LegendDot
-          colors={['#22C55E', '#16A34A']}
-          label="Present"
-        />
-        <LegendDot
-          colors={['#F87171', '#DC2626']}
-          label="Absent"
-        />
-        <LegendDot
-          colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)']}
-          label="—"
-          border
-        />
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 16,
+          marginTop: 14,
+        }}
+      >
+        <LegendDot color={colors.success} label={t('attendance.present')} />
+        <LegendDot color={colors.error} label={t('attendance.absent')} />
+        <LegendDot color={colors.background} label={t('attendance.notMarked')} bordered />
       </View>
     </Animated.View>
   );
@@ -181,6 +179,7 @@ function GridCellView({
   isToday: boolean;
   onPress?: (date: string) => void;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const { colors } = theme;
   const scale = useRef(new Animated.Value(1)).current;
@@ -196,13 +195,14 @@ function GridCellView({
   const isAbsent = state === 'ABSENT';
   const isEmpty = state === 'EMPTY';
 
-  const gradient: readonly [string, string] = isPresent
-    ? ['#22C55E', '#16A34A']
-    : isAbsent
-      ? ['#F87171', '#DC2626']
-      : ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.04)'];
+  const fill = isPresent ? colors.success : isAbsent ? colors.error : colors.background;
+  const ink = onColor(fill);
 
-  const shadowColor = isPresent ? '#16A34A' : isAbsent ? '#DC2626' : 'transparent';
+  const stateLabel = isPresent
+    ? t('attendance.present')
+    : isAbsent
+      ? t('attendance.absent')
+      : t('attendance.notMarked');
 
   return (
     <Animated.View
@@ -217,104 +217,60 @@ function GridCellView({
         onPress={() => onPress?.(date)}
         onPressIn={() => to(0.9)}
         onPressOut={() => to(1)}
-        accessibilityRole="button"
-        accessibilityLabel={`${date} ${state.toLowerCase()}`}
+        disabled={!onPress}
+        accessibilityRole={onPress ? 'button' : 'text'}
+        accessibilityLabel={`${date}, ${stateLabel}`}
         style={{ flex: 1 }}
       >
-        <LinearGradient
-          colors={gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[
-            styles.cell,
-            {
-              borderColor: isEmpty ? colors.border : 'transparent',
-              borderWidth: isEmpty ? 1 : 0,
-              shadowColor,
-              shadowOpacity: isEmpty ? 0 : 0.45,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: isEmpty ? 0 : 4,
-              // glow ring for today
-              ...(isToday
-                ? {
-                    borderWidth: 2,
-                    borderColor: BRAND.gold,
-                  }
-                : null),
-            },
-          ]}
+        <View
+          style={{
+            flex: 1,
+            borderRadius: 10,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: fill,
+            // today gets a strong ring, empty cells a hairline border
+            borderWidth: isToday ? 2 : isEmpty ? 1 : 0,
+            borderColor: isToday ? colors.text : colors.border,
+          }}
         >
-          {showCount && state !== 'EMPTY' ? (
-            <Text
-              style={[
-                styles.cellText,
-                { color: '#FFFFFF', fontWeight: '800' },
-              ]}
-            >
-              {count}
-            </Text>
+          {showCount && !isEmpty ? (
+            <Text style={{ color: ink, fontSize: 11, fontWeight: '800' }}>{count}</Text>
           ) : isToday ? (
-            <Ionicons name="ellipse" size={8} color={BRAND.gold} />
+            <Ionicons name="ellipse" size={7} color={isEmpty ? colors.text : ink} />
           ) : null}
-        </LinearGradient>
+        </View>
       </Pressable>
     </Animated.View>
   );
 }
 
 function LegendDot({
-  colors,
+  color,
   label,
-  border,
+  bordered,
 }: {
-  colors: readonly [string, string];
+  color: string;
   label: string;
-  border?: boolean;
+  bordered?: boolean;
 }) {
   const { theme } = useTheme();
-  const { typography } = theme;
+  const { colors, typography } = theme;
   return (
-    <View style={styles.legendItem}>
-      <LinearGradient
-        colors={colors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[
-          styles.legendDot,
-          border ? { borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' } : null,
-        ]}
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <View
+        style={{
+          width: 14,
+          height: 14,
+          borderRadius: 5,
+          backgroundColor: color,
+          borderWidth: bordered ? 1 : 0,
+          borderColor: colors.border,
+        }}
       />
-      <Text
-        style={[
-          typography.caption,
-          { color: 'rgba(255,255,255,0.75)', fontWeight: '700' },
-        ]}
-      >
+      <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '700' }]}>
         {label}
       </Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  weekdayRow: { flexDirection: 'row' },
-  weekdayCell: { flex: 1, alignItems: 'center', paddingVertical: 6 },
-  weekRow: { flexDirection: 'row' },
-  cell: {
-    flex: 1,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cellText: { fontSize: 11 },
-  legendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    gap: 14,
-    flexWrap: 'wrap',
-  },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 14, height: 14, borderRadius: 4 },
-});

@@ -300,6 +300,7 @@
   },
   "attendance": {
     "title": "መገኘት",
+    "weekdaysShort": ["እ", "ሰ", "ማ", "ረ", "ሐ", "ዓ", "ቅ"],
     "record": "መገኘት ይመዝግቡ",
     "history": "የእኔ መገኘት",
     "historyTitle": "የመገኘት ታሪክ",
