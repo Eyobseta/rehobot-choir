@@ -9,10 +9,8 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
@@ -24,11 +22,14 @@ import {
 import { formatEthDate } from '../../utils/ethiopianCalendar';
 import {
   PhotoCarousel,
+  PhotoStrip,
   PhotoViewer,
   GradientButton,
   DatePill,
   StatusPill,
-  Equalizer,
+  AudioCard,
+  DescriptionCard,
+  Avatar,
   useEnter,
   YOUTUBE_COLORS,
   SUCCESS_COLORS,
@@ -69,15 +70,6 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
     setPlayerStatus(getSnapshot());
     return unsub;
   }, []);
-
-  const audioScale = useRef(new Animated.Value(1)).current;
-  const pressAudio = (v: number) =>
-    Animated.spring(audioScale, {
-      toValue: v,
-      speed: 40,
-      bounciness: 6,
-      useNativeDriver: true,
-    }).start();
 
   const onApprove = async () => {
     try {
@@ -129,7 +121,7 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
   if (firstLoad) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -148,11 +140,10 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
   const carouselPhotos = photos.map((p) => ({ id: p.id, uri: p.storageUrl ?? undefined }));
 
   const submitter = item.submittedBy.memberProfile?.fullName ?? '';
-  const initial = submitter.trim().charAt(0).toUpperCase();
 
   const audioKey = `memory:${item.id}`;
-  const isAudioPlaying =
-    playerStatus.isLoaded && getCurrentKey() === audioKey && playerStatus.isPlaying;
+  const isThisTrack = playerStatus.isLoaded && getCurrentKey() === audioKey;
+  const isAudioPlaying = isThisTrack && playerStatus.isPlaying;
 
   const onToggleAudio = async () => {
     if (!audio?.storageUrl) return;
@@ -164,22 +155,22 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
     else await resumeTrack();
   };
 
+  const openViewer = (i: number) => {
+    setViewerIndex(i);
+    setViewerOpen(true);
+  };
+
   return (
     <>
       <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: spacing.xl * 2 }} showsVerticalScrollIndicator={false}>
-        <PhotoCarousel
-          photos={carouselPhotos}
-          height={300}
-          onPressPhoto={(i) => {
-            setViewerIndex(i);
-            setViewerOpen(true);
-          }}
-        />
+        <PhotoCarousel photos={carouselPhotos} height={300} onPressPhoto={openViewer} />
 
         <View style={{ marginTop: -28, backgroundColor: colors.background, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: spacing.xl }}>
           <Animated.View style={fadeUp(0)}>
-            <StatusPill label={t('memories.statusPending')} color="#F59E0B" icon="time" />
-            <Text style={[typography.h2, { color: colors.text, fontWeight: '800', marginTop: 12 }]}>
+            <View style={{ alignSelf: 'flex-start' }}>
+              <StatusPill label={t('memories.statusPending')} color={colors.warning} icon="time" />
+            </View>
+            <Text style={[typography.h1, { color: colors.text, fontWeight: '800', lineHeight: 34, marginTop: 12 }]}>
               {item.title}
             </Text>
 
@@ -187,9 +178,7 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
               <DatePill text={formatEthDate(memoryToEthDate(item), lang)} />
               {submitter ? (
                 <View style={[styles.byChip, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <View style={styles.avatar}>
-                    <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>{initial}</Text>
-                  </View>
+                  <Avatar name={submitter} size={22} />
                   <Text style={[typography.caption, { color: colors.text, fontWeight: '700' }]} numberOfLines={1}>
                     {submitter}
                   </Text>
@@ -198,34 +187,36 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
             </View>
           </Animated.View>
 
-          {item.description && (
-            <Animated.View style={[styles.descCard, { backgroundColor: colors.surface, borderColor: colors.border }, fadeUp(1)]}>
-              <View style={[styles.quoteBar, { backgroundColor: BRAND.gold }]} />
-              <Text style={[typography.body, { color: colors.text, lineHeight: 24, flex: 1 }]}>{item.description}</Text>
+          {item.description ? (
+            <Animated.View style={[{ marginTop: 20 }, fadeUp(1)]}>
+              <DescriptionCard text={item.description} />
             </Animated.View>
-          )}
+          ) : null}
 
           {audio?.storageUrl && (
             <Animated.View style={[{ marginTop: spacing.lg }, fadeUp(2)]}>
-              <Animated.View style={{ transform: [{ scale: audioScale }], borderRadius: 24, shadowColor: BRAND.magenta, shadowOpacity: isAudioPlaying ? 0.5 : 0.25, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 7, backgroundColor: BRAND.violet }}>
-                <Pressable onPress={onToggleAudio} onPressIn={() => pressAudio(0.98)} onPressOut={() => pressAudio(1)} accessibilityRole="button" accessibilityLabel={t('memories.audioAttached')}>
-                  <LinearGradient colors={[BRAND.deep, BRAND.violet, BRAND.magenta]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.audioCard}>
-                    <View style={styles.playCircle}>
-                      <Ionicons name={isAudioPlaying ? 'pause' : 'play'} size={24} color={BRAND.violet} style={{ marginLeft: isAudioPlaying ? 0 : 3 }} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.audioTitle}>{t('memories.audioAttached')}</Text>
-                      <Text style={styles.audioSub} numberOfLines={1}>{item.title}</Text>
-                    </View>
-                    <Equalizer active={isAudioPlaying} />
-                  </LinearGradient>
-                </Pressable>
-              </Animated.View>
+              <AudioCard
+                label={t('memories.audioAttached')}
+                subtitle={item.title}
+                playing={isAudioPlaying}
+                onPress={onToggleAudio}
+                positionMillis={isThisTrack ? playerStatus.positionMillis : undefined}
+                durationMillis={isThisTrack ? playerStatus.durationMillis : undefined}
+              />
+            </Animated.View>
+          )}
+
+          {photos.length > 1 && (
+            <Animated.View style={[{ marginTop: spacing.xl }, fadeUp(3)]}>
+              <Text style={[typography.bodySmall, { color: colors.textSecondary, fontWeight: '800', marginBottom: spacing.sm }]}>
+                {t('memories.photosShort', { defaultValue: 'Photos' })} · {photos.length}
+              </Text>
+              <PhotoStrip photos={carouselPhotos} onPressPhoto={openViewer} />
             </Animated.View>
           )}
 
           {youtubes.length > 0 && (
-            <Animated.View style={[{ marginTop: spacing.lg, gap: spacing.sm }, fadeUp(3)]}>
+            <Animated.View style={[{ marginTop: spacing.xl, gap: spacing.sm }, fadeUp(3)]}>
               {youtubes.map((y) => (
                 <GradientButton
                   key={y.id}
@@ -251,10 +242,23 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
             </View>
           )}
 
-          <Animated.View style={[{ marginTop: spacing.xl }, fadeUp(4)]}>
+          {/* Decision area */}
+          <Animated.View
+            style={[
+              {
+                marginTop: spacing.xl,
+                padding: spacing.lg,
+                borderRadius: 26,
+                borderWidth: 1,
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+              fadeUp(4),
+            ]}
+          >
             <View style={{ flexDirection: 'row', gap: spacing.md }}>
               <GradientButton flex={1} label={t('memories.reject')} icon="close-circle" colors={DANGER_COLORS} disabled={busy} onPress={() => setRejectOpen(true)} />
-              <GradientButton flex={1} label={t('memories.approve')} icon="checkmark-circle" colors={SUCCESS_COLORS} busy={approveMut.isPending} onPress={onApprove} />
+              <GradientButton flex={1} label={t('memories.approve')} icon="checkmark-circle" colors={SUCCESS_COLORS} busy={approveMut.isPending} disabled={busy} onPress={onApprove} />
             </View>
             <View style={{ marginTop: spacing.md }}>
               <SecondaryButton label={t('memories.delete')} onPress={onDelete} />
@@ -298,16 +302,9 @@ export default function MemoryReviewDetailScreen({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 14 },
   byChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
-  avatar: { width: 22, height: 22, borderRadius: 11, backgroundColor: BRAND.magenta, alignItems: 'center', justifyContent: 'center' },
-  descCard: { flexDirection: 'row', gap: 14, marginTop: 20, padding: 16, borderRadius: 20, borderWidth: 1 },
-  quoteBar: { width: 4, borderRadius: 2 },
-  audioCard: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 24 },
-  playCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-  audioTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
-  audioSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 2 },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: 20 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(5,16,19,0.65)', justifyContent: 'center', padding: 20 },
   sheet: { borderRadius: 28, padding: 22 },
   sheetIcon: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 });

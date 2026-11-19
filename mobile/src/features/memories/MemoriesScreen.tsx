@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   Image,
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   Animated,
@@ -21,7 +20,14 @@ import { useTheme } from '../../theme/ThemeContext';
 import { MemorySummary } from '../../services/memories';
 import { BRAND, withAlpha, ErrorBanner } from '../auth/Auth_UI';
 import { formatEthDate } from '../../utils/ethiopianCalendar';
-import { DatePill, EmptyState, memoryToEthDate } from './Memorykit';
+import {
+  DatePill,
+  EmptyState,
+  SavedPill,
+  MemoryListSkeleton,
+  PALETTES,
+  memoryToEthDate,
+} from './Memorykit';
 import MemoriesHeader from './MemoriesHeader';
 import { useMe } from '../chat/chatSession';
 import {
@@ -30,17 +36,10 @@ import {
   warmMemoryDetailCache,
 } from './useMemories';
 
-const PLACEHOLDERS: readonly [string, string][] = [
-  [BRAND.violet, BRAND.magenta],
-  [BRAND.water, BRAND.violet],
-  [BRAND.magenta, '#F59E0B'],
-  [BRAND.deep, BRAND.violet],
-];
-
 export default function MemoriesScreen({ navigation }: any) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing } = theme;
+  const { colors, spacing, typography } = theme;
   const qc = useQueryClient();
   const userId = useMe()?.id ?? null;
 
@@ -68,6 +67,13 @@ export default function MemoriesScreen({ navigation }: any) {
   }, [items, qc, userId]);
 
   const filtered = year ? items.filter((m) => m.dateEthYear === year) : items;
+  const filtering = debounced.length > 0 || year !== null;
+
+  const clearFilters = () => {
+    setSearch('');
+    setDebounced('');
+    setYear(null);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -75,34 +81,19 @@ export default function MemoriesScreen({ navigation }: any) {
         data={filtered}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: spacing.xl * 2, flexGrow: 1 }}
         refreshControl={
           <RefreshControl
             refreshing={q.isRefetching && !firstLoad}
             onRefresh={() => q.refetch()}
-            tintColor={BRAND.violet}
-            colors={[BRAND.violet]}
+            tintColor={colors.primary}
+            colors={[BRAND.teal]}
           />
         }
         ListHeaderComponent={
           <View>
-            <MemoriesHeader />
-
-            <LinearGradient
-              colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.header}
-            >
-              <View
-                pointerEvents="none"
-                style={[styles.blob, { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.2) }]}
-              />
-              <View
-                pointerEvents="none"
-                style={[styles.blob, { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.2) }]}
-              />
-
+            <MemoriesHeader>
               <SearchBox
                 value={search}
                 onChangeText={setSearch}
@@ -148,29 +139,11 @@ export default function MemoriesScreen({ navigation }: any) {
                   })}
                 </ScrollView>
               )}
-            </LinearGradient>
+            </MemoriesHeader>
 
             {showingSavedData && (
               <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-                <View
-                  style={{
-                    alignSelf: 'flex-start',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 999,
-                    backgroundColor: withAlpha('#F59E0B', 0.14),
-                    borderWidth: 1,
-                    borderColor: withAlpha('#F59E0B', 0.4),
-                  }}
-                >
-                  <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
-                  <Text style={[theme.typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
-                    {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
-                  </Text>
-                </View>
+                <SavedPill />
               </View>
             )}
 
@@ -180,20 +153,61 @@ export default function MemoriesScreen({ navigation }: any) {
               </View>
             )}
 
-            {firstLoad && (
-              <View style={{ paddingVertical: spacing.xl * 2, alignItems: 'center' }}>
-                <ActivityIndicator size="large" color={BRAND.violet} />
+            {firstLoad ? (
+              <View style={{ paddingTop: spacing.md }}>
+                <MemoryListSkeleton rows={3} />
               </View>
+            ) : filtered.length > 0 ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingHorizontal: spacing.lg + 2,
+                  paddingTop: spacing.lg,
+                  paddingBottom: spacing.md,
+                }}
+              >
+                <Text style={[typography.bodySmall, { color: colors.textSecondary, fontWeight: '700' }]}>
+                  {filtered.length === 1
+                    ? t('memories.countOne', { defaultValue: '1 memory' })
+                    : t('memories.count', { count: filtered.length, defaultValue: '{{count}} memories' })}
+                </Text>
+                {filtering && (
+                  <Pressable onPress={clearFilters} hitSlop={10} accessibilityRole="button">
+                    <Text style={[typography.bodySmall, { color: colors.accent, fontWeight: '800' }]}>
+                      {t('memories.clearFilters', { defaultValue: 'Clear filters' })}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            ) : (
+              <View style={{ height: spacing.md }} />
             )}
           </View>
         }
         ListEmptyComponent={
-          !firstLoad ? <EmptyState icon="images-outline" text={t('memories.empty')} /> : null
+          firstLoad ? null : filtering ? (
+            <EmptyState
+              icon="search-outline"
+              text={t('memories.noResults', { defaultValue: 'No memories match your search.' })}
+              actionLabel={t('memories.clearFilters', { defaultValue: 'Clear filters' })}
+              onAction={clearFilters}
+            />
+          ) : (
+            <EmptyState
+              icon="images-outline"
+              text={t('memories.empty')}
+              actionLabel={t('memories.submit')}
+              onAction={() => navigation.navigate('SubmitMemory')}
+            />
+          )
         }
         renderItem={({ item, index }) => (
           <MemoryCard
             item={item}
             index={index}
+            featured={!filtering && index === 0}
             onPress={() => navigation.navigate('MemoryDetail', { id: item.id })}
           />
         )}
@@ -211,27 +225,27 @@ function SearchBox({ value, onChangeText, placeholder }: { value: string; onChan
       style={[
         styles.search,
         {
-          borderColor: focus.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.28)', BRAND.gold] }),
-          backgroundColor: focus.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.22)'] }),
+          borderColor: focus.interpolate({ inputRange: [0, 1], outputRange: ['rgba(255,255,255,0.18)', BRAND.lime] }),
+          backgroundColor: BRAND.tealDark,
         },
       ]}
     >
-      <Ionicons name="search" size={18} color="rgba(255,255,255,0.85)" />
+      <Ionicons name="search" size={18} color="rgba(255,255,255,0.8)" />
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="rgba(255,255,255,0.65)"
+        placeholderTextColor="rgba(255,255,255,0.55)"
         autoCapitalize="none"
         returnKeyType="search"
-        selectionColor={BRAND.gold}
+        selectionColor={BRAND.lime}
         onFocus={() => animate(1)}
         onBlur={() => animate(0)}
         style={styles.searchInput}
       />
       {value.length > 0 && (
         <Pressable onPress={() => onChangeText('')} hitSlop={10} accessibilityRole="button">
-          <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.85)" />
+          <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.8)" />
         </Pressable>
       )}
     </Animated.View>
@@ -250,7 +264,9 @@ function HeaderButton({ icon, label, onPress, solid }: { icon: React.ComponentPr
         accessibilityRole="button"
         style={[
           styles.headerButton,
-          solid ? { backgroundColor: BRAND.gold } : { backgroundColor: 'rgba(255,255,255,0.16)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+          solid
+            ? { backgroundColor: BRAND.lime }
+            : { backgroundColor: BRAND.tealDark, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
         ]}
       >
         <Ionicons name={icon} size={18} color={solid ? BRAND.deep : '#FFFFFF'} />
@@ -275,10 +291,12 @@ function YearChip({ label, active, onPress }: { label: string; active: boolean; 
         accessibilityState={{ selected: active }}
         style={[
           styles.chip,
-          active ? { backgroundColor: BRAND.gold, borderColor: BRAND.gold } : { backgroundColor: 'rgba(255,255,255,0.14)', borderColor: 'rgba(255,255,255,0.3)' },
+          active
+            ? { backgroundColor: BRAND.lime, borderColor: BRAND.lime }
+            : { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.22)' },
         ]}
       >
-        <Text style={{ color: active ? BRAND.deep : '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
+        <Text style={{ color: active ? BRAND.deep : 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '800' }}>
           {label}
         </Text>
       </Pressable>
@@ -286,9 +304,9 @@ function YearChip({ label, active, onPress }: { label: string; active: boolean; 
   );
 }
 
-function MemoryCard({ item, index, onPress }: { item: MemorySummary; index: number; onPress: () => void; }) {
+function MemoryCard({ item, index, featured, onPress }: { item: MemorySummary; index: number; featured: boolean; onPress: () => void; }) {
   const { theme } = useTheme();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { colors, spacing, typography } = theme;
 
@@ -297,7 +315,12 @@ function MemoryCard({ item, index, onPress }: { item: MemorySummary; index: numb
   const hasAudio = item.media.some((m) => m.type === 'AUDIO');
   const ytCount = item.media.filter((m) => m.type === 'YOUTUBE').length;
   const ethLabel = formatEthDate(memoryToEthDate(item), lang);
-  const palette = PLACEHOLDERS[index % PLACEHOLDERS.length];
+  const palette = PALETTES[index % PALETTES.length];
+  const placeholderIcon: React.ComponentProps<typeof Ionicons>['name'] = hasAudio
+    ? 'musical-notes'
+    : ytCount > 0
+    ? 'logo-youtube'
+    : 'images';
 
   const enter = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -316,68 +339,85 @@ function MemoryCard({ item, index, onPress }: { item: MemorySummary; index: numb
         onPressOut={() => to(1)}
         accessibilityRole="button"
         accessibilityLabel={item.title}
-        style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.surface,
+            borderColor: featured ? BRAND.lime : colors.border,
+            borderWidth: featured ? 2 : 1,
+          },
+        ]}
       >
-        <View style={{ height: 210 }}>
+        <View style={{ height: featured ? 252 : 200 }}>
           {thumb ? (
             <Image source={{ uri: thumb }} style={StyleSheet.absoluteFill} resizeMode="cover" />
           ) : (
             <LinearGradient colors={palette} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-              <Ionicons name="musical-notes" size={70} color="rgba(255,255,255,0.3)" />
+              <Ionicons name={placeholderIcon} size={64} color="rgba(255,255,255,0.28)" />
             </LinearGradient>
           )}
 
-          <LinearGradient pointerEvents="none" colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.72)']} style={styles.imageFade} />
+          <LinearGradient pointerEvents="none" colors={['rgba(14,38,44,0)', 'rgba(14,38,44,0.82)']} style={styles.imageFade} />
 
           <View style={styles.topRow}>
             <DatePill text={ethLabel} onDark />
             <View style={{ flexDirection: 'row', gap: 6 }}>
               {photoCount > 1 && (
                 <View style={styles.badge}>
-                  <Ionicons name="images" size={12} color="#FFFFFF" />
+                  <Ionicons name="images" size={12} color={BRAND.lime} />
                   <Text style={styles.badgeText}>{photoCount}</Text>
                 </View>
               )}
               {hasAudio && (
-                <View style={[styles.badge, { backgroundColor: withAlpha(BRAND.violet, 0.9) }]}>
-                  <Ionicons name="musical-notes" size={12} color="#FFFFFF" />
+                <View style={[styles.badge, { backgroundColor: BRAND.lavender }]}>
+                  <Ionicons name="musical-notes" size={12} color={BRAND.teal} />
                 </View>
               )}
               {ytCount > 0 && (
-                <View style={[styles.badge, { backgroundColor: 'rgba(255,0,0,0.88)' }]}>
+                <View style={[styles.badge, { backgroundColor: 'rgba(255,45,45,0.92)' }]}>
                   <Ionicons name="logo-youtube" size={12} color="#FFFFFF" />
                 </View>
               )}
             </View>
           </View>
 
-          <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+          <View style={styles.titleBlock}>
+            {featured && (
+              <View style={styles.latestTag}>
+                <Ionicons name="sparkles" size={12} color={BRAND.teal} />
+                <Text style={{ color: BRAND.teal, fontSize: 11, fontWeight: '800' }}>
+                  {t('memories.latest', { defaultValue: 'Latest' })}
+                </Text>
+              </View>
+            )}
+            <Text style={[styles.cardTitle, featured && { fontSize: 24 }]} numberOfLines={2}>{item.title}</Text>
+          </View>
         </View>
 
-        {item.description ? (
-          <View style={{ padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Text style={[typography.bodySmall, { color: colors.textSecondary, flex: 1 }]} numberOfLines={2}>
-              {item.description}
-            </Text>
-            <Ionicons name="arrow-forward-circle" size={24} color={BRAND.magenta} />
+        <View style={{ padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <Text style={[typography.bodySmall, { color: colors.textSecondary, flex: 1 }]} numberOfLines={2}>
+            {item.description || t('memories.tapToView', { defaultValue: 'Tap to view' })}
+          </Text>
+          <View style={{ width: 34, height: 34, borderRadius: 12, backgroundColor: BRAND.teal, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="arrow-forward" size={16} color={BRAND.lime} />
           </View>
-        ) : null}
+        </View>
       </Pressable>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 18, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' },
-  blob: { position: 'absolute', width: 190, height: 190, borderRadius: 95 },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 50, paddingHorizontal: 14, borderRadius: 16, borderWidth: 1.5 },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 50, paddingHorizontal: 14, borderRadius: 18, borderWidth: 1.5 },
   searchInput: { flex: 1, color: '#FFFFFF', fontSize: 15, paddingVertical: 10 },
-  headerButton: { minHeight: 46, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 12 },
-  chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
-  card: { borderRadius: 24, overflow: 'hidden', borderWidth: 1 },
-  imageFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 120 },
+  headerButton: { minHeight: 46, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 12 },
+  chip: { paddingHorizontal: 14, minHeight: 36, justifyContent: 'center', borderRadius: 999, borderWidth: 1 },
+  card: { borderRadius: 26, overflow: 'hidden' },
+  imageFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 130 },
   topRow: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.5)' },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(14,38,44,0.62)' },
   badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
-  cardTitle: { position: 'absolute', left: 16, right: 16, bottom: 14, color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
+  titleBlock: { position: 'absolute', left: 16, right: 16, bottom: 14 },
+  latestTag: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: BRAND.lime, marginBottom: 8 },
+  cardTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
 });

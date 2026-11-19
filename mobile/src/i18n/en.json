@@ -567,7 +567,20 @@
     "myCount": "{{count}} memories shared",
     "videoKicker": "Memory video",
     "videoTitle": "Watch",
-    "videoSubtitle": "Plays right here — no need to leave the app."
+    "videoSubtitle": "Plays right here — no need to leave the app.",
+    "count": "{{count}} memories",
+    "countOne": "1 memory",
+    "clearFilters": "Clear filters",
+    "noResults": "No memories match your search.",
+    "noneInFilter": "Nothing here yet.",
+    "latest": "Latest",
+    "tapToView": "Tap to view",
+    "audioShort": "Audio",
+    "photosShort": "Photos",
+    "cover": "Cover",
+    "reviewNote": "A choir leader reviews every memory before it is published.",
+    "pendingBanner": "Waiting for a choir leader to review and publish this memory.",
+    "rejectedBanner": "This memory was rejected. See the reason below."
   },
   "quote": {
     "title": "Daily Bible quote",

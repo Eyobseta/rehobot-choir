@@ -567,7 +567,20 @@
     "myCount": "{{count}} ትዝታዎች አጋርተዋል",
     "videoKicker": "የትዝታ ቪዲዮ",
     "videoTitle": "ይመልከቱ",
-    "videoSubtitle": "ከመተግበሪያው ሳይወጡ እዚሁ ይጫወታል።"
+    "videoSubtitle": "ከመተግበሪያው ሳይወጡ እዚሁ ይጫወታል።",
+    "count": "{{count}} ትዝታዎች",
+    "countOne": "1 ትዝታ",
+    "clearFilters": "ማጣሪያዎችን አጽዳ",
+    "noResults": "ከፍለጋዎ ጋር የሚመሳሰል ትዝታ አልተገኘም።",
+    "noneInFilter": "እስካሁን እዚህ ምንም የለም።",
+    "latest": "አዲስ",
+    "tapToView": "ለማየት ይንኩ",
+    "audioShort": "ድምፅ",
+    "photosShort": "ፎቶዎች",
+    "cover": "ሽፋን",
+    "reviewNote": "እያንዳንዱ ትዝታ ከመታተሙ በፊት በመዘምራን መሪ ይገመገማል።",
+    "pendingBanner": "የመዘምራን መሪ ትዝታውን እስኪገመግምና እስኪያትም በመጠበቅ ላይ ነው።",
+    "rejectedBanner": "ይህ ትዝታ ውድቅ ተደርጓል። ምክንያቱን ከታች ይመልከቱ።"
   },
   "quote": {
     "title": "የዕለቱ የመጽሐፍ ቅዱስ ጥቅስ",
