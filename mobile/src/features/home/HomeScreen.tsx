@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query'; // 🟢 ADDED FOR REFRESH
 import { useTheme } from '../../theme/ThemeContext';
 import type { BirthdayPerson } from '../../services/birthdays';
 import DailyQuoteCard from '../quotes/DailyQuoteCard';
@@ -103,6 +104,7 @@ export default function HomeScreen({ navigation }: any) {
   const { colors, spacing, typography } = theme;
   const insets = useSafeAreaInsets();
   const lang: 'en' | 'am' = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
+  const queryClient = useQueryClient(); // 🟢 ADDED
 
   // ---------------- Data (cached-first, always revalidating) ----------------
   const meQ = useMeQuery();
@@ -144,6 +146,7 @@ export default function HomeScreen({ navigation }: any) {
     (bdayQ.isError && bdayQ.data !== undefined) ||
     (notifQ.isError && notifQ.data !== undefined);
 
+  // 🟢 UPDATED: Now refetches AssignmentsCard as well
   const refetchAll = async () => {
     await Promise.all([
       meQ.refetch(),
@@ -151,6 +154,7 @@ export default function HomeScreen({ navigation }: any) {
       annQ.refetch(),
       bdayQ.refetch(),
       notifQ.refetch(),
+      queryClient.invalidateQueries({ queryKey: ['assignments', 'me'] }),
     ]);
   };
 
