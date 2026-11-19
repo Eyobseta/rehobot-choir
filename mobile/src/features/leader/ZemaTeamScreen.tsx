@@ -17,10 +17,10 @@ import {
 } from './useLeaderCategoriesAndZema';
 
 const PALETTES: readonly [string, string][] = [
-  [BRAND.violet, BRAND.magenta],
-  [BRAND.water, BRAND.violet],
-  [BRAND.magenta, '#F59E0B'],
-  [BRAND.deep, BRAND.violet],
+  [BRAND.tealDark, '#2B6B7A'],
+  ['#2B6B7A', BRAND.teal],
+  ['#3B2F6B', '#7B5FC7'],
+  [BRAND.teal, '#2E9E5B'],
 ];
 
 export default function ZemaTeamScreen({ navigation }: any) {
@@ -84,12 +84,12 @@ export default function ZemaTeamScreen({ navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <LinearGradient
-        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+        colors={[BRAND.teal, BRAND.teal]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ paddingHorizontal: 16, paddingTop: insets.top + 16, paddingBottom: 22, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' }}
       >
-        <View pointerEvents="none" style={{ position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.gold, 0.22) }} />
+        <View pointerEvents="none" style={{ position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.lime, 0.14) }} />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="people" size={22} color={BRAND.deep} />
@@ -102,8 +102,8 @@ export default function ZemaTeamScreen({ navigation }: any) {
         </View>
 
         <Pressable onPress={() => setShowPicker((s) => !s)} accessibilityRole="button"
-          style={{ marginTop: 18, borderRadius: 16, overflow: 'hidden', shadowColor: BRAND.gold, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 }}>
-          <LinearGradient colors={showPicker ? ['#E5E7EB', '#9CA3AF'] : [BRAND.gold, '#FFA94D']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={{ marginTop: 18, borderRadius: 16, overflow: 'hidden', shadowColor: BRAND.lime, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 }}>
+          <LinearGradient colors={showPicker ? ['#FFFFFF', '#DDE6E8'] : [BRAND.lime, BRAND.lime]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 16 }}>
             <Ionicons name={showPicker ? 'close' : 'person-add'} size={20} color={BRAND.deep} />
             <Text style={{ color: BRAND.deep, fontWeight: '800', fontSize: 14 }}>
@@ -131,20 +131,20 @@ export default function ZemaTeamScreen({ navigation }: any) {
                 {item.profilePhotoUrl ? (
                   <Image source={{ uri: item.profilePhotoUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} />
                 ) : (
-                  <LinearGradient colors={[BRAND.violet, BRAND.magenta]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
+                  <LinearGradient colors={[BRAND.teal, '#2B6B7A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
                     <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>{item.fullName.charAt(0).toUpperCase()}</Text>
                   </LinearGradient>
                 )}
                 <Text style={[typography.body, { color: colors.text, flex: 1, fontWeight: '700' }]} numberOfLines={1}>{item.fullName}</Text>
-                <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: withAlpha(BRAND.violet, 0.14), alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="add" size={16} color={BRAND.violet} />
+                <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: withAlpha(colors.accent, 0.14), alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="add" size={16} color={colors.accent} />
                 </View>
               </Pressable>
             )}
             ListEmptyComponent={
               <View style={{ padding: spacing.md, alignItems: 'center' }}>
                 {dirQ.isPending ? (
-                  <ActivityIndicator color={BRAND.violet} />
+                  <ActivityIndicator color={colors.primary} />
                 ) : (
                   <Text style={[typography.bodySmall, { color: colors.textSecondary }]}>{t('leaderSongs.noCandidates')}</Text>
                 )}
@@ -155,7 +155,7 @@ export default function ZemaTeamScreen({ navigation }: any) {
       )}
 
       {firstLoad ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={colors.primary} /></View>
       ) : (
         <FlatList
           data={items}
@@ -164,7 +164,7 @@ export default function ZemaTeamScreen({ navigation }: any) {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
-              <LinearGradient colors={[BRAND.violet, BRAND.magenta, BRAND.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' }}>
+              <LinearGradient colors={[BRAND.lime, BRAND.mint, BRAND.lavender]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' }}>
                 <View style={{ width: 104, height: 104, borderRadius: 52, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
                   <Ionicons name="people-outline" size={40} color={colors.textSecondary} />
                 </View>

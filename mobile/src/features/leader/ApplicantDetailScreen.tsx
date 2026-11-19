@@ -32,11 +32,11 @@ type Props = NativeStackScreenProps<LeaderStackParamList, 'ApplicantDetail'>;
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const accents = {
-  violet: '#B6A0FF', violetSoft: '#B6A0FF22',
+  violet: '#D3C3F8', violetSoft: '#D3C3F822',
   cyan: '#6EDBD5', cyanSoft: '#6EDBD522',
-  pink: '#EE9BBD', pinkSoft: '#EE9BBD22',
+  pink: '#63D485', pinkSoft: '#63D48522',
   gold: '#E6C779', goldSoft: '#E6C77922',
-  lime: '#B8E986', limeSoft: '#B8E98622',
+  lime: '#C4F44F', limeSoft: '#C4F44F22',
 };
 
 function getSafeEthDate(
@@ -118,7 +118,7 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
   if (firstLoad) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={[typography.bodySmall, { color: colors.textSecondary, marginTop: spacing.md }]}>
           {t('leader.loadingDetail')}
         </Text>
@@ -147,31 +147,31 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
     <>
       <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={{ paddingBottom: spacing.xxl }} showsVerticalScrollIndicator={false}>
         <LinearGradient
-          colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+          colors={[BRAND.teal, BRAND.teal]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 28, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden', alignItems: 'center' }}
         >
-          <View pointerEvents="none" style={{ position: 'absolute', top: -60, left: -70, width: 210, height: 210, borderRadius: 105, backgroundColor: withAlpha(BRAND.gold, 0.18) }} />
-          <View pointerEvents="none" style={{ position: 'absolute', bottom: -80, right: -60, width: 230, height: 230, borderRadius: 115, backgroundColor: withAlpha(BRAND.water, 0.2) }} />
+          <View pointerEvents="none" style={{ position: 'absolute', top: -60, left: -70, width: 210, height: 210, borderRadius: 105, backgroundColor: withAlpha(BRAND.lime, 0.14) }} />
+          <View pointerEvents="none" style={{ position: 'absolute', bottom: -80, right: -60, width: 230, height: 230, borderRadius: 115, backgroundColor: withAlpha(BRAND.lavender, 0.1) }} />
 
           <View pointerEvents="box-none" style={{ alignSelf: 'flex-end', marginBottom: 8 }}>
             <GlassBackButton onPress={() => navigation.goBack()} accessibilityLabel={t('common.back', { defaultValue: 'Back' })} size={44} />
           </View>
 
-          <LinearGradient colors={[BRAND.gold, BRAND.magenta, BRAND.violet, BRAND.water, BRAND.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 148, height: 148, borderRadius: 74, padding: 4 }}>
+          <LinearGradient colors={[BRAND.lime, BRAND.mint, BRAND.lavender, BRAND.lime]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 148, height: 148, borderRadius: 74, padding: 4 }}>
             {item.profilePhotoUrl ? (
               <Image source={{ uri: item.profilePhotoUrl }} style={{ width: '100%', height: '100%', borderRadius: 70 }} />
             ) : (
               <View style={{ flex: 1, borderRadius: 70, backgroundColor: BRAND.deep, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 54, fontWeight: '800', color: BRAND.gold }}>{initial}</Text>
+                <Text style={{ fontSize: 54, fontWeight: '800', color: BRAND.lime }}>{initial}</Text>
               </View>
             )}
           </LinearGradient>
 
           <Text style={[typography.h2, { color: '#FFFFFF', marginTop: 16, textAlign: 'center', fontWeight: '800' }]}>{item.fullName}</Text>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, marginTop: 10, backgroundColor: withAlpha('#F59E0B', 0.24), borderWidth: 1, borderColor: withAlpha('#F59E0B', 0.5) }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, marginTop: 10, backgroundColor: withAlpha('#E8A65D', 0.24), borderWidth: 1, borderColor: withAlpha('#E8A65D', 0.5) }}>
             <Ionicons name="time" size={12} color="#FDE68A" />
             <Text style={{ color: '#FDE68A', fontSize: 11, fontWeight: '800', letterSpacing: 0.6 }}>
               {t('status.pendingTitle', { defaultValue: 'PENDING' })}
@@ -182,9 +182,9 @@ export default function ApplicantDetailScreen({ route, navigation }: Props) {
         <View style={{ paddingHorizontal: spacing.xl, marginTop: spacing.lg }}>
           {showingSavedData && (
             <View style={{ marginBottom: spacing.md }}>
-              <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#F59E0B', 0.14), borderWidth: 1, borderColor: withAlpha('#F59E0B', 0.4) }}>
-                <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
-                <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+              <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#E8A65D', 0.14), borderWidth: 1, borderColor: withAlpha('#E8A65D', 0.4) }}>
+                <Ionicons name="cloud-offline" size={13} color="#E8A65D" />
+                <Text style={[typography.caption, { color: '#E8A65D', fontWeight: '800' }]}>
                   {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
                 </Text>
               </View>

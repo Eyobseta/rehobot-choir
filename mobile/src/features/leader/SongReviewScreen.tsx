@@ -23,10 +23,10 @@ import {
 } from './useLeaderSongsAndMemories';
 
 const PALETTES: readonly [string, string][] = [
-  [BRAND.violet, BRAND.magenta],
-  [BRAND.water, BRAND.violet],
-  [BRAND.magenta, '#F59E0B'],
-  [BRAND.deep, BRAND.violet],
+  [BRAND.tealDark, '#2B6B7A'],
+  ['#2B6B7A', BRAND.teal],
+  ['#3B2F6B', '#7B5FC7'],
+  [BRAND.teal, '#2E9E5B'],
 ];
 
 export default function SongReviewScreen({ navigation }: any) {
@@ -103,16 +103,16 @@ export default function SongReviewScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: spacing.xl * 2 }}
         refreshControl={
-          <RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} tintColor={BRAND.violet} colors={[BRAND.violet]} />
+          <RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} tintColor={colors.primary} colors={[BRAND.teal]} />
         }
         ListHeaderComponent={
           <View>
             <LinearGradient
-              colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+              colors={[BRAND.teal, BRAND.teal]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={{ paddingHorizontal: 16, paddingTop: insets.top + 16, paddingBottom: 22, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' }}
             >
-              <View pointerEvents="none" style={{ position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.gold, 0.22) }} />
+              <View pointerEvents="none" style={{ position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.lime, 0.14) }} />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                 <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center' }}>
                   <Ionicons name="checkmark-done" size={22} color={BRAND.deep} />
@@ -135,9 +135,9 @@ export default function SongReviewScreen({ navigation }: any) {
 
             {showingSavedData && (
               <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-                <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#F59E0B', 0.14), borderWidth: 1, borderColor: withAlpha('#F59E0B', 0.4) }}>
-                  <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
-                  <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+                <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#E8A65D', 0.14), borderWidth: 1, borderColor: withAlpha('#E8A65D', 0.4) }}>
+                  <Ionicons name="cloud-offline" size={13} color="#E8A65D" />
+                  <Text style={[typography.caption, { color: '#E8A65D', fontWeight: '800' }]}>
                     {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
                   </Text>
                 </View>
@@ -154,10 +154,10 @@ export default function SongReviewScreen({ navigation }: any) {
         }
         ListEmptyComponent={
           firstLoad ? (
-            <View style={{ paddingVertical: spacing.xl * 2, alignItems: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>
+            <View style={{ paddingVertical: spacing.xl * 2, alignItems: 'center' }}><ActivityIndicator size="large" color={colors.primary} /></View>
           ) : (
             <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
-              <LinearGradient colors={[BRAND.violet, BRAND.magenta, BRAND.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' }}>
+              <LinearGradient colors={[BRAND.lime, BRAND.mint, BRAND.lavender]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' }}>
                 <View style={{ width: 104, height: 104, borderRadius: 52, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
                   <Ionicons name="checkmark-done-outline" size={40} color={colors.textSecondary} />
                 </View>
@@ -183,8 +183,8 @@ export default function SongReviewScreen({ navigation }: any) {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end' }}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }}>
             <Animated.View style={{ backgroundColor: colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '92%', opacity: sheetPop, transform: [{ scale: sheetPop.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }] }}>
-              <LinearGradient colors={[BRAND.deep, BRAND.violet, BRAND.magenta]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ paddingHorizontal: 20, paddingVertical: 16, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}>
-                <View pointerEvents="none" style={{ position: 'absolute', top: -40, right: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: withAlpha(BRAND.gold, 0.22) }} />
+              <LinearGradient colors={[BRAND.teal, BRAND.teal]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ paddingHorizontal: 20, paddingVertical: 16, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}>
+                <View pointerEvents="none" style={{ position: 'absolute', top: -40, right: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: withAlpha(BRAND.lime, 0.14) }} />
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <View style={{ flex: 1, marginRight: 12 }}>
                     <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>
@@ -207,7 +207,7 @@ export default function SongReviewScreen({ navigation }: any) {
                   {detailOpen?.submittedBy.memberProfile?.profilePhotoUrl ? (
                     <Image source={{ uri: detailOpen.submittedBy.memberProfile.profilePhotoUrl }} style={{ width: 40, height: 40, borderRadius: 20 }} />
                   ) : (
-                    <LinearGradient colors={[BRAND.violet, BRAND.magenta]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }}>
+                    <LinearGradient colors={[BRAND.teal, '#2B6B7A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }}>
                       <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 16 }}>
                         {(detailOpen?.submittedBy.memberProfile?.fullName ?? '?').charAt(0).toUpperCase()}
                       </Text>
@@ -226,8 +226,8 @@ export default function SongReviewScreen({ navigation }: any) {
                 {(detailOpen?.song.audioUrl || detailOpen?.song.youtubeUrl) && (
                   <View style={{ marginTop: 16 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: withAlpha(BRAND.violet, 0.16), alignItems: 'center', justifyContent: 'center' }}>
-                        <Ionicons name="play-circle" size={14} color={BRAND.violet} />
+                      <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: withAlpha(colors.accent, 0.16), alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="play-circle" size={14} color={colors.accent} />
                       </View>
                       <Text style={[typography.h3, { color: colors.text, fontWeight: '800' }]}>
                         {t('leaderSongs.previewSection', { defaultValue: 'Preview' })}
@@ -258,18 +258,18 @@ export default function SongReviewScreen({ navigation }: any) {
                         <Pressable
                           onPress={onToggleAudio}
                           accessibilityRole="button"
-                          style={{ borderRadius: 18, overflow: 'hidden', shadowColor: BRAND.violet, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 5, marginBottom: 10 }}
+                          style={{ borderRadius: 18, overflow: 'hidden', shadowColor: BRAND.deep, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 5, marginBottom: 10 }}
                         >
                           <LinearGradient
-                            colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+                            colors={[BRAND.teal, BRAND.teal]}
                             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                             style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 18, borderRadius: 18 }}
                           >
-                            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+                            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: BRAND.lime, alignItems: 'center', justifyContent: 'center' }}>
                               <Ionicons
                                 name={isPlaying ? 'pause' : 'play'}
                                 size={22}
-                                color={BRAND.violet}
+                                color={BRAND.teal}
                                 style={{ marginLeft: isPlaying ? 0 : 2 }}
                               />
                             </View>
@@ -314,13 +314,13 @@ export default function SongReviewScreen({ navigation }: any) {
                 {detailOpen?.song.lyrics && (
                   <View style={{ marginTop: 16 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: withAlpha(BRAND.violet, 0.16), alignItems: 'center', justifyContent: 'center' }}>
-                        <Ionicons name="document-text" size={14} color={BRAND.violet} />
+                      <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: withAlpha(colors.accent, 0.16), alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="document-text" size={14} color={colors.accent} />
                       </View>
                       <Text style={[typography.h3, { color: colors.text, fontWeight: '800' }]}>{t('songs.lyrics')}</Text>
                     </View>
                     <View style={{ borderRadius: 16, padding: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
-                      <LinearGradient colors={[BRAND.violet, BRAND.magenta, BRAND.gold]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 }} />
+                      <LinearGradient colors={[BRAND.lime, BRAND.mint, BRAND.lavender]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 }} />
                       <ScrollView style={{ maxHeight: 260 }} nestedScrollEnabled>
                         <Text selectable style={[typography.body, { color: colors.text, lineHeight: 24, fontStyle: 'italic', paddingLeft: 10 }]}>{detailOpen.song.lyrics}</Text>
                       </ScrollView>
@@ -442,7 +442,7 @@ function SubmissionCard({ item, index, palette, onPress, tapLabel, byLabel }: {
   return (
     <Animated.View style={{ marginHorizontal: spacing.lg, marginTop: spacing.md, opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) }, { scale }] }}>
       <Pressable onPress={onPress} onPressIn={() => to(0.98)} onPressOut={() => to(1)}
-        style={{ borderRadius: 22, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, overflow: 'hidden', shadowColor: BRAND.violet, shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 3 }}>
+        style={{ borderRadius: 22, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, overflow: 'hidden', shadowColor: BRAND.deep, shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 3 }}>
         <LinearGradient colors={palette} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 }} />
         <View style={{ padding: 14, paddingLeft: 18 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -471,9 +471,9 @@ function SubmissionCard({ item, index, palette, onPress, tapLabel, byLabel }: {
                 {item.submittedBy.memberProfile?.fullName ?? ''}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: withAlpha(BRAND.violet, 0.14) }}>
-              <Text style={{ color: BRAND.violet, fontSize: 11, fontWeight: '800' }}>{tapLabel}</Text>
-              <Ionicons name="chevron-forward" size={13} color={BRAND.violet} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: withAlpha(colors.accent, 0.14) }}>
+              <Text style={{ color: colors.accent, fontSize: 11, fontWeight: '800' }}>{tapLabel}</Text>
+              <Ionicons name="chevron-forward" size={13} color={colors.accent} />
             </View>
           </View>
         </View>

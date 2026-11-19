@@ -51,7 +51,7 @@ export default function SongEditorScreen({ route, navigation }: any) {
   const [scanReview, setScanReview] = useState(false);
   const [scanPoor, setScanPoor] = useState(false);
   const unclearCount = (lyrics.match(/\[\?\]/g) ?? []).length;
-  const AMBER_TINT = '#F59E0B';
+  const AMBER_TINT = '#E8A65D';
 
   const scanErrorText = (code: string) => scanErrorMessage(t, code);
 
@@ -172,7 +172,7 @@ export default function SongEditorScreen({ route, navigation }: any) {
 
   if (loading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-      <ActivityIndicator size="large" color={BRAND.violet} />
+      <ActivityIndicator size="large" color={colors.primary} />
     </View>
   );
 
@@ -203,11 +203,11 @@ export default function SongEditorScreen({ route, navigation }: any) {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={{ paddingBottom: spacing.xxl * 2 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <LinearGradient
-          colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+          colors={[BRAND.teal, BRAND.teal]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={{ paddingHorizontal: 16, paddingTop: insets.top + 16, paddingBottom: 22, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, overflow: 'hidden' }}
         >
-          <View pointerEvents="none" style={{ position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.gold, 0.22) }} />
+          <View pointerEvents="none" style={{ position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.lime, 0.14) }} />
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name={editingId ? 'create' : 'add-circle'} size={22} color={BRAND.deep} />
@@ -251,17 +251,17 @@ export default function SongEditorScreen({ route, navigation }: any) {
                 borderRadius: 16,
                 borderWidth: 1.5,
                 borderStyle: 'dashed',
-                borderColor: withAlpha(BRAND.violet, 0.6),
-                backgroundColor: withAlpha(BRAND.violet, 0.08),
+                borderColor: withAlpha(colors.accent, 0.6),
+                backgroundColor: withAlpha(colors.accent, 0.08),
                 opacity: scanning ? 0.8 : 1,
               }}
             >
               {scanning ? (
-                <ActivityIndicator size="small" color={BRAND.violet} />
+                <ActivityIndicator size="small" color={colors.primary} />
               ) : (
-                <Ionicons name="scan" size={20} color={BRAND.violet} />
+                <Ionicons name="scan" size={20} color={colors.accent} />
               )}
-              <Text style={{ color: BRAND.violet, fontWeight: '800', fontSize: 14 }}>
+              <Text style={{ color: colors.accent, fontWeight: '800', fontSize: 14 }}>
                 {scanning
                   ? t('zema.scanning', { defaultValue: 'Reading your photo… this can take up to a minute' })
                   : t('zema.scanButton', { defaultValue: 'Scan lyrics from paper' })}
@@ -313,10 +313,10 @@ export default function SongEditorScreen({ route, navigation }: any) {
                     paddingHorizontal: 14,
                     paddingVertical: 8,
                     borderRadius: 999,
-                    backgroundColor: BRAND.violet,
+                    backgroundColor: colors.primary,
                   }}
                 >
-                  <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 12.5 }}>
+                  <Text style={{ color: colors.primaryText, fontWeight: '800', fontSize: 12.5 }}>
                     {t('zema.scanChecked', { defaultValue: "I've checked it" })}
                   </Text>
                 </Pressable>
@@ -328,15 +328,15 @@ export default function SongEditorScreen({ route, navigation }: any) {
             <Text style={[typography.bodySmall, { color: colors.textSecondary, marginBottom: spacing.sm, fontWeight: '700' }]}>
               {t('leaderSongs.audioField')}
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 14, borderWidth: 1.5, borderStyle: audioUri || current?.audioUrl ? 'solid' : 'dashed', borderColor: audioUri || current?.audioUrl ? BRAND.violet : colors.border, backgroundColor: audioUri || current?.audioUrl ? withAlpha(BRAND.violet, 0.08) : colors.background }}>
-              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: withAlpha(BRAND.violet, 0.18), alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="musical-notes" size={20} color={BRAND.violet} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 14, borderWidth: 1.5, borderStyle: audioUri || current?.audioUrl ? 'solid' : 'dashed', borderColor: audioUri || current?.audioUrl ? colors.accent : colors.border, backgroundColor: audioUri || current?.audioUrl ? withAlpha(colors.accent, 0.08) : colors.background }}>
+              <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: withAlpha(colors.accent, 0.18), alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="musical-notes" size={20} color={colors.accent} />
               </View>
               <Text style={[typography.bodySmall, { color: colors.text, flex: 1 }]} numberOfLines={1}>
                 {audioName || (current?.audioUrl ? t('leaderSongs.audioCurrent') : t('leaderSongs.audioNone'))}
               </Text>
-              <Pressable onPress={pickAudio} hitSlop={8} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: withAlpha(BRAND.violet, 0.14) }}>
-                <Text style={{ color: BRAND.violet, fontWeight: '800', fontSize: 11 }}>{t('leaderSongs.pickAudio')}</Text>
+              <Pressable onPress={pickAudio} hitSlop={8} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: withAlpha(colors.accent, 0.14) }}>
+                <Text style={{ color: colors.accent, fontWeight: '800', fontSize: 11 }}>{t('leaderSongs.pickAudio')}</Text>
               </Pressable>
               {(audioUri || current?.audioUrl) && (
                 <Pressable onPress={() => { setAudioUri(null); setAudioName(null); setAudioMime(null); }} hitSlop={8} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: withAlpha(colors.error, 0.14) }}>
@@ -349,8 +349,8 @@ export default function SongEditorScreen({ route, navigation }: any) {
           {(previewAudioUri || previewYoutubeUrl) && (
             <View style={{ marginTop: spacing.lg }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: withAlpha(BRAND.violet, 0.16), alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="play-circle" size={14} color={BRAND.violet} />
+                <View style={{ width: 26, height: 26, borderRadius: 9, backgroundColor: withAlpha(colors.accent, 0.16), alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="play-circle" size={14} color={colors.accent} />
                 </View>
                 <Text style={[typography.h3, { color: colors.text, fontWeight: '800' }]}>
                   {t('leaderSongs.previewSection', { defaultValue: 'Preview' })}
@@ -361,18 +361,18 @@ export default function SongEditorScreen({ route, navigation }: any) {
                 <Pressable
                   onPress={onToggleAudioPreview}
                   accessibilityRole="button"
-                  style={{ borderRadius: 18, overflow: 'hidden', shadowColor: BRAND.violet, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 5, marginBottom: 10 }}
+                  style={{ borderRadius: 18, overflow: 'hidden', shadowColor: BRAND.deep, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 5, marginBottom: 10 }}
                 >
                   <LinearGradient
-                    colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+                    colors={[BRAND.teal, BRAND.teal]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 18, borderRadius: 18 }}
                   >
-                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: BRAND.lime, alignItems: 'center', justifyContent: 'center' }}>
                       <Ionicons
                         name={isAudioPlaying ? 'pause' : 'play'}
                         size={22}
-                        color={BRAND.violet}
+                        color={BRAND.teal}
                         style={{ marginLeft: isAudioPlaying ? 0 : 2 }}
                       />
                     </View>
@@ -433,7 +433,7 @@ export default function SongEditorScreen({ route, navigation }: any) {
               <Text style={[typography.button, { color: colors.text }]} numberOfLines={1}>{t('leaderSongs.saveDraft')}</Text>
             </Pressable>
             <Pressable onPress={() => onSave(true)} disabled={busy} style={{ flex: 1.4, opacity: busy ? 0.7 : 1 }}>
-              <LinearGradient colors={[BRAND.violet, BRAND.magenta]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              <LinearGradient colors={[BRAND.teal, '#2B6B7A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={{ minHeight: 54, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 {busy ? <ActivityIndicator color="#FFFFFF" /> : (
                   <>
@@ -446,9 +446,9 @@ export default function SongEditorScreen({ route, navigation }: any) {
           </View>
 
           {editingId && current?.status === 'PUBLISHED' && (
-            <Pressable onPress={onUnpublish} disabled={busy} style={{ marginTop: spacing.md, minHeight: 50, borderRadius: 14, borderWidth: 1.5, borderColor: '#F59E0B', backgroundColor: withAlpha('#F59E0B', 0.08), alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}>
-              <Ionicons name="cloud-offline" size={17} color="#F59E0B" />
-              <Text style={[typography.button, { color: '#F59E0B' }]}>{t('leaderSongs.unpublish')}</Text>
+            <Pressable onPress={onUnpublish} disabled={busy} style={{ marginTop: spacing.md, minHeight: 50, borderRadius: 14, borderWidth: 1.5, borderColor: '#E8A65D', backgroundColor: withAlpha('#E8A65D', 0.08), alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}>
+              <Ionicons name="cloud-offline" size={17} color="#E8A65D" />
+              <Text style={[typography.button, { color: '#E8A65D' }]}>{t('leaderSongs.unpublish')}</Text>
             </Pressable>
           )}
         </View>
@@ -501,7 +501,7 @@ function CategoryPill({ label, active, onPress }: { label: string; active: boole
   const { theme } = useTheme();
   const { colors, typography } = theme;
   return (
-    <Pressable onPress={onPress} style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: active ? BRAND.violet : colors.border, backgroundColor: active ? BRAND.violet : colors.surface }}>
+    <Pressable onPress={onPress} style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: active ? colors.accent : colors.border, backgroundColor: active ? colors.accent : colors.surface }}>
       <Text style={[typography.caption, { color: active ? '#FFFFFF' : colors.text, fontWeight: '800' }]}>{label}</Text>
     </Pressable>
   );
@@ -516,8 +516,8 @@ function Field({ label, value, onChange, placeholder, multiline, autoCapitalize,
   return (
     <View style={{ marginTop: spacing.md }}>
       <Text style={[typography.bodySmall, { color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '700' }]}>{label}</Text>
-      <View style={{ flexDirection: 'row', alignItems: multiline ? 'flex-start' : 'center', gap: 10, backgroundColor: colors.background, borderColor: focused ? BRAND.violet : colors.border, borderWidth: 1.5, borderRadius: radius.md + 4, paddingHorizontal: spacing.md }}>
-        {icon && <Ionicons name={icon} size={18} color={focused ? BRAND.violet : colors.textSecondary} style={{ marginTop: multiline ? 15 : 0 }} />}
+      <View style={{ flexDirection: 'row', alignItems: multiline ? 'flex-start' : 'center', gap: 10, backgroundColor: colors.background, borderColor: focused ? colors.accent : colors.border, borderWidth: 1.5, borderRadius: radius.md + 4, paddingHorizontal: spacing.md }}>
+        {icon && <Ionicons name={icon} size={18} color={focused ? colors.accent : colors.textSecondary} style={{ marginTop: multiline ? 15 : 0 }} />}
         <TextInput value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={colors.textSecondary} multiline={multiline} autoCapitalize={autoCapitalize ?? 'sentences'}
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           style={{ flex: 1, paddingVertical: spacing.md, color: colors.text, minHeight: multiline ? 120 : undefined, textAlignVertical: multiline ? 'top' : 'center' }} />

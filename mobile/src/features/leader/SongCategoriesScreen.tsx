@@ -31,10 +31,10 @@ import {
 } from './useLeaderCategoriesAndZema';
 
 const PALETTES: readonly [string, string][] = [
-  [BRAND.violet, BRAND.magenta],
-  [BRAND.water, BRAND.violet],
-  [BRAND.magenta, '#F59E0B'],
-  [BRAND.deep, BRAND.violet],
+  [BRAND.tealDark, '#2B6B7A'],
+  ['#2B6B7A', BRAND.teal],
+  ['#3B2F6B', '#7B5FC7'],
+  [BRAND.teal, '#2E9E5B'],
 ];
 
 export default function SongCategoriesScreen({ navigation }: any) {
@@ -136,7 +136,7 @@ export default function SongCategoriesScreen({ navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <LinearGradient
-        colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+        colors={[BRAND.teal, BRAND.teal]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
@@ -157,7 +157,7 @@ export default function SongCategoriesScreen({ navigation }: any) {
             width: 180,
             height: 180,
             borderRadius: 90,
-            backgroundColor: withAlpha(BRAND.gold, 0.22),
+            backgroundColor: withAlpha(BRAND.lime, 0.14),
           }}
         />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
@@ -206,14 +206,14 @@ export default function SongCategoriesScreen({ navigation }: any) {
               paddingHorizontal: 14,
               borderRadius: 14,
               borderWidth: 1.5,
-              borderColor: focused ? BRAND.gold : 'rgba(255,255,255,0.28)',
+              borderColor: focused ? BRAND.lime : 'rgba(255,255,255,0.28)',
               backgroundColor: 'rgba(255,255,255,0.16)',
             }}
           >
             <Ionicons
               name="pricetag"
               size={16}
-              color={focused ? BRAND.gold : 'rgba(255,255,255,0.85)'}
+              color={focused ? BRAND.lime : 'rgba(255,255,255,0.85)'}
             />
             <TextInput
               value={newName}
@@ -222,7 +222,7 @@ export default function SongCategoriesScreen({ navigation }: any) {
               placeholderTextColor="rgba(255,255,255,0.6)"
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              selectionColor={BRAND.gold}
+              selectionColor={BRAND.lime}
               style={{ flex: 1, color: '#FFFFFF', fontSize: 14, paddingVertical: 10 }}
             />
           </View>
@@ -233,7 +233,7 @@ export default function SongCategoriesScreen({ navigation }: any) {
             style={{ borderRadius: 14, overflow: 'hidden', opacity: busy ? 0.6 : 1 }}
           >
             <LinearGradient
-              colors={[BRAND.gold, '#FFA94D']}
+              colors={[BRAND.lime, BRAND.lime]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{
@@ -275,7 +275,7 @@ export default function SongCategoriesScreen({ navigation }: any) {
 
       {firstLoad ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={BRAND.violet} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -290,7 +290,7 @@ export default function SongCategoriesScreen({ navigation }: any) {
           ListEmptyComponent={
             <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
               <LinearGradient
-                colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
+                colors={[BRAND.lime, BRAND.mint, BRAND.lavender]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
@@ -347,9 +347,9 @@ export default function SongCategoriesScreen({ navigation }: any) {
           <View style={styles.backdrop}>
             <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
               <View
-                style={[styles.sheetIcon, { backgroundColor: withAlpha(BRAND.violet, 0.16) }]}
+                style={[styles.sheetIcon, { backgroundColor: withAlpha(colors.accent, 0.16) }]}
               >
-                <Ionicons name="pricetag" size={26} color={BRAND.violet} />
+                <Ionicons name="pricetag" size={26} color={colors.accent} />
               </View>
               <Text
                 style={[
@@ -372,7 +372,7 @@ export default function SongCategoriesScreen({ navigation }: any) {
               <View style={{ marginTop: spacing.lg }}>
                 <AuthField
                   label={t('leaderSongs.newCategoryPlaceholder')}
-                  iconNode={<Ionicons name="pricetag" size={16} color={BRAND.violet} />}
+                  iconNode={<Ionicons name="pricetag" size={16} color={colors.accent} />}
                   value={renameValue}
                   onChangeText={setRenameValue}
                   autoCapitalize="sentences"
@@ -414,7 +414,7 @@ export default function SongCategoriesScreen({ navigation }: any) {
                   style={{ flex: 1, opacity: busy ? 0.7 : 1 }}
                 >
                   <LinearGradient
-                    colors={[BRAND.violet, BRAND.magenta]}
+                    colors={[BRAND.teal, '#2B6B7A']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.saveBtn}

@@ -26,10 +26,10 @@ type Props = NativeStackScreenProps<LeaderStackParamList, 'ApprovalsList'>;
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const AVATAR_PALETTE: readonly [string, string][] = [
-  [BRAND.violet, BRAND.magenta],
-  [BRAND.water, BRAND.violet],
-  [BRAND.magenta, '#F59E0B'],
-  [BRAND.deep, BRAND.violet],
+  [BRAND.tealDark, '#2B6B7A'],
+  ['#2B6B7A', BRAND.teal],
+  ['#3B2F6B', '#7B5FC7'],
+  [BRAND.teal, '#2E9E5B'],
 ];
 
 const TOOLS: {
@@ -39,12 +39,12 @@ const TOOLS: {
   route: keyof LeaderStackParamList;
   gradient: readonly [string, string];
 }[] = [
-  { key: 'events', icon: 'calendar', labelKey: 'events.title', route: 'LeaderEvents', gradient: ['#6C3FE0', '#E0409A'] },
-  { key: 'announcements', icon: 'megaphone', labelKey: 'announcements.title', route: 'LeaderAnnouncements', gradient: ['#F59E0B', '#E0409A'] },
-  { key: 'attendance', icon: 'checkbox', labelKey: 'attendance.record', route: 'LeaderAttendance', gradient: ['#22C55E', '#0E7490'] },
-  { key: 'member', icon: 'person-circle', labelKey: 'leaderTools.manageMember', route: 'ManageMember', gradient: ['#6EDBD5', '#6C3FE0'] },
-  { key: 'songs', icon: 'musical-notes', labelKey: 'leaderSongs.title', route: 'LeaderSongs', gradient: ['#EE9BBD', '#6C3FE0'] },
-  { key: 'memories', icon: 'images', labelKey: 'memories.title', route: 'LeaderMemories', gradient: ['#B6A0FF', '#E0409A'] },
+  { key: 'events', icon: 'calendar', labelKey: 'events.title', route: 'LeaderEvents', gradient: ['#1D4550', '#2B6B7A'] },
+  { key: 'announcements', icon: 'megaphone', labelKey: 'announcements.title', route: 'LeaderAnnouncements', gradient: ['#C9822F', '#E8A65D'] },
+  { key: 'attendance', icon: 'checkbox', labelKey: 'attendance.record', route: 'LeaderAttendance', gradient: ['#2E9E5B', '#1D7F6E'] },
+  { key: 'member', icon: 'person-circle', labelKey: 'leaderTools.manageMember', route: 'ManageMember', gradient: ['#5B4AA8', '#7B5FC7'] },
+  { key: 'songs', icon: 'musical-notes', labelKey: 'leaderSongs.title', route: 'LeaderSongs', gradient: ['#3B7F8C', '#1D4550'] },
+  { key: 'memories', icon: 'images', labelKey: 'memories.title', route: 'LeaderMemories', gradient: ['#7B5FC7', '#9B84E0'] },
 ];
 
 export default function ApprovalsListScreen({ navigation }: Props) {
@@ -70,7 +70,7 @@ export default function ApprovalsListScreen({ navigation }: Props) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={BRAND.violet} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -86,14 +86,14 @@ export default function ApprovalsListScreen({ navigation }: Props) {
           <RefreshControl
             refreshing={q.isRefetching && !firstLoad}
             onRefresh={() => q.refetch()}
-            tintColor={BRAND.violet}
-            colors={[BRAND.violet]}
+            tintColor={colors.primary}
+            colors={[BRAND.teal]}
           />
         }
         ListHeaderComponent={
           <View>
             <LinearGradient
-              colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+              colors={[BRAND.teal, BRAND.teal]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
@@ -114,7 +114,7 @@ export default function ApprovalsListScreen({ navigation }: Props) {
                   width: 180,
                   height: 180,
                   borderRadius: 90,
-                  backgroundColor: withAlpha(BRAND.gold, 0.22),
+                  backgroundColor: withAlpha(BRAND.lime, 0.14),
                 }}
               />
               <View
@@ -126,7 +126,7 @@ export default function ApprovalsListScreen({ navigation }: Props) {
                   width: 180,
                   height: 180,
                   borderRadius: 90,
-                  backgroundColor: withAlpha(BRAND.water, 0.22),
+                  backgroundColor: withAlpha(BRAND.lavender, 0.1),
                 }}
               />
 
@@ -221,7 +221,7 @@ export default function ApprovalsListScreen({ navigation }: Props) {
               }}
             >
               <View
-                style={{ width: 4, height: 16, borderRadius: 2, backgroundColor: BRAND.violet }}
+                style={{ width: 4, height: 16, borderRadius: 2, backgroundColor: colors.accent }}
               />
               <Text
                 style={[
@@ -243,10 +243,10 @@ export default function ApprovalsListScreen({ navigation }: Props) {
                     paddingHorizontal: 10,
                     paddingVertical: 3,
                     borderRadius: 999,
-                    backgroundColor: withAlpha(BRAND.violet, 0.18),
+                    backgroundColor: withAlpha(colors.accent, 0.18),
                   }}
                 >
-                  <Text style={{ color: BRAND.violet, fontSize: 12, fontWeight: '800' }}>
+                  <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '800' }}>
                     {items.length}
                   </Text>
                 </View>
@@ -269,16 +269,16 @@ export default function ApprovalsListScreen({ navigation }: Props) {
                     paddingHorizontal: 12,
                     paddingVertical: 6,
                     borderRadius: 999,
-                    backgroundColor: withAlpha('#F59E0B', 0.14),
+                    backgroundColor: withAlpha('#E8A65D', 0.14),
                     borderWidth: 1,
-                    borderColor: withAlpha('#F59E0B', 0.4),
+                    borderColor: withAlpha('#E8A65D', 0.4),
                   }}
                 >
-                  <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
+                  <Ionicons name="cloud-offline" size={13} color="#E8A65D" />
                   <Text
                     style={[
                       typography.caption,
-                      { color: '#F59E0B', fontWeight: '800' },
+                      { color: '#E8A65D', fontWeight: '800' },
                     ]}
                   >
                     {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
@@ -313,7 +313,7 @@ export default function ApprovalsListScreen({ navigation }: Props) {
         ListEmptyComponent={
           <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
             <LinearGradient
-              colors={[BRAND.violet, BRAND.magenta, BRAND.gold]}
+              colors={[BRAND.lime, BRAND.mint, BRAND.lavender]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
@@ -544,13 +544,13 @@ function ApplicationCard({
             width: 34,
             height: 34,
             borderRadius: 17,
-            backgroundColor: withAlpha(palette[1], 0.16),
+            backgroundColor: withAlpha(colors.accent, 0.16),
             alignItems: 'center',
             justifyContent: 'center',
             marginLeft: 8,
           }}
         >
-          <Ionicons name="chevron-forward" size={18} color={palette[1]} />
+          <Ionicons name="chevron-forward" size={18} color={colors.accent} />
         </View>
       </Pressable>
     </Animated.View>

@@ -122,13 +122,13 @@ export default function ManageMemberScreen({ navigation }: any) {
       >
         {/* Hero */}
         <LinearGradient
-          colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+          colors={[BRAND.teal, BRAND.teal]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.hero, { paddingTop: insets.top + 16 }]}
         >
-          <View pointerEvents="none" style={[styles.blob, { top: -60, right: -40, backgroundColor: withAlpha(BRAND.gold, 0.22) }]} />
-          <View pointerEvents="none" style={[styles.blob, { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.water, 0.22) }]} />
+          <View pointerEvents="none" style={[styles.blob, { top: -60, right: -40, backgroundColor: withAlpha(BRAND.lime, 0.14) }]} />
+          <View pointerEvents="none" style={[styles.blob, { bottom: -80, left: -50, backgroundColor: withAlpha(BRAND.lavender, 0.1) }]} />
 
           <View style={styles.heroRow}>
             <View style={styles.heroIcon}>
@@ -154,7 +154,7 @@ export default function ManageMemberScreen({ navigation }: any) {
               returnKeyType="search"
               onSubmitEditing={onLookup}
               style={styles.searchInput}
-              selectionColor={BRAND.gold}
+              selectionColor={BRAND.lime}
             />
             {phone.length > 0 && (
               <Pressable onPress={() => setPhone('')} hitSlop={10}>
@@ -164,7 +164,7 @@ export default function ManageMemberScreen({ navigation }: any) {
           </View>
 
           <Pressable onPress={onLookup} disabled={busy} style={[styles.lookupBtn, { opacity: busy ? 0.7 : 1 }]}>
-            <LinearGradient colors={[BRAND.gold, '#FFA94D']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.lookupBtnInner}>
+            <LinearGradient colors={[BRAND.lime, BRAND.lime]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.lookupBtnInner}>
               {busy ? <ActivityIndicator color={BRAND.deep} /> : (
                 <>
                   <Ionicons name="search" size={18} color={BRAND.deep} />
@@ -185,14 +185,14 @@ export default function ManageMemberScreen({ navigation }: any) {
         {/* Member Card */}
         {member && (
           <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-            <LinearGradient colors={[BRAND.violet, BRAND.magenta, BRAND.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.memberBorder}>
+            <LinearGradient colors={[BRAND.lime, BRAND.mint, BRAND.lavender]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.memberBorder}>
               <View style={[styles.memberCard, { backgroundColor: colors.surface }]}>
                 <View style={styles.memberHeader}>
                   {member.profilePhotoUrl ? (
                     <Image source={{ uri: member.profilePhotoUrl }} style={styles.memberAvatar} />
                   ) : (
-                    <View style={[styles.memberAvatar, { backgroundColor: withAlpha(BRAND.violet, 0.16), alignItems: 'center', justifyContent: 'center' }]}>
-                      <Text style={{ color: BRAND.violet, fontSize: 22, fontWeight: '800' }}>
+                    <View style={[styles.memberAvatar, { backgroundColor: withAlpha(colors.accent, 0.16), alignItems: 'center', justifyContent: 'center' }]}>
+                      <Text style={{ color: colors.accent, fontSize: 22, fontWeight: '800' }}>
                         {(member.fullName ?? member.phone).trim().charAt(0).toUpperCase()}
                       </Text>
                     </View>
@@ -201,18 +201,18 @@ export default function ManageMemberScreen({ navigation }: any) {
                     <Text style={[typography.body, { color: colors.text, fontWeight: '800' }]}>{member.fullName ?? '—'}</Text>
                     <Text style={[typography.bodySmall, { color: colors.textSecondary }]}>{member.phone}</Text>
                     <View style={styles.roleRow}>
-                      <View style={[styles.rolePill, { backgroundColor: withAlpha(BRAND.violet, 0.14) }]}>
-                        <Ionicons name="ribbon" size={11} color={BRAND.violet} />
-                        <Text style={[typography.caption, { color: BRAND.violet, fontWeight: '800' }]}>{member.role}</Text>
+                      <View style={[styles.rolePill, { backgroundColor: withAlpha(colors.accent, 0.14) }]}>
+                        <Ionicons name="ribbon" size={11} color={colors.accent} />
+                        <Text style={[typography.caption, { color: colors.accent, fontWeight: '800' }]}>{member.role}</Text>
                       </View>
                     </View>
                   </View>
                 </View>
 
                 {member.mustChangePassword && (
-                  <View style={[styles.warnRow, { backgroundColor: withAlpha('#F59E0B', 0.12), borderColor: withAlpha('#F59E0B', 0.4) }]}>
-                    <Ionicons name="warning" size={14} color="#F59E0B" />
-                    <Text style={[typography.caption, { color: '#F59E0B', flex: 1, fontWeight: '700' }]}>{t('password.banner')}</Text>
+                  <View style={[styles.warnRow, { backgroundColor: withAlpha('#E8A65D', 0.12), borderColor: withAlpha('#E8A65D', 0.4) }]}>
+                    <Ionicons name="warning" size={14} color="#E8A65D" />
+                    <Text style={[typography.caption, { color: '#E8A65D', flex: 1, fontWeight: '700' }]}>{t('password.banner')}</Text>
                   </View>
                 )}
 
@@ -224,7 +224,7 @@ export default function ManageMemberScreen({ navigation }: any) {
                       setResetOpen(true);
                     }}
                     disabled={busy}
-                    colors={[BRAND.violet, BRAND.magenta]}
+                    colors={[BRAND.teal, '#2B6B7A']}
                     icon="key"
                     label={t('leaderTools.resetPassword')}
                   />
@@ -264,7 +264,7 @@ export default function ManageMemberScreen({ navigation }: any) {
                       )
                     }
                     disabled={busy}
-                    colors={[BRAND.gold, '#FFA94D']}
+                    colors={['#5B4AA8', '#7B5FC7']}
                     icon="ribbon"
                     label={t('leaderTools.appoint')}
                   />
@@ -276,7 +276,7 @@ export default function ManageMemberScreen({ navigation }: any) {
 
         {!member && !error && (
           <View style={{ padding: spacing.xl, alignItems: 'center', marginTop: spacing.lg }}>
-            <LinearGradient colors={[BRAND.violet, BRAND.magenta, BRAND.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.emptyRing}>
+            <LinearGradient colors={[BRAND.lime, BRAND.mint, BRAND.lavender]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.emptyRing}>
               <View style={[styles.emptyInner, { backgroundColor: colors.background }]}>
                 <Ionicons name="person-outline" size={36} color={colors.textSecondary} />
               </View>
@@ -291,8 +291,8 @@ export default function ManageMemberScreen({ navigation }: any) {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.backdrop}>
             <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
-              <View style={[styles.sheetIcon, { backgroundColor: withAlpha(BRAND.violet, 0.16) }]}>
-                <Ionicons name="key" size={26} color={BRAND.violet} />
+              <View style={[styles.sheetIcon, { backgroundColor: withAlpha(colors.accent, 0.16) }]}>
+                <Ionicons name="key" size={26} color={colors.accent} />
               </View>
               <Text style={[typography.h3, { color: colors.text, marginTop: 12, fontWeight: '800' }]}>
                 {t('leaderTools.resetPassword')}
@@ -307,7 +307,7 @@ export default function ManageMemberScreen({ navigation }: any) {
               <View style={{ marginTop: spacing.lg }}>
                 <AuthField
                   label={t('leaderTools.resetPasswordTitle', { defaultValue: 'Temporary Password' })}
-                  iconNode={<Ionicons name="lock-closed" size={16} color={BRAND.violet} />}
+                  iconNode={<Ionicons name="lock-closed" size={16} color={colors.accent} />}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry={!showPassword}
@@ -316,7 +316,7 @@ export default function ManageMemberScreen({ navigation }: any) {
                   onSubmitEditing={confirmReset}
                 />
                 <Pressable onPress={() => setShowPassword(!showPassword)} style={{ alignSelf: 'flex-start', marginTop: 8 }}>
-                  <Text style={{ color: BRAND.violet, fontSize: 12, fontWeight: '700' }}>
+                  <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '700' }}>
                     {showPassword
                       ? t('leaderTools.hidePassword', { defaultValue: 'Hide password' })
                       : t('leaderTools.showPassword', { defaultValue: 'Show password' })}
@@ -329,7 +329,7 @@ export default function ManageMemberScreen({ navigation }: any) {
                   <Text style={[typography.button, { color: colors.text }]}>{t('common.cancel')}</Text>
                 </Pressable>
                 <Pressable onPress={confirmReset} disabled={busy} style={{ flex: 1, opacity: busy ? 0.7 : 1 }}>
-                  <LinearGradient colors={[BRAND.violet, BRAND.magenta]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.dangerBtn}>
+                  <LinearGradient colors={[BRAND.teal, '#2B6B7A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.dangerBtn}>
                     {busy ? <ActivityIndicator color="#FFFFFF" /> : (
                       <>
                         <Ionicons name="checkmark" size={16} color="#FFFFFF" />

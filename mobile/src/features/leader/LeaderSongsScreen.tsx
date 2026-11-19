@@ -22,10 +22,10 @@ import { useLeaderSongsQuery } from './useLeaderSongsAndMemories';
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const PALETTES: readonly [string, string][] = [
-  [BRAND.violet, BRAND.magenta],
-  [BRAND.water, BRAND.violet],
-  [BRAND.magenta, '#F59E0B'],
-  [BRAND.deep, BRAND.violet],
+  [BRAND.tealDark, '#2B6B7A'],
+  ['#2B6B7A', BRAND.teal],
+  ['#3B2F6B', '#7B5FC7'],
+  [BRAND.teal, '#2E9E5B'],
 ];
 
 export default function LeaderSongsScreen({ navigation }: any) {
@@ -46,9 +46,9 @@ export default function LeaderSongsScreen({ navigation }: any) {
       case 'PUBLISHED':
         return colors.success;
       case 'RETURNED':
-        return '#F59E0B';
+        return '#E8A65D';
       case 'PENDING_REVIEW':
-        return BRAND.violet;
+        return colors.accent;
       case 'UNPUBLISHED':
       default:
         return colors.textSecondary;
@@ -97,14 +97,14 @@ export default function LeaderSongsScreen({ navigation }: any) {
           <RefreshControl
             refreshing={q.isRefetching && !firstLoad}
             onRefresh={() => q.refetch()}
-            tintColor={BRAND.violet}
-            colors={[BRAND.violet]}
+            tintColor={colors.primary}
+            colors={[BRAND.teal]}
           />
         }
         ListHeaderComponent={
           <View>
             <LinearGradient
-              colors={[BRAND.deep, BRAND.violet, BRAND.magenta]}
+              colors={[BRAND.teal, BRAND.teal]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
@@ -116,8 +116,8 @@ export default function LeaderSongsScreen({ navigation }: any) {
                 overflow: 'hidden',
               }}
             >
-              <View pointerEvents="none" style={{ position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.gold, 0.22) }} />
-              <View pointerEvents="none" style={{ position: 'absolute', bottom: -80, left: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.water, 0.22) }} />
+              <View pointerEvents="none" style={{ position: 'absolute', top: -60, right: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.lime, 0.14) }} />
+              <View pointerEvents="none" style={{ position: 'absolute', bottom: -80, left: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: withAlpha(BRAND.lavender, 0.1) }} />
 
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                 <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: BRAND.gold, alignItems: 'center', justifyContent: 'center' }}>
@@ -136,10 +136,10 @@ export default function LeaderSongsScreen({ navigation }: any) {
 
               <Pressable
                 onPress={() => navigation.navigate('SongEditor', { id: null })}
-                style={{ marginTop: 18, borderRadius: 16, overflow: 'hidden', shadowColor: BRAND.gold, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 }}
+                style={{ marginTop: 18, borderRadius: 16, overflow: 'hidden', shadowColor: BRAND.lime, shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 6 }}
               >
                 <LinearGradient
-                  colors={[BRAND.gold, '#FFA94D']}
+                  colors={[BRAND.lime, BRAND.lime]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 16 }}
@@ -158,9 +158,9 @@ export default function LeaderSongsScreen({ navigation }: any) {
 
             {showingSavedData && (
               <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}>
-                <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#F59E0B', 0.14), borderWidth: 1, borderColor: withAlpha('#F59E0B', 0.4) }}>
-                  <Ionicons name="cloud-offline" size={13} color="#F59E0B" />
-                  <Text style={[typography.caption, { color: '#F59E0B', fontWeight: '800' }]}>
+                <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: withAlpha('#E8A65D', 0.14), borderWidth: 1, borderColor: withAlpha('#E8A65D', 0.4) }}>
+                  <Ionicons name="cloud-offline" size={13} color="#E8A65D" />
+                  <Text style={[typography.caption, { color: '#E8A65D', fontWeight: '800' }]}>
                     {t('home.showingSavedData', { defaultValue: 'Showing saved data' })}
                   </Text>
                 </View>
@@ -176,12 +176,12 @@ export default function LeaderSongsScreen({ navigation }: any) {
 
             {items.length > 0 && (
               <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={{ width: 4, height: 16, borderRadius: 2, backgroundColor: BRAND.violet }} />
+                <View style={{ width: 4, height: 16, borderRadius: 2, backgroundColor: colors.accent }} />
                 <Text style={[typography.caption, { color: colors.textSecondary, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: '800', flex: 1 }]}>
                   {t('leaderSongs.allSongs', { defaultValue: 'All songs' })}
                 </Text>
-                <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: withAlpha(BRAND.violet, 0.18) }}>
-                  <Text style={{ color: BRAND.violet, fontSize: 12, fontWeight: '800' }}>{items.length}</Text>
+                <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: withAlpha(colors.accent, 0.18) }}>
+                  <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '800' }}>{items.length}</Text>
                 </View>
               </View>
             )}
@@ -190,11 +190,11 @@ export default function LeaderSongsScreen({ navigation }: any) {
         ListEmptyComponent={
           firstLoad ? (
             <View style={{ paddingVertical: spacing.xl * 2, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color={BRAND.violet} />
+              <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : (
             <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.md }}>
-              <LinearGradient colors={[BRAND.violet, BRAND.magenta, BRAND.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' }}>
+              <LinearGradient colors={[BRAND.lime, BRAND.mint, BRAND.lavender]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center' }}>
                 <View style={{ width: 104, height: 104, borderRadius: 52, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
                   <Ionicons name="musical-notes-outline" size={40} color={colors.textSecondary} />
                 </View>
@@ -264,8 +264,8 @@ function SongRow({ item, index, palette, tint, icon, label, onPress }: {
             <Text style={{ color: tint, fontSize: 11, fontWeight: '800' }}>{label}</Text>
           </View>
         </View>
-        <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: withAlpha(palette[1], 0.16), alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name="create-outline" size={17} color={palette[1]} />
+        <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: withAlpha(colors.accent, 0.16), alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="create-outline" size={17} color={colors.accent} />
         </View>
       </Pressable>
     </Animated.View>
