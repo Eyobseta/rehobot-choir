@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, Text, FlatList, Pressable, useWindowDimensions } from 'react-native';
+import { Modal, View, Text, FlatList, Pressable, ScrollView, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,7 +25,7 @@ export function PhotoViewer({
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <View style={{ flex: 1, backgroundColor: '#000000' }}>
+      <View style={{ flex: 1, backgroundColor: '#050F12' }}>
         <FlatList
           data={urls}
           horizontal
@@ -36,12 +36,22 @@ export function PhotoViewer({
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
           renderItem={({ item }) => (
-            <View style={{ width, height, alignItems: 'center', justifyContent: 'center' }}>
+            <ScrollView
+              style={{ width, height }}
+              contentContainerStyle={{ width, height, alignItems: 'center', justifyContent: 'center' }}
+              maximumZoomScale={3}
+              minimumZoomScale={1}
+              centerContent
+              bouncesZoom
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+            >
               <Image source={{ uri: item }} style={{ width, height }} contentFit="contain" cachePolicy="memory-disk" />
-            </View>
+            </ScrollView>
           )}
         />
         <View
+          pointerEvents="box-none"
           style={{
             position: 'absolute',
             top: insets.top + 8,
@@ -55,14 +65,32 @@ export function PhotoViewer({
           <Pressable
             onPress={onClose}
             hitSlop={10}
-            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 16,
+              backgroundColor: 'rgba(255,255,255,0.18)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
             <Ionicons name="close" size={24} color="#FFFFFF" />
           </Pressable>
           {urls.length > 1 ? (
-            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>
-              {index + 1} / {urls.length}
-            </Text>
+            <View
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: 'rgba(255,255,255,0.16)',
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13 }}>
+                {index + 1} / {urls.length}
+              </Text>
+            </View>
           ) : null}
         </View>
       </View>

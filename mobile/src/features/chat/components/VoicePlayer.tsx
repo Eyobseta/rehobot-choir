@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
-import { BRAND, withAlpha } from '../../auth/Auth_UI';
+import { useTheme } from '../../../theme/ThemeContext';
+import { withAlpha } from '../../auth/Auth_UI';
 import { formatDuration } from '../chatUtils';
 
 const RATES = [1, 1.5, 2];
@@ -25,6 +26,8 @@ export function VoicePlayer({
   mine: boolean;
   textColor: string;
 }) {
+  const { theme } = useTheme();
+  const { colors } = theme;
   const player = useAudioPlayer(null);
   const status = useAudioPlayerStatus(player);
   const [loaded, setLoaded] = useState(false);
@@ -32,8 +35,10 @@ export function VoicePlayer({
   const owner = useRef<Owner>({ stop: () => undefined }).current;
   owner.stop = () => player.pause();
 
-  const accent = mine ? '#FFFFFF' : BRAND.violet;
-  const track = mine ? 'rgba(255,255,255,0.3)' : withAlpha(BRAND.violet, 0.25);
+  // My bubbles are lime (dark mode) or teal (light mode): use the matching text color.
+  const accent = mine ? colors.primaryText : colors.accent;
+  const track = mine ? withAlpha(colors.primaryText, 0.25) : withAlpha(colors.accent, 0.25);
+  const chipBg = mine ? withAlpha(colors.primaryText, 0.16) : withAlpha(colors.accent, 0.14);
 
   useEffect(() => {
     if (status.didJustFinish) {
@@ -86,11 +91,12 @@ export function VoicePlayer({
       <Pressable
         onPress={toggle}
         hitSlop={6}
+        accessibilityRole="button"
         style={{
-          width: 38,
-          height: 38,
-          borderRadius: 19,
-          backgroundColor: mine ? 'rgba(255,255,255,0.22)' : withAlpha(BRAND.violet, 0.14),
+          width: 40,
+          height: 40,
+          borderRadius: 14,
+          backgroundColor: chipBg,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -104,8 +110,8 @@ export function VoicePlayer({
       </Pressable>
 
       <View style={{ flex: 1 }}>
-        <View style={{ height: 4, borderRadius: 2, backgroundColor: track, overflow: 'hidden' }}>
-          <View style={{ width: `${progress * 100}%`, height: 4, backgroundColor: accent }} />
+        <View style={{ height: 5, borderRadius: 3, backgroundColor: track, overflow: 'hidden' }}>
+          <View style={{ width: `${progress * 100}%`, height: 5, backgroundColor: accent }} />
         </View>
         <Text style={{ color: textColor, opacity: 0.8, fontSize: 11, marginTop: 4 }}>
           {formatDuration(shown)}
@@ -115,11 +121,12 @@ export function VoicePlayer({
       <Pressable
         onPress={cycleRate}
         hitSlop={6}
+        accessibilityRole="button"
         style={{
-          paddingHorizontal: 8,
-          paddingVertical: 4,
-          borderRadius: 10,
-          backgroundColor: mine ? 'rgba(255,255,255,0.22)' : withAlpha(BRAND.violet, 0.14),
+          paddingHorizontal: 10,
+          paddingVertical: 6,
+          borderRadius: 12,
+          backgroundColor: chipBg,
         }}
       >
         <Text style={{ color: accent, fontWeight: '800', fontSize: 12 }}>

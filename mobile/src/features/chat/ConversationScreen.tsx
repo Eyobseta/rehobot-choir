@@ -671,10 +671,10 @@ export default function ConversationScreen({ route, navigation }: Props) {
             <View style={{ alignItems: 'center', marginVertical: 10 }}>
               <View
                 style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                  borderRadius: 12,
-                  backgroundColor: withAlpha(BRAND.violet, 0.14),
+                  paddingHorizontal: 14,
+                  paddingVertical: 5,
+                  borderRadius: 999,
+                  backgroundColor: withAlpha(colors.accent, 0.16),
                 }}
               >
                 <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '700' }}>
@@ -724,7 +724,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       />
 
       {!connected ? (
-        <View style={{ backgroundColor: BRAND.gold, paddingVertical: 3, alignItems: 'center' }}>
+        <View style={{ backgroundColor: BRAND.lime, paddingVertical: 5, alignItems: 'center' }}>
           <Text style={{ color: BRAND.deep, fontSize: 12, fontWeight: '700' }}>{tr('connecting')}</Text>
         </View>
       ) : null}
@@ -742,16 +742,19 @@ export default function ConversationScreen({ route, navigation }: Props) {
             flexDirection: 'row',
             alignItems: 'center',
             gap: 10,
+            marginHorizontal: 12,
+            marginTop: 8,
             paddingHorizontal: 14,
-            paddingVertical: 8,
+            paddingVertical: 9,
+            borderRadius: 16,
             backgroundColor: colors.surface,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+            borderWidth: 1,
+            borderColor: colors.border,
           }}
         >
-          <Ionicons name="pin" size={16} color={BRAND.magenta} />
+          <Ionicons name="pin" size={16} color={colors.accent} />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: BRAND.magenta, fontSize: 11, fontWeight: '800' }}>
+            <Text style={{ color: colors.accent, fontSize: 11, fontWeight: '800' }}>
               {tr('pinned')} {detail.pinned.length > 1 ? `(${(pinIdx % detail.pinned.length) + 1}/${detail.pinned.length})` : ''}
             </Text>
             <Text numberOfLines={1} style={{ color: colors.text, fontSize: 13 }}>
@@ -764,7 +767,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         {loading ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator color={BRAND.violet} size="large" />
+            <ActivityIndicator color={colors.primary} size="large" />
           </View>
         ) : error ? (
           <EmptyState icon="cloud-offline-outline" text={tr('loadFailed')} actionLabel={tr('retry')} onAction={() => { setLoading(true); void load(); }} />
@@ -784,7 +787,7 @@ export default function ConversationScreen({ route, navigation }: Props) {
             windowSize={11}
             contentContainerStyle={{ paddingVertical: 8 }}
             ListFooterComponent={
-              loadingMore ? <ActivityIndicator color={BRAND.violet} style={{ margin: 14 }} /> : null
+              loadingMore ? <ActivityIndicator color={colors.primary} style={{ margin: 14 }} /> : null
             }
             onScrollToIndexFailed={(info) => {
               listRef.current?.scrollToOffset({
@@ -800,8 +803,9 @@ export default function ConversationScreen({ route, navigation }: Props) {
         )}
 
         {detail?.readOnly ? (
-          <View style={{ padding: 16, alignItems: 'center', backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border }}>
-            <Text style={{ color: colors.textSecondary }}>{tr('readOnly')}</Text>
+          <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border }}>
+            <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
+            <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>{tr('readOnly')}</Text>
           </View>
         ) : (
           <Composer

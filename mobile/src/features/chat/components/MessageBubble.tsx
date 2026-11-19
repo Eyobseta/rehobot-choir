@@ -48,13 +48,17 @@ function MessageBubbleBase({
 }: Props) {
   const tr = useTr();
   const { theme } = useTheme();
-  const { colors } = theme;
+  const { colors, mode } = theme;
   const { width } = useWindowDimensions();
 
   const mine = m.sender.id === meId;
-  const bubbleBg = mine ? BRAND.violet : colors.surface;
-  const textColor = mine ? '#FFFFFF' : colors.text;
-  const subColor = mine ? 'rgba(255,255,255,0.75)' : colors.textSecondary;
+  const dark = mode === 'dark';
+  // My bubbles use the theme's primary: lime in dark mode, teal in light mode.
+  const bubbleBg = mine ? colors.primary : colors.surface;
+  const textColor = mine ? colors.primaryText : colors.text;
+  const subColor = mine ? withAlpha(colors.primaryText, 0.7) : colors.textSecondary;
+  const seenColor = dark ? '#0F7A3D' : BRAND.lime;
+  const failColor = dark ? '#B3261E' : '#FFB4B4';
   const maxW = Math.min(width * 0.76, 340);
   const photos = m.media.filter((x) => x.type === 'PHOTO');
   const voice = m.media.find((x) => x.type === 'VOICE');
@@ -88,22 +92,22 @@ function MessageBubbleBase({
           delayLongPress={250}
           style={{
             backgroundColor: bubbleBg,
-            borderRadius: 18,
-            borderBottomRightRadius: mine ? 5 : 18,
-            borderBottomLeftRadius: mine ? 18 : 5,
+            borderRadius: 20,
+            borderBottomRightRadius: mine ? 6 : 20,
+            borderBottomLeftRadius: mine ? 20 : 6,
             paddingHorizontal: 6,
             paddingTop: 6,
             paddingBottom: 5,
             borderWidth: mine ? 0 : 1,
             borderColor: colors.border,
             opacity: sending ? 0.7 : 1,
-            ...(highlighted ? { borderWidth: 2, borderColor: BRAND.gold } : null),
+            ...(highlighted ? { borderWidth: 2, borderColor: colors.accent } : null),
           }}
         >
           {!mine && showSender ? (
             <Text
               numberOfLines={1}
-              style={{ color: BRAND.magenta, fontWeight: '800', fontSize: 12, marginHorizontal: 6, marginBottom: 3 }}
+              style={{ color: colors.accent, fontWeight: '800', fontSize: 12, marginHorizontal: 6, marginBottom: 3 }}
             >
               {m.sender.fullName}
             </Text>
@@ -115,14 +119,14 @@ function MessageBubbleBase({
               style={{
                 marginBottom: 5,
                 marginHorizontal: 0,
-                padding: 7,
-                borderRadius: 10,
+                padding: 8,
+                borderRadius: 12,
                 borderLeftWidth: 3,
-                borderLeftColor: mine ? BRAND.gold : BRAND.magenta,
-                backgroundColor: mine ? 'rgba(255,255,255,0.16)' : withAlpha(BRAND.violet, 0.09),
+                borderLeftColor: mine ? colors.primaryText : colors.accent,
+                backgroundColor: mine ? withAlpha(colors.primaryText, 0.12) : withAlpha(colors.accent, 0.1),
               }}
             >
-              <Text numberOfLines={1} style={{ color: mine ? BRAND.gold : BRAND.magenta, fontWeight: '800', fontSize: 12 }}>
+              <Text numberOfLines={1} style={{ color: mine ? colors.primaryText : colors.accent, fontWeight: '800', fontSize: 12 }}>
                 {m.replyTo.sender.fullName}
               </Text>
               <Text numberOfLines={2} style={{ color: textColor, opacity: 0.85, fontSize: 13 }}>
@@ -159,7 +163,7 @@ function MessageBubbleBase({
                     >
                       <Image
                         source={{ uri: thumbUrl(p.storageUrl, 600) }}
-                        style={{ width: tile, height: tileH, borderRadius: 13, backgroundColor: colors.border }}
+                        style={{ width: tile, height: tileH, borderRadius: 15, backgroundColor: colors.border }}
                         contentFit="cover"
                         cachePolicy="memory-disk"
                         transition={120}
@@ -206,14 +210,14 @@ function MessageBubbleBase({
             <Text style={{ color: subColor, fontSize: 11 }}>{formatClock(m.createdAt)}</Text>
             {mine && !m.deleted ? (
               failed ? (
-                <Ionicons name="alert-circle" size={14} color="#FFB4B4" />
+                <Ionicons name="alert-circle" size={14} color={failColor} />
               ) : sending ? (
                 <Ionicons name="time-outline" size={13} color={subColor} />
               ) : (
                 <Ionicons
                   name={seen ? 'checkmark-done' : 'checkmark'}
                   size={15}
-                  color={seen ? BRAND.gold : subColor}
+                  color={seen ? seenColor : subColor}
                 />
               )
             ) : null}
@@ -234,12 +238,12 @@ function MessageBubbleBase({
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 3,
-                  paddingHorizontal: 7,
-                  paddingVertical: 2,
-                  borderRadius: 12,
-                  backgroundColor: info.mine ? withAlpha(BRAND.violet, 0.22) : colors.surface,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 13,
+                  backgroundColor: info.mine ? withAlpha(colors.primary, 0.22) : colors.surface,
                   borderWidth: 1,
-                  borderColor: info.mine ? BRAND.violet : colors.border,
+                  borderColor: info.mine ? colors.primary : colors.border,
                 }}
               >
                 <Text style={{ fontSize: 13 }}>{emoji}</Text>

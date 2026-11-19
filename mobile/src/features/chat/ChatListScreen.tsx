@@ -1,18 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  TextInput,
-  RefreshControl,
-  ActivityIndicator,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, FlatList, Pressable, RefreshControl } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
-import { BRAND, withAlpha } from '../auth/Auth_UI';
+import { withAlpha } from '../auth/Auth_UI';
 import type { ChatStackParamList } from '../../navigation/ChatStack';
 import { useMe, isLeaderRole } from './chatSession';
 import { useTr } from './chatStrings';
@@ -23,7 +14,14 @@ import {
 } from './chatStore';
 import { firstName, listTime, messagePreview } from './chatUtils';
 import type { ConversationListItem } from './chatTypes';
-import { Avatar, ChatHeader, EmptyState, HeaderButton } from './components/ChatUI';
+import {
+  Avatar,
+  ChatHeader,
+  ChatListSkeleton,
+  EmptyState,
+  HeaderButton,
+  SearchField,
+} from './components/ChatUI';
 
 type Nav = NativeStackNavigationProp<ChatStackParamList, 'ChatList'>;
 
@@ -71,16 +69,24 @@ export default function ChatListScreen() {
     return (
       <Pressable
         onPress={() => navigation.navigate('Conversation', { conversationId: item.id, title: item.title })}
+        accessibilityRole="button"
+        accessibilityLabel={item.title}
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',
           gap: 12,
-          paddingHorizontal: 16,
-          paddingVertical: 11,
-          backgroundColor: pressed ? withAlpha(BRAND.violet, 0.08) : 'transparent',
+          marginHorizontal: 10,
+          paddingHorizontal: 8,
+          paddingVertical: 10,
+          borderRadius: 20,
+          backgroundColor: pressed
+            ? withAlpha(colors.primary, 0.08)
+            : unread > 0
+            ? withAlpha(colors.primary, 0.05)
+            : 'transparent',
         })}
       >
-        <Avatar size={54} kind={item.type} uri={item.photoUrl} name={item.title} online={online} />
+        <Avatar size={56} kind={item.type} uri={item.photoUrl} name={item.title} online={online} />
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text
@@ -89,17 +95,18 @@ export default function ChatListScreen() {
             >
               {item.title}
             </Text>
-            <Text style={{ color: unread > 0 ? BRAND.magenta : colors.textSecondary, fontSize: 12, fontWeight: '600' }}>
+            <Text style={{ color: unread > 0 ? colors.primary : colors.textSecondary, fontSize: 12, fontWeight: '700' }}>
               {listTime(item.lastMessageAt, tr)}
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
             <Text
               numberOfLines={1}
               style={{
                 flex: 1,
                 color: unread > 0 ? colors.text : colors.textSecondary,
                 fontSize: 14,
+                fontWeight: unread > 0 ? '600' : '400',
                 fontStyle: last?.deleted ? 'italic' : 'normal',
               }}
             >
@@ -108,16 +115,16 @@ export default function ChatListScreen() {
             {unread > 0 ? (
               <View
                 style={{
-                  minWidth: 22,
-                  height: 22,
-                  paddingHorizontal: 6,
-                  borderRadius: 11,
-                  backgroundColor: BRAND.magenta,
+                  minWidth: 24,
+                  height: 24,
+                  paddingHorizontal: 7,
+                  borderRadius: 12,
+                  backgroundColor: colors.primary,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
+                <Text style={{ color: colors.primaryText, fontSize: 12, fontWeight: '800' }}>
                   {unread > 99 ? '99+' : unread}
                 </Text>
               </View>
@@ -139,37 +146,12 @@ export default function ChatListScreen() {
             <HeaderButton icon="add" onPress={() => navigation.navigate('NewChat')} />
           </>
         }
-      />
-
-      <View style={{ paddingHorizontal: 14, paddingVertical: 10 }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            paddingHorizontal: 12,
-            height: 42,
-            borderRadius: 21,
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          <Ionicons name="search" size={18} color={colors.textSecondary} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={tr('searchChats')}
-            placeholderTextColor={colors.textSecondary}
-            style={{ flex: 1, color: colors.text, fontSize: 15 }}
-          />
-        </View>
-      </View>
+      >
+        <SearchField value={query} onChangeText={setQuery} placeholder={tr('searchChats')} onDark />
+      </ChatHeader>
 
       {!loaded ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={BRAND.violet} size="large" />
-        </View>
+        <ChatListSkeleton />
       ) : data.length === 0 ? (
         <EmptyState text={tr('emptyList')} actionLabel={tr('newChat')} onAction={() => navigation.navigate('NewChat')} />
       ) : (
@@ -177,8 +159,9 @@ export default function ChatListScreen() {
           data={data}
           keyExtractor={(c) => c.id}
           renderItem={renderRow}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND.violet} />}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
         />
       )}
     </View>

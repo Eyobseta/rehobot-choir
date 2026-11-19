@@ -7,7 +7,6 @@ import {
   Alert,
   Modal,
   ActivityIndicator,
-  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +27,15 @@ import { onChatEvent } from './chatRealtime';
 import { loadAllMembers, refreshConversations, useChatState } from './chatStore';
 import { pickSinglePhoto } from './pickPhoto';
 import type { ConversationDetail, MemberInfo } from './chatTypes';
-import { Avatar, ChatHeader, EmptyState, MemberList, PromptModal } from './components/ChatUI';
+import {
+  Avatar,
+  ChatHeader,
+  EmptyState,
+  MemberList,
+  PromptModal,
+  RoleBadge,
+  SearchField,
+} from './components/ChatUI';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'GroupInfo'>;
 
@@ -158,58 +165,86 @@ export default function GroupInfoScreen({ route, navigation }: Props) {
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <ChatHeader title="" onBack={() => navigation.goBack()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={BRAND.violet} size="large" />
+          <ActivityIndicator color={colors.primary} size="large" />
         </View>
       </View>
     );
   }
 
   const header = (
-    <View style={{ alignItems: 'center', paddingVertical: 22, gap: 10 }}>
-      <Pressable onPress={changePhoto} disabled={!isGroup}>
-        <Avatar size={104} kind={detail.type} uri={group?.photoUrl} name={detail.title} />
+    <View style={{ alignItems: 'center', paddingTop: 24, paddingBottom: 14, paddingHorizontal: 16, gap: 10 }}>
+      <Pressable onPress={changePhoto} disabled={!isGroup} accessibilityRole="button" accessibilityLabel={tr('changePhoto')}>
+        <View
+          style={{
+            padding: 4,
+            borderRadius: 60,
+            borderWidth: 2,
+            borderColor: withAlpha(BRAND.lime, 0.8),
+          }}
+        >
+          <Avatar size={104} kind={detail.type} uri={group?.photoUrl} name={detail.title} />
+        </View>
         {isGroup ? (
           <View
             style={{
               position: 'absolute',
-              right: 0,
-              bottom: 0,
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              backgroundColor: BRAND.violet,
+              right: 2,
+              bottom: 2,
+              width: 34,
+              height: 34,
+              borderRadius: 12,
+              backgroundColor: BRAND.teal,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 2,
               borderColor: colors.background,
             }}
           >
-            <Ionicons name="camera" size={16} color="#FFFFFF" />
+            <Ionicons name="camera" size={16} color={BRAND.lime} />
           </View>
         ) : null}
       </Pressable>
-      <Pressable onPress={() => isGroup && setRenameOpen(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800' }}>{detail.title}</Text>
-        {isGroup ? <Ionicons name="pencil" size={16} color={BRAND.violet} /> : null}
+
+      <Pressable
+        onPress={() => isGroup && setRenameOpen(true)}
+        accessibilityRole={isGroup ? 'button' : 'header'}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+      >
+        <Text style={{ color: colors.text, fontSize: 24, fontWeight: '800', textAlign: 'center' }}>{detail.title}</Text>
+        {isGroup ? <Ionicons name="pencil" size={16} color={colors.accent} /> : null}
       </Pressable>
-      <Text style={{ color: colors.textSecondary }}>{tr('membersCount', { count: detail.members.length })}</Text>
+
+      <View
+        style={{
+          paddingHorizontal: 12,
+          paddingVertical: 5,
+          borderRadius: 999,
+          backgroundColor: withAlpha(colors.accent, 0.14),
+        }}
+      >
+        <Text style={{ color: colors.accent, fontWeight: '800', fontSize: 13 }}>
+          {tr('membersCount', { count: detail.members.length })}
+        </Text>
+      </View>
 
       {canManage ? (
         <Pressable
           onPress={() => setAddOpen(true)}
-          style={{
+          accessibilityRole="button"
+          style={({ pressed }) => ({
             flexDirection: 'row',
             alignItems: 'center',
             gap: 8,
-            marginTop: 6,
-            paddingHorizontal: 18,
-            paddingVertical: 10,
-            borderRadius: 22,
-            backgroundColor: withAlpha(BRAND.violet, 0.14),
-          }}
+            marginTop: 8,
+            paddingHorizontal: 20,
+            minHeight: 46,
+            borderRadius: 999,
+            backgroundColor: BRAND.teal,
+            transform: [{ scale: pressed ? 0.97 : 1 }],
+          })}
         >
-          <Ionicons name="person-add" size={18} color={BRAND.violet} />
-          <Text style={{ color: BRAND.violet, fontWeight: '800' }}>{tr('addMembers')}</Text>
+          <Ionicons name="person-add" size={18} color={BRAND.lime} />
+          <Text style={{ color: BRAND.lime, fontWeight: '800' }}>{tr('addMembers')}</Text>
         </Pressable>
       ) : null}
     </View>
@@ -219,18 +254,44 @@ export default function GroupInfoScreen({ route, navigation }: Props) {
     <View style={{ padding: 16, gap: 10, paddingBottom: insets.bottom + 24 }}>
       <Pressable
         onPress={leave}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
+        accessibilityRole="button"
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          padding: 14,
+          borderRadius: 20,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        })}
       >
-        <Ionicons name="exit-outline" size={22} color={colors.error} />
-        <Text style={{ color: colors.error, fontWeight: '700', fontSize: 16 }}>{tr('leaveGroup')}</Text>
+        <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: withAlpha(colors.error, 0.14), alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="exit-outline" size={20} color={colors.error} />
+        </View>
+        <Text style={{ color: colors.error, fontWeight: '800', fontSize: 16 }}>{tr('leaveGroup')}</Text>
       </Pressable>
       {canManage ? (
         <Pressable
           onPress={deleteGroup}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, backgroundColor: withAlpha(colors.error, 0.12) }}
+          accessibilityRole="button"
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            padding: 14,
+            borderRadius: 20,
+            backgroundColor: withAlpha(colors.error, 0.1),
+            borderWidth: 1,
+            borderColor: withAlpha(colors.error, 0.35),
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          })}
         >
-          <Ionicons name="trash-outline" size={22} color={colors.error} />
-          <Text style={{ color: colors.error, fontWeight: '700', fontSize: 16 }}>{tr('deleteGroup')}</Text>
+          <View style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: withAlpha(colors.error, 0.18), alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="trash-outline" size={20} color={colors.error} />
+          </View>
+          <Text style={{ color: colors.error, fontWeight: '800', fontSize: 16 }}>{tr('deleteGroup')}</Text>
         </Pressable>
       ) : null}
     </View>
@@ -249,17 +310,28 @@ export default function GroupInfoScreen({ route, navigation }: Props) {
           const isMe = item.userId === me?.id;
           const online = presence[item.userId] ?? item.online;
           return (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 9 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                marginHorizontal: 10,
+                paddingHorizontal: 8,
+                paddingVertical: 9,
+                borderRadius: 18,
+                backgroundColor: isMe ? withAlpha(colors.primary, 0.06) : 'transparent',
+              }}
+            >
               <Avatar uri={item.profilePhotoUrl} name={item.fullName} online={online} />
               <View style={{ flex: 1 }}>
-                <Text numberOfLines={1} style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>
+                <Text numberOfLines={1} style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
                   {item.fullName}
                   {isMe ? ` (${tr('you')})` : ''}
                 </Text>
                 {isMgr ? (
-                  <Text style={{ color: BRAND.gold, fontSize: 12, fontWeight: '800' }}>★ {tr('manager')}</Text>
+                  <RoleBadge label={tr('manager')} tone="manager" />
                 ) : item.role !== 'MEMBER' ? (
-                  <Text style={{ color: BRAND.magenta, fontSize: 12, fontWeight: '700' }}>{tr('leader')}</Text>
+                  <RoleBadge label={tr('leader')} tone="leader" />
                 ) : null}
               </View>
               {canManage && !isMgr && !isMe ? (
@@ -267,27 +339,31 @@ export default function GroupInfoScreen({ route, navigation }: Props) {
                   {item.role === 'LEADER' ? (
                     <Pressable
                       hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={tr('makeManager')}
                       onPress={() =>
                         confirm(`${tr('makeManager')}: ${item.fullName}?`, () =>
                           void run(() => updateGroupApi(conversationId, { managerId: item.userId })),
                           false,
                         )
                       }
-                      style={{ padding: 8 }}
+                      style={{ width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: withAlpha(BRAND.lime, 0.2) }}
                     >
-                      <Ionicons name="ribbon-outline" size={22} color={BRAND.gold} />
+                      <Ionicons name="ribbon-outline" size={20} color={colors.primary} />
                     </Pressable>
                   ) : null}
                   <Pressable
                     hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={tr('removeMember')}
                     onPress={() =>
                       confirm(`${tr('removeMember')}: ${item.fullName}?`, () =>
                         void run(() => removeMemberApi(conversationId, item.userId)),
                       )
                     }
-                    style={{ padding: 8 }}
+                    style={{ width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: withAlpha(colors.error, 0.12) }}
                   >
-                    <Ionicons name="person-remove-outline" size={22} color={colors.error} />
+                    <Ionicons name="person-remove-outline" size={20} color={colors.error} />
                   </Pressable>
                 </View>
               ) : null}
@@ -318,8 +394,10 @@ export default function GroupInfoScreen({ route, navigation }: Props) {
       />
 
       {busy ? (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.25)', alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color="#FFFFFF" size="large" />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ padding: 22, borderRadius: 24, backgroundColor: colors.surface }}>
+            <ActivityIndicator color={colors.primary} size="large" />
+          </View>
         </View>
       ) : null}
     </View>
@@ -366,16 +444,18 @@ function AddMembersModal({
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <ChatHeader
           title={tr('addMembers')}
+          subtitle={selected.size > 0 ? tr('selected', { count: selected.size }) : undefined}
           onBack={onClose}
           right={
             <Pressable
               onPress={() => selected.size > 0 && onAdd(Array.from(selected))}
               disabled={selected.size === 0}
+              accessibilityRole="button"
               style={{
-                paddingHorizontal: 16,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: selected.size > 0 ? BRAND.gold : 'rgba(255,255,255,0.2)',
+                paddingHorizontal: 18,
+                height: 42,
+                borderRadius: 15,
+                backgroundColor: selected.size > 0 ? BRAND.lime : 'rgba(255,255,255,0.18)',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -387,28 +467,7 @@ function AddMembersModal({
           }
         />
         <View style={{ padding: 14 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              paddingHorizontal: 12,
-              height: 42,
-              borderRadius: 21,
-              backgroundColor: colors.surface,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <Ionicons name="search" size={18} color={colors.textSecondary} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder={tr('searchMembers')}
-              placeholderTextColor={colors.textSecondary}
-              style={{ flex: 1, color: colors.text, fontSize: 15 }}
-            />
-          </View>
+          <SearchField value={query} onChangeText={setQuery} placeholder={tr('searchMembers')} />
         </View>
         <View style={{ flex: 1, paddingBottom: insets.bottom }}>
           <MemberList

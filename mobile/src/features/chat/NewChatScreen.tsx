@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../../theme/ThemeContext';
@@ -10,7 +10,7 @@ import { useTr } from './chatStrings';
 import { openDirect } from './chatApi';
 import { loadAllMembers, useChatState } from './chatStore';
 import type { MemberInfo } from './chatTypes';
-import { ChatHeader, EmptyState, MemberList } from './components/ChatUI';
+import { ChatHeader, EmptyState, MemberList, SearchField } from './components/ChatUI';
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'NewChat'>;
 
@@ -61,45 +61,51 @@ export default function NewChatScreen({ navigation }: Props) {
   const header = (
     <View>
       <View style={{ padding: 14 }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            paddingHorizontal: 12,
-            height: 42,
-            borderRadius: 21,
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          <Ionicons name="search" size={18} color={colors.textSecondary} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={tr('searchMembers')}
-            placeholderTextColor={colors.textSecondary}
-            style={{ flex: 1, color: colors.text, fontSize: 15 }}
-          />
-        </View>
+        <SearchField value={query} onChangeText={setQuery} placeholder={tr('searchMembers')} />
       </View>
       {leader ? (
         <Pressable
           onPress={() => navigation.navigate('CreateGroup')}
+          accessibilityRole="button"
           style={({ pressed }) => ({
             flexDirection: 'row',
             alignItems: 'center',
             gap: 12,
-            paddingHorizontal: 16,
-            paddingVertical: 10,
-            backgroundColor: pressed ? withAlpha(BRAND.violet, 0.08) : 'transparent',
+            marginHorizontal: 14,
+            marginBottom: 8,
+            padding: 12,
+            borderRadius: 22,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
           })}
         >
-          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: BRAND.magenta, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="people" size={22} color="#FFFFFF" />
+          <View
+            style={{
+              width: 46,
+              height: 46,
+              borderRadius: 16,
+              backgroundColor: BRAND.lime,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="people" size={22} color={BRAND.deep} />
           </View>
-          <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>{tr('newGroup')}</Text>
+          <Text style={{ flex: 1, color: colors.text, fontSize: 16, fontWeight: '800' }}>{tr('newGroup')}</Text>
+          <View
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 10,
+              backgroundColor: BRAND.teal,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="arrow-forward" size={15} color={BRAND.lime} />
+          </View>
         </Pressable>
       ) : null}
     </View>
@@ -110,13 +116,21 @@ export default function NewChatScreen({ navigation }: Props) {
       <ChatHeader title={tr('newChat')} onBack={() => navigation.goBack()} />
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={BRAND.violet} size="large" />
+          <ActivityIndicator color={colors.primary} size="large" />
         </View>
       ) : failed ? (
         <EmptyState icon="cloud-offline-outline" text={tr('loadFailed')} actionLabel={tr('retry')} onAction={load} />
       ) : (
         <MemberList members={list} onPress={startDm} presence={presence} header={header} />
       )}
+      {opening ? (
+        <View
+          pointerEvents="auto"
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: withAlpha(colors.background, 0.55), alignItems: 'center', justifyContent: 'center' }}
+        >
+          <ActivityIndicator color={colors.primary} size="large" />
+        </View>
+      ) : null}
     </View>
   );
 }

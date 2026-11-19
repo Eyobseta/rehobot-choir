@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
@@ -252,9 +251,9 @@ export function Composer({
 
   const banner = editing ? (
     <View style={bannerStyle(colors.border)}>
-      <Ionicons name="pencil" size={18} color={BRAND.violet} />
+      <Ionicons name="pencil" size={18} color={colors.accent} />
       <View style={{ flex: 1 }}>
-        <Text style={{ color: BRAND.violet, fontWeight: '800', fontSize: 12 }}>{tr('editing')}</Text>
+        <Text style={{ color: colors.accent, fontWeight: '800', fontSize: 12 }}>{tr('editing')}</Text>
         <Text numberOfLines={1} style={{ color: colors.textSecondary, fontSize: 13 }}>
           {messagePreview(editing, tr)}
         </Text>
@@ -265,9 +264,9 @@ export function Composer({
     </View>
   ) : replyTo ? (
     <View style={bannerStyle(colors.border)}>
-      <View style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, backgroundColor: BRAND.magenta }} />
+      <View style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, backgroundColor: colors.accent }} />
       <View style={{ flex: 1 }}>
-        <Text style={{ color: BRAND.magenta, fontWeight: '800', fontSize: 12 }}>
+        <Text style={{ color: colors.accent, fontWeight: '800', fontSize: 12 }}>
           {tr('replyingTo', { name: replyTo.sender.fullName })}
         </Text>
         <Text numberOfLines={1} style={{ color: colors.textSecondary, fontSize: 13 }}>
@@ -296,7 +295,7 @@ export function Composer({
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}>
             {assets.map((a, i) => (
               <View key={`${a.uri}_${i}`}>
-                <Image source={{ uri: a.uri }} style={{ width: 62, height: 62, borderRadius: 10 }} />
+                <Image source={{ uri: a.uri }} style={{ width: 66, height: 66, borderRadius: 14 }} />
                 <Pressable
                   onPress={() => setAssets((p) => p.filter((_, idx) => idx !== i))}
                   hitSlop={6}
@@ -323,13 +322,14 @@ export function Composer({
                 key={q}
                 onPress={() => setQuality(q)}
                 style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 5,
-                  borderRadius: 14,
-                  backgroundColor: quality === q ? BRAND.violet : withAlpha(BRAND.violet, 0.12),
+                  paddingHorizontal: 14,
+                  minHeight: 32,
+                  justifyContent: 'center',
+                  borderRadius: 16,
+                  backgroundColor: quality === q ? colors.primary : withAlpha(colors.accent, 0.14),
                 }}
               >
-                <Text style={{ color: quality === q ? '#FFFFFF' : BRAND.violet, fontWeight: '700', fontSize: 12 }}>
+                <Text style={{ color: quality === q ? colors.primaryText : colors.accent, fontWeight: '800', fontSize: 12 }}>
                   {tr(q)}
                 </Text>
               </Pressable>
@@ -354,24 +354,24 @@ export function Composer({
             </Text>
             <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{tr('recording')}</Text>
           </View>
-          <Pressable onPress={() => finishRecording(true)} style={roundBtn(BRAND.violet)}>
-            <Ionicons name="send" size={19} color="#FFFFFF" />
+          <Pressable onPress={() => finishRecording(true)} style={roundBtn(colors.primary)}>
+            <Ionicons name="send" size={19} color={colors.primaryText} />
           </Pressable>
         </View>
       ) : (
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 10, paddingTop: 8 }}>
           {!editing ? (
-            <Pressable onPress={() => setAttachOpen(true)} hitSlop={6} style={roundBtn(withAlpha(BRAND.violet, 0.12))}>
-              <Ionicons name="add" size={26} color={BRAND.violet} />
+            <Pressable onPress={() => setAttachOpen(true)} hitSlop={6} style={roundBtn(withAlpha(colors.accent, 0.16))}>
+              <Ionicons name="add" size={26} color={colors.accent} />
             </Pressable>
           ) : null}
 
           <View
             style={{
               flex: 1,
-              minHeight: 44,
+              minHeight: 46,
               maxHeight: 130,
-              borderRadius: 22,
+              borderRadius: 24,
               backgroundColor: colors.background,
               borderWidth: 1,
               borderColor: colors.border,
@@ -395,44 +395,44 @@ export function Composer({
 
           {hasContent || editing ? (
             <Pressable onPress={send} disabled={processing} style={{ opacity: processing ? 0.6 : 1 }}>
-              <LinearGradient colors={[BRAND.violet, BRAND.magenta]} style={roundBtnStyle}>
+              <View style={[roundBtnStyle, { backgroundColor: colors.primary }]}>
                 {processing ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <ActivityIndicator color={colors.primaryText} />
                 ) : (
-                  <Ionicons name={editing ? 'checkmark' : 'send'} size={20} color="#FFFFFF" />
+                  <Ionicons name={editing ? 'checkmark' : 'send'} size={20} color={colors.primaryText} />
                 )}
-              </LinearGradient>
+              </View>
             </Pressable>
           ) : (
             <Pressable onPress={startRecording}>
-              <LinearGradient colors={[BRAND.violet, BRAND.magenta]} style={roundBtnStyle}>
-                <Ionicons name="mic" size={22} color="#FFFFFF" />
-              </LinearGradient>
+              <View style={[roundBtnStyle, { backgroundColor: colors.primary }]}>
+                <Ionicons name="mic" size={22} color={colors.primaryText} />
+              </View>
             </Pressable>
           )}
         </View>
       )}
 
       <Modal visible={attachOpen} transparent animationType="fade" onRequestClose={() => setAttachOpen(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }} onPress={() => setAttachOpen(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }} onPress={() => setAttachOpen(false)}>
           <View
             style={{
               backgroundColor: colors.surface,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              padding: 18,
+              borderTopLeftRadius: 30,
+              borderTopRightRadius: 30,
+              padding: 22,
               paddingBottom: Math.max(insets.bottom, 18),
               flexDirection: 'row',
               justifyContent: 'space-evenly',
             }}
           >
             {[
-              { key: 'g', icon: 'images' as const, label: tr('gallery'), onPress: pickFromGallery, c: BRAND.violet },
-              { key: 'c', icon: 'camera' as const, label: tr('camera'), onPress: pickFromCamera, c: BRAND.magenta },
+              { key: 'g', icon: 'images' as const, label: tr('gallery'), onPress: pickFromGallery, c: BRAND.teal, fg: BRAND.lime },
+              { key: 'c', icon: 'camera' as const, label: tr('camera'), onPress: pickFromCamera, c: BRAND.lavender, fg: BRAND.teal },
             ].map((o) => (
               <Pressable key={o.key} onPress={o.onPress} style={{ alignItems: 'center', gap: 8 }}>
-                <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: o.c, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name={o.icon} size={28} color="#FFFFFF" />
+                <View style={{ width: 66, height: 66, borderRadius: 22, backgroundColor: o.c, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name={o.icon} size={28} color={o.fg} />
                 </View>
                 <Text style={{ color: colors.text, fontWeight: '600' }}>{o.label}</Text>
               </Pressable>
@@ -461,9 +461,13 @@ function bannerStyle(border: string) {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 10,
-    paddingHorizontal: 14,
+    marginHorizontal: 10,
+    marginTop: 8,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: border,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: border,
+    backgroundColor: 'rgba(123,95,199,0.08)',
   };
 }
