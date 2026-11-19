@@ -1,3 +1,4 @@
+// mobile/src/features/chat/NewChatScreen.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,7 +15,7 @@ import { ChatHeader, EmptyState, MemberList, SearchField } from './components/Ch
 
 type Props = NativeStackScreenProps<ChatStackParamList, 'NewChat'>;
 
-export default function NewChatScreen({ navigation }: Props) {
+export default function NewChatScreen({ navigation, route }: Props) {
   const tr = useTr();
   const { theme } = useTheme();
   const { colors } = theme;
@@ -28,6 +29,22 @@ export default function NewChatScreen({ navigation }: Props) {
   const [query, setQuery] = useState('');
   const [opening, setOpening] = useState(false);
 
+  // 🟢 NEW: Auto-open chat if coming from the AssignmentsCard
+  useEffect(() => {
+    const initialUserId = route.params?.initialUserId;
+    if (initialUserId) {
+      setOpening(true);
+      openDirect(initialUserId)
+        .then(({ id }) => {
+          navigation.replace('Conversation', { conversationId: id, title: 'Chat' });
+        })
+        .catch((e) => {
+          Alert.alert((e as { message?: string }).message ?? tr('loadFailed'));
+          setOpening(false);
+        });
+    }
+  }, [route.params?.initialUserId, navigation, tr]);
+
   const load = () => {
     setLoading(true);
     setFailed(false);
@@ -36,7 +53,13 @@ export default function NewChatScreen({ navigation }: Props) {
       .catch(() => setFailed(true))
       .finally(() => setLoading(false));
   };
-  useEffect(load, []);
+  
+  useEffect(() => {
+    // Only load members if we aren't auto-redirecting
+    if (!route.params?.initialUserId) {
+      load();
+    }
+  }, [route.params?.initialUserId]);
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -111,6 +134,15 @@ export default function NewChatScreen({ navigation }: Props) {
     </View>
   );
 
+  if (route.params?.initialUserId && opening) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color={colors.primary} size="large" />
+        <Text style={{ color: colors.textSecondary, marginTop: 12 }}>Opening chat...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ChatHeader title={tr('newChat')} onBack={() => navigation.goBack()} />
@@ -123,7 +155,7 @@ export default function NewChatScreen({ navigation }: Props) {
       ) : (
         <MemberList members={list} onPress={startDm} presence={presence} header={header} />
       )}
-      {opening ? (
+      {opening && !route.params?.initialUserId ? (
         <View
           pointerEvents="auto"
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: withAlpha(colors.background, 0.55), alignItems: 'center', justifyContent: 'center' }}

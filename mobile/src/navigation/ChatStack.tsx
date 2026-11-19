@@ -13,7 +13,7 @@ export type ChatStackParamList = {
   ChatList: undefined;
   Conversation: { conversationId: string; title?: string; jumpToId?: string };
   ChatSearch: { conversationId: string };
-  NewChat: undefined;
+  NewChat: { initialUserId?: string } | undefined;
   CreateGroup: undefined;
   GroupInfo: { conversationId: string };
   ChatReports: undefined;

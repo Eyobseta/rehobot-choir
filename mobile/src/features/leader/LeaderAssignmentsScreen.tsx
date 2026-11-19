@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, ActivityIndicator, Alert, FlatList } from 'react-native';
+// mobile/src/features/leader/LeaderAssignmentsScreen.tsx
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Modal, FlatList, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -10,10 +11,8 @@ import GlassBackButton from '../../components/GlassBackButton';
 import { useLeaderAssignmentsQuery, useCreateAssignmentMutation, useResolveReassignmentMutation } from '../assignments/useAssignments';
 import { formatEthDate } from '../../utils/ethiopianCalendar';
 import { GatheringType, AssignmentRole } from '../../services/assignments';
-// NOTE: You will need a way to fetch members to assign.
-// If you have a `useDirectoryQuery`, use it here. For this example, I assume you have one.
-import { useQuery } from '@tanstack/react-query';
-import { apiGet } from '../../services/api'; 
+// Using chatStore's member loader since it's already configured in your app
+import { loadAllMembers } from '../chat/chatStore'; 
 
 export default function LeaderAssignmentsScreen({ navigation }: any) {
   const { t, i18n } = useTranslation();
@@ -35,8 +34,19 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
   const [showForm, setShowForm] = useState(false);
   const [formGathering, setFormGathering] = useState<GatheringType>('THURSDAY_CHOIR');
   const [formRole, setFormRole] = useState<AssignmentRole>('PRAYER_LEADER');
-  const [formDate, setFormDate] = useState({ year: 2016, month: 1, day: 1 }); // Should use a date picker in production
-  const [formUser, setFormUser] = useState<string>('');
+  const [formDate, setFormDate] = useState({ year: 2016, month: 1, day: 1 });
+  
+  // Member Picker State
+  const [members, setMembers] = useState<any[]>([]);
+  const [showMemberPicker, setShowMemberPicker] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<any | null>(null);
+  const [memberSearch, setMemberSearch] = useState('');
+
+  useEffect(() => {
+    if (showForm && members.length === 0) {
+      loadAllMembers(true).then(setMembers).catch(() => {});
+    }
+  }, [showForm]);
 
   const handleResolve = (requestId: string, status: 'APPROVED' | 'REJECTED') => {
     Alert.alert(
@@ -48,6 +58,30 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
       ]
     );
   };
+
+  const handleCreate = () => {
+    if (!selectedMember) return Alert.alert('Error', 'Please select a member first.');
+    
+    createMut.mutate({
+      gatheringType: formGathering,
+      role: formRole,
+      assignedUserId: selectedMember.userId,
+      date: formDate,
+    }, {
+      onSuccess: () => {
+        Alert.alert('Success', 'Assignment created!');
+        setShowForm(false);
+        setSelectedMember(null);
+      },
+      onError: (err: any) => {
+        Alert.alert('Error', err.message || 'Failed to create assignment.');
+      }
+    });
+  };
+
+  const filteredMembers = members.filter(m => 
+    m.fullName.toLowerCase().includes(memberSearch.toLowerCase())
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -88,13 +122,31 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
                 <Ionicons name={showForm ? "chevron-up" : "add-circle"} size={24} color={colors.primary} />
               </Pressable>
               
-              {/* Note: In a real app, replace the raw text inputs with proper Date/User pickers */}
               {showForm && (
                 <View style={{ backgroundColor: colors.surface, padding: 16, borderRadius: 16, marginBottom: 20, borderWidth: 1, borderColor: colors.border }}>
-                  <Text style={{ fontWeight: '700', color: colors.textSecondary, marginBottom: 8 }}>Setup new assignment (Simplified UI)</Text>
-                  <TextInput placeholder="Member ID (string)" placeholderTextColor={colors.textSecondary} value={formUser} onChangeText={setFormUser} style={{ backgroundColor: colors.background, borderRadius: 8, padding: 10, color: colors.text, marginBottom: 10 }} />
-                  <Pressable onPress={() => createMut.mutate({ gatheringType: formGathering, role: formRole, assignedUserId: formUser, date: formDate })} style={{ backgroundColor: colors.primary, padding: 12, borderRadius: 8, alignItems: 'center' }}>
-                    {createMut.isPending ? <ActivityIndicator color="#FFF" /> : <Text style={{ color: '#FFF', fontWeight: '800' }}>Assign</Text>}
+                  
+                  {/* Role Picker */}
+                  <Text style={{ fontWeight: '700', color: colors.textSecondary, marginBottom: 8 }}>Role</Text>
+                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+                    <Pressable onPress={() => setFormRole('PRAYER_LEADER')} style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: formRole === 'PRAYER_LEADER' ? withAlpha(colors.primary, 0.2) : colors.background, borderWidth: 1, borderColor: formRole === 'PRAYER_LEADER' ? colors.primary : colors.border }}>
+                      <Text style={{ textAlign: 'center', color: formRole === 'PRAYER_LEADER' ? colors.primary : colors.text }}>Prayer</Text>
+                    </Pressable>
+                    <Pressable onPress={() => setFormRole('WORSHIP_LEADER')} style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: formRole === 'WORSHIP_LEADER' ? withAlpha(colors.primary, 0.2) : colors.background, borderWidth: 1, borderColor: formRole === 'WORSHIP_LEADER' ? colors.primary : colors.border }}>
+                      <Text style={{ textAlign: 'center', color: formRole === 'WORSHIP_LEADER' ? colors.primary : colors.text }}>Worship</Text>
+                    </Pressable>
+                  </View>
+
+                  {/* Member Picker Button */}
+                  <Text style={{ fontWeight: '700', color: colors.textSecondary, marginBottom: 8 }}>Member</Text>
+                  <Pressable onPress={() => setShowMemberPicker(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background, borderRadius: 8, padding: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
+                    <Text style={{ color: selectedMember ? colors.text : colors.textSecondary }}>
+                      {selectedMember ? selectedMember.fullName : 'Select a member...'}
+                    </Text>
+                    <Ionicons name="person" size={18} color={colors.textSecondary} />
+                  </Pressable>
+
+                  <Pressable onPress={handleCreate} disabled={createMut.isPending} style={{ backgroundColor: colors.primary, padding: 14, borderRadius: 8, alignItems: 'center' }}>
+                    {createMut.isPending ? <ActivityIndicator color="#FFF" /> : <Text style={{ color: '#FFF', fontWeight: '800' }}>Create Assignment</Text>}
                   </Pressable>
                 </View>
               )}
@@ -139,6 +191,38 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
           )}
         </ScrollView>
       )}
+
+      {/* 🟢 MEMBER PICKER MODAL */}
+      <Modal visible={showMemberPicker} transparent animationType="slide" onRequestClose={() => setShowMemberPicker(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '80%' }}>
+            <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 12 }}>Select Member</Text>
+              <TextInput
+                placeholder="Search members..."
+                placeholderTextColor={colors.textSecondary}
+                value={memberSearch}
+                onChangeText={setMemberSearch}
+                style={{ backgroundColor: colors.background, borderRadius: 12, padding: 12, color: colors.text }}
+              />
+            </View>
+            <FlatList
+              data={filteredMembers}
+              keyExtractor={(item) => item.userId}
+              renderItem={({ item }) => (
+                <Pressable 
+                  onPress={() => { setSelectedMember(item); setShowMemberPicker(false); }}
+                  style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>{item.fullName}</Text>
+                  {selectedMember?.userId === item.userId && <Ionicons name="checkmark" size={20} color={colors.primary} />}
+                </Pressable>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
