@@ -44,7 +44,17 @@
     "justNow": "አሁን",
     "minAgo": "ከ{{count}} ደቂቃ በፊት",
     "hrAgo": "ከ{{count}} ሰዓት በፊት",
-    "dayAgo": "ከ{{count}} ቀን በፊት"
+    "dayAgo": "ከ{{count}} ቀን በፊት",
+        "assignmentsTitle": "የሚመጣ አገልግሎት",
+    "prayerLeader": "የጸሎት መሪ",
+    "worshipLeader": "የዝማሬ መሪ",
+    "assignedBy": "የተመደበው በ {{name}}",
+    "noUpcomingAssignments": "የሚመጣ የአገልግሎት ተግባር የለም።",
+    "contactLeader": "መሪውን ያግኙ",
+    "specialEvent": "ልዩ ዝግጅት",
+    "tuesdayZema": "ማክሰኞ ዜማ",
+    "thursdayChoir": "ሐሙስ መዘምራን",
+    "saturdayChoir": "ቅዳሜ መዘምራን"
   },
   "test": {
     "greeting": "ሰላም! ወደ ርሆቦት መዘምራን እንኳን በደህና መጡ",
@@ -864,5 +874,30 @@
     "terms": "የአገልግሎት ደንቦች",
     "termsBody": "ይህን መተግበሪያ በመጠቀም የመዘምራን አባላትን ማክበር፣ መረጃቸውን ሚስጥራዊ ማድረግ እና የማጋራት መብት ያለዎትን ይዘት ብቻ ለመለጠፍ ተስማምተዋል።",
     "footer": "በፍቅር የተሰራ በ{{nick}} ({{name}})\n© {{year}} ርሆቦት መዘምራን"
+  },
+    "leaderAssignments": {
+    "title": "አገልግሎት መድብ",
+    "newAssignment": "አዲስ ተግባር",
+    "gatheringType": "የስብሰባ አይነት",
+    "customName": "የዝግጅቱ ስም",
+    "date": "ቀን",
+    "role": "ሚና",
+    "prayerLeader": "የጸሎት መሪ",
+    "worshipLeader": "የዝማሬ መሪ",
+    "selectMember": "አባል ይምረጡ",
+    "assign": "አባል መድብ",
+    "assignSuccess": "አባሉ በተሳካ ሁኔታ ተመድቧል።",
+    "assignError": "አባሉን መመደብ አልተቻለም።",
+    "pendingRequests": "የለውጥ ጥያቄዎች",
+    "requestsEmpty": "በመጠባበቅ ላይ ያለ ጥያቄ የለም።",
+    "approveRequest": "አጽድቅ",
+    "rejectRequest": "ውድቅ አድርግ",
+    "reason": "ምክንያት፦ {{reason}}",
+    "requestApproved": "ጥያቄው ጸድቋል፤ ተግባሩም ተሰርዟል።",
+    "requestRejected": "ጥያቄው ውድቅ ተደርጓል።",
+    "tabAssignments": "ተግባራት",
+    "tabRequests": "ጥያቄዎች",
+    "deleteAssignment": "ተግባሩን ሰርዝ",
+    "deleteConfirm": "እርግጠኛ ነዎት ይህን ተግባር መሰረዝ ይፈልጋሉ?"
   }
 }

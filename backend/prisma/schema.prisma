@@ -1,5 +1,5 @@
 // Rehobot Choir — Prisma schema
-// Phase 1 (SRS v1.0) — V1.0 schema freeze
+// Phase 1 (SRS v1.1) — V1.1 schema freeze
 //
 // Date policy:
 //  - ALL user-facing dates are Ethiopian (E.C.) stored as y/m/d Int columns.
@@ -35,70 +35,76 @@ enum UserStatus {
 }
 
 model User {
-  id            String     @id @default(cuid())
-  phone         String     @unique
-  email         String?    @unique
-  passwordHash  String
-  role          UserRole   @default(MEMBER)
-  status        UserStatus @default(PENDING)
+  id           String     @id @default(cuid())
+  phone        String     @unique
+  email        String?    @unique
+  passwordHash String
+  role         UserRole   @default(MEMBER)
+  status       UserStatus @default(PENDING)
 
   mustChangePassword Boolean @default(false)
 
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  lastActiveAt  DateTime?
-  deletedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastActiveAt DateTime?
+  deletedAt    DateTime?
 
   sessions      Session[]
   accountLock   AccountLock?
   memberProfile MemberProfile?
 
-  eventRsvps    EventRSVP[]
-  notifications Notification[]
-  createdEvents Event[]           @relation("CreatedEvents")
+  eventRsvps           EventRSVP[]
+  notifications        Notification[]
+  createdEvents        Event[]        @relation("CreatedEvents")
   createdAnnouncements Announcement[] @relation("CreatedAnnouncements")
 
-  attendanceRecords      AttendanceRecord[] @relation("AttendanceRecords")
-  attendanceRecordedBy   AttendanceRecord[] @relation("AttendanceRecordedBy")
+  attendanceRecords    AttendanceRecord[] @relation("AttendanceRecords")
+  attendanceRecordedBy AttendanceRecord[] @relation("AttendanceRecordedBy")
 
-  createdSongs       Song[]           @relation("CreatedSongs")
-  songFavorites      SongFavorite[]
-  zemaMemberships    ZemaMembership[] @relation("ZemaMember")
-  zemaAssigned       ZemaMembership[] @relation("ZemaAssignedBy")
-  songSubmissions    SongSubmission[] @relation("SongSubmissions")
+  createdSongs    Song[]           @relation("CreatedSongs")
+  songFavorites   SongFavorite[]
+  zemaMemberships ZemaMembership[] @relation("ZemaMember")
+  zemaAssigned    ZemaMembership[] @relation("ZemaAssignedBy")
+  songSubmissions SongSubmission[] @relation("SongSubmissions")
 
-  chatMemberships      ConversationMember[]
-  chatMessages         ChatMessage[]
-  chatReactions        MessageReaction[]
-  chatPins             MessagePin[]
-  chatReportsMade      MessageReport[]      @relation("ReportsMade")
-  chatReportsResolved  MessageReport[]      @relation("ReportsResolved")
-  chatReadStates       ChatReadState[]
-  chatGroupsManaged    ChatGroup[]          @relation("GroupManager")
-  chatGroupsCreated    ChatGroup[]          @relation("GroupCreatedBy")
-    helpQueryLogs  HelpQueryLog[] @relation("HelpQueryLogUser")
+  chatMemberships     ConversationMember[]
+  chatMessages        ChatMessage[]
+  chatReactions       MessageReaction[]
+  chatPins            MessagePin[]
+  chatReportsMade     MessageReport[]      @relation("ReportsMade")
+  chatReportsResolved MessageReport[]      @relation("ReportsResolved")
+  chatReadStates      ChatReadState[]
+  chatGroupsManaged   ChatGroup[]          @relation("GroupManager")
+  chatGroupsCreated   ChatGroup[]          @relation("GroupCreatedBy")
+  helpQueryLogs       HelpQueryLog[]       @relation("HelpQueryLogUser")
 
-  birthdayPosts         BirthdayPost[]         @relation("BirthdayPosts")
-  birthdayComments      BirthdayComment[]      @relation("BirthdayComments")
-  birthdayCommentLikes  BirthdayCommentLike[]  @relation("BirthdayCommentLikes")
-  birthdayReactions     BirthdayReaction[]     @relation("BirthdayReactions")
+  birthdayPosts        BirthdayPost[]        @relation("BirthdayPosts")
+  birthdayComments     BirthdayComment[]     @relation("BirthdayComments")
+  birthdayCommentLikes BirthdayCommentLike[] @relation("BirthdayCommentLikes")
+  birthdayReactions    BirthdayReaction[]    @relation("BirthdayReactions")
 
-  submittedMemories Memory[] @relation("SubmittedMemories")
-  reviewedMemories  Memory[] @relation("ReviewedMemories")
-  submittedQuotes   DailyQuote[] @relation("SubmittedQuotes")
-  pushTokens        PushToken[]
+  submittedMemories      Memory[]                @relation("SubmittedMemories")
+  reviewedMemories       Memory[]                @relation("ReviewedMemories")
+  submittedQuotes        DailyQuote[]            @relation("SubmittedQuotes")
+  pushTokens             PushToken[]
   notificationPreference NotificationPreference?
 
   // Funding
-  annualContributions      AnnualContributionRecord[]  @relation("AnnualParticipant")
-  donationPayments         SpecialDonationPayment[]    @relation("DonationParticipant")
-  fundingDeclarations      FundingDeclaration[]        @relation("DeclarationParticipant")
-  fundingDecisions         FundingDeclaration[]        @relation("DeclarationDecidedBy")
-  createdDonationCampaigns SpecialDonationCampaign[]   @relation("CampaignCreatedBy")
-  fundingAuditActions      FundingAuditLog[]           @relation("FundingAuditActor")
-  fundingConfigsCreated    AnnualFundingConfiguration[] @relation("FundingConfigCreatedBy")
-  fundingConfigsUpdated    AnnualFundingConfiguration[] @relation("FundingConfigUpdatedBy")
-  paymentInstructionsEdited PaymentInstructions[]      @relation("PaymentInstructionsUpdatedBy")
+  annualContributions       AnnualContributionRecord[]   @relation("AnnualParticipant")
+  donationPayments          SpecialDonationPayment[]     @relation("DonationParticipant")
+  fundingDeclarations       FundingDeclaration[]         @relation("DeclarationParticipant")
+  fundingDecisions          FundingDeclaration[]         @relation("DeclarationDecidedBy")
+  createdDonationCampaigns  SpecialDonationCampaign[]    @relation("CampaignCreatedBy")
+  fundingAuditActions       FundingAuditLog[]            @relation("FundingAuditActor")
+  fundingConfigsCreated     AnnualFundingConfiguration[] @relation("FundingConfigCreatedBy")
+  fundingConfigsUpdated     AnnualFundingConfiguration[] @relation("FundingConfigUpdatedBy")
+  paymentInstructionsEdited PaymentInstructions[]        @relation("PaymentInstructionsUpdatedBy")
+
+  // Service Assignments
+  assignments                  ServiceAssignment[]   @relation("UserAssignments")
+  assignmentsGiven             ServiceAssignment[]   @relation("LeaderAssignments")
+  reassignmentRequestsMade     ReassignmentRequest[] @relation("ReassignmentRequestsMade")
+  reassignmentRequestsResolved ReassignmentRequest[] @relation("ReassignmentRequestsResolved")
 
   @@index([status])
   @@index([role])
@@ -110,15 +116,15 @@ model User {
 // ------------------------------------------------------------
 
 model Session {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   refreshTokenHash String
-  deviceLabel   String?
-  createdAt     DateTime  @default(now())
-  revokedAt     DateTime?
-  lastUsedAt    DateTime?
+  deviceLabel      String?
+  createdAt        DateTime  @default(now())
+  revokedAt        DateTime?
+  lastUsedAt       DateTime?
 
   @@index([userId])
   @@index([userId, revokedAt])
@@ -130,14 +136,14 @@ model Session {
 // ------------------------------------------------------------
 
 model AccountLock {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  failedAttempts Int      @default(0)
+  failedAttempts Int       @default(0)
   lockedUntil    DateTime?
   lastFailedAt   DateTime?
-  updatedAt      DateTime @updatedAt
+  updatedAt      DateTime  @updatedAt
 
   @@map("account_locks")
 }
@@ -153,15 +159,15 @@ enum ApplicationStatus {
 }
 
 model RegistrationApplication {
-  id            String            @id @default(cuid())
+  id String @id @default(cuid())
 
-  fullName      String
-  phone         String
-  email         String
-  passwordHash  String
-  profilePhotoUrl String
+  fullName             String
+  phone                String
+  email                String
+  passwordHash         String
+  profilePhotoUrl      String
   profilePhotoPublicId String
-  gender        String
+  gender               String
 
   // E.C. date of birth (source of truth) + Gregorian mirror for queries
   dateOfBirthEthYear   Int
@@ -178,13 +184,13 @@ model RegistrationApplication {
   joiningDateEthDay    Int?
   joiningDateGregorian DateTime? @db.Date
 
-  status        ApplicationStatus @default(PENDING)
-  rejectionReason String?
+  status           ApplicationStatus @default(PENDING)
+  rejectionReason  String?
   reviewedByUserId String?
-  reviewedAt    DateTime?
+  reviewedAt       DateTime?
 
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([phone])
   @@index([status])
@@ -196,12 +202,12 @@ model RegistrationApplication {
 // ------------------------------------------------------------
 
 model MemberProfile {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  fullName           String
-  gender             String
+  fullName String
+  gender   String
 
   // E.C. DOB + Gregorian mirror
   dateOfBirthEthYear   Int
@@ -217,11 +223,11 @@ model MemberProfile {
   joiningDateEthDay    Int?
   joiningDateGregorian DateTime? @db.Date
 
-  profilePhotoUrl    String
+  profilePhotoUrl      String
   profilePhotoPublicId String
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("member_profiles")
 }
@@ -237,7 +243,7 @@ enum EventStatus {
 }
 
 model Event {
-  id          String      @id @default(cuid())
+  id          String  @id @default(cuid())
   title       String
   description String?
   location    String?
@@ -251,13 +257,13 @@ model Event {
   coverImageUrl      String?
   coverImagePublicId String?
 
-  status      EventStatus @default(DRAFT)
+  status EventStatus @default(DRAFT)
 
   createdByUserId String?
   createdBy       User?   @relation("CreatedEvents", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   publishedAt DateTime?
   deletedAt   DateTime?
 
@@ -271,14 +277,14 @@ model Event {
 }
 
 model EventAttachment {
-  id              String   @id @default(cuid())
-  eventId         String
-  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  imageUrl        String
-  imagePublicId   String
+  imageUrl      String
+  imagePublicId String
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([eventId])
   @@map("event_attachments")
@@ -291,16 +297,16 @@ enum RsvpResponse {
 }
 
 model EventRSVP {
-  id         String       @id @default(cuid())
-  eventId    String
-  event      Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  userId     String
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  response   RsvpResponse
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  response  RsvpResponse
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   @@unique([eventId, userId])
   @@index([eventId])
@@ -309,13 +315,14 @@ model EventRSVP {
 }
 
 // ------------------------------------------------------------
-// ATTENDANCE
+// ATTENDANCE & SERVICE ASSIGNMENTS
 // ------------------------------------------------------------
 
 enum GatheringType {
   TUESDAY_ZEMA
   THURSDAY_CHOIR
   SATURDAY_CHOIR
+  SPECIAL_EVENT
 }
 
 enum AttendanceStatus {
@@ -323,13 +330,29 @@ enum AttendanceStatus {
   ABSENT
 }
 
+enum AssignmentRole {
+  PRAYER_LEADER
+  WORSHIP_LEADER
+}
+
+enum AssignmentStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+enum ReassignmentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model AttendanceRecord {
-  id          String            @id @default(cuid())
+  id String @id @default(cuid())
 
-  memberId    String
-  member      User              @relation("AttendanceRecords", fields: [memberId], references: [id], onDelete: Cascade)
+  memberId String
+  member   User   @relation("AttendanceRecords", fields: [memberId], references: [id], onDelete: Cascade)
 
-  gathering   GatheringType
+  gathering GatheringType
 
   // E.C. date + Gregorian mirror
   dateEthYear   Int
@@ -337,19 +360,77 @@ model AttendanceRecord {
   dateEthDay    Int
   dateGregorian DateTime @db.Date
 
-  status      AttendanceStatus
-  lockedAt    DateTime?
+  status   AttendanceStatus
+  lockedAt DateTime?
 
   recordedByUserId String?
-  recordedBy       User?        @relation("AttendanceRecordedBy", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+  recordedBy       User?   @relation("AttendanceRecordedBy", fields: [recordedByUserId], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([memberId, gathering, dateGregorian])
   @@index([gathering, dateGregorian])
   @@index([memberId])
   @@map("attendance_records")
+}
+
+model ServiceAssignment {
+  id String @id @default(cuid())
+
+  gatheringType       GatheringType
+  customGatheringName String? // e.g., "Sunday Special Prayer"
+
+  // E.C. date + Gregorian mirror
+  dateEthYear   Int
+  dateEthMonth  Int
+  dateEthDay    Int
+  dateGregorian DateTime @db.Date
+
+  role AssignmentRole
+
+  assignedUserId String
+  assignedUser   User   @relation("UserAssignments", fields: [assignedUserId], references: [id], onDelete: Cascade)
+
+  assignedByUserId String
+  assignedByUser   User   @relation("LeaderAssignments", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+
+  status AssignmentStatus @default(SCHEDULED)
+
+  reassignmentRequests ReassignmentRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gatheringType, dateGregorian, role]) // Prevents double assignment for the same role on the same gathering
+  @@index([dateGregorian])
+  @@index([assignedUserId])
+  @@map("service_assignments")
+}
+
+model ReassignmentRequest {
+  id String @id @default(cuid())
+
+  assignmentId String
+  assignment   ServiceAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  requesterId String
+  requester   User   @relation("ReassignmentRequestsMade", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  reason String
+
+  status ReassignmentStatus @default(PENDING)
+
+  resolvedByUserId String?
+  resolvedBy       User?     @relation("ReassignmentRequestsResolved", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  resolvedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([assignmentId])
+  @@index([status])
+  @@map("reassignment_requests")
 }
 
 // ------------------------------------------------------------
@@ -364,27 +445,27 @@ enum AnnouncementStatus {
 }
 
 model Announcement {
-  id          String              @id @default(cuid())
-  title       String
-  message     String
+  id      String @id @default(cuid())
+  title   String
+  message String
 
-  publishAt   DateTime            @default(now())
-  status      AnnouncementStatus  @default(DRAFT)
+  publishAt DateTime           @default(now())
+  status    AnnouncementStatus @default(DRAFT)
 
-  imageUrl        String?
-  imagePublicId   String?
+  imageUrl      String?
+  imagePublicId String?
 
-  eventId     String?
-  event       Event?              @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
 
   createdByUserId String?
-  createdBy       User?           @relation("CreatedAnnouncements", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdBy       User?   @relation("CreatedAnnouncements", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-  deletedAt   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  songs       AnnouncementSong[]
+  songs AnnouncementSong[]
 
   @@index([status, publishAt])
   @@index([publishAt])
@@ -392,14 +473,14 @@ model Announcement {
 }
 
 model AnnouncementSong {
-  id             String        @id @default(cuid())
+  id             String       @id @default(cuid())
   announcementId String
-  announcement   Announcement  @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
 
-  songId         String
-  songTitle      String
+  songId    String
+  songTitle String
 
-  createdAt      DateTime      @default(now())
+  createdAt DateTime @default(now())
 
   @@index([announcementId])
   @@map("announcement_songs")
@@ -422,23 +503,25 @@ enum NotificationType {
   FUNDING_VERIFICATION_NEEDED
   FUNDING_RESULT
   FUNDING_CAMPAIGN
+  SERVICE_ASSIGNMENT
+  REASSIGNMENT_UPDATE
 }
 
 model Notification {
-  id          String            @id @default(cuid())
+  id          String @id @default(cuid())
   recipientId String
-  recipient   User              @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  recipient   User   @relation(fields: [recipientId], references: [id], onDelete: Cascade)
 
-  type        NotificationType
-  title       String
-  body        String?
+  type  NotificationType
+  title String
+  body  String?
 
   relatedEntityType String?
   relatedEntityId   String?
 
-  createdAt   DateTime          @default(now())
-  readAt      DateTime?
-  expiresAt   DateTime?
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+  expiresAt DateTime?
 
   @@index([recipientId, readAt])
   @@index([recipientId, createdAt])
@@ -455,7 +538,7 @@ model SongCategory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  songs     Song[]
+  songs Song[]
 
   @@map("song_categories")
 }
@@ -470,7 +553,7 @@ enum SongStatus {
 }
 
 model Song {
-  id            String      @id @default(cuid())
+  id String @id @default(cuid())
 
   title         String
   lyrics        String?
@@ -478,20 +561,20 @@ model Song {
   audioPublicId String?
   youtubeUrl    String?
 
-  categoryId    String?
-  category      SongCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId String?
+  category   SongCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  status        SongStatus  @default(DRAFT)
+  status SongStatus @default(DRAFT)
 
-  dateAdded     DateTime    @default(now())
-  publishedAt   DateTime?
-  updatedAt     DateTime    @updatedAt
+  dateAdded   DateTime  @default(now())
+  publishedAt DateTime?
+  updatedAt   DateTime  @updatedAt
 
   createdByUserId String?
-  createdBy       User?     @relation("CreatedSongs", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdBy       User?   @relation("CreatedSongs", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
-  favorites     SongFavorite[]
-  submissions   SongSubmission[]
+  favorites   SongFavorite[]
+  submissions SongSubmission[]
 
   @@index([status, dateAdded])
   @@index([categoryId])
@@ -499,12 +582,12 @@ model Song {
 }
 
 model SongFavorite {
-  id        String   @id @default(cuid())
-  songId    String
-  song      Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  songId String
+  song   Song   @relation(fields: [songId], references: [id], onDelete: Cascade)
 
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
@@ -514,16 +597,16 @@ model SongFavorite {
 }
 
 model ZemaMembership {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  userId      String
-  user        User     @relation("ZemaMember", fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation("ZemaMember", fields: [userId], references: [id], onDelete: Cascade)
 
   assignedByUserId String?
   assignedBy       User?   @relation("ZemaAssignedBy", fields: [assignedByUserId], references: [id], onDelete: SetNull)
 
-  assignedAt  DateTime @default(now())
-  removedAt   DateTime?
+  assignedAt DateTime  @default(now())
+  removedAt  DateTime?
 
   @@index([userId])
   @@index([userId, removedAt])
@@ -538,19 +621,19 @@ enum SubmissionStatus {
 }
 
 model SongSubmission {
-  id         String            @id @default(cuid())
+  id String @id @default(cuid())
 
-  songId     String
-  song       Song              @relation(fields: [songId], references: [id], onDelete: Cascade)
+  songId String
+  song   Song   @relation(fields: [songId], references: [id], onDelete: Cascade)
 
   submittedByUserId String
-  submittedBy       User      @relation("SongSubmissions", fields: [submittedByUserId], references: [id], onDelete: Cascade)
+  submittedBy       User   @relation("SongSubmissions", fields: [submittedByUserId], references: [id], onDelete: Cascade)
 
-  status     SubmissionStatus  @default(DRAFT)
+  status       SubmissionStatus @default(DRAFT)
   returnReason String?
 
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
   reviewedAt DateTime?
 
   @@index([status])
@@ -576,7 +659,7 @@ enum MemoryMediaType {
 }
 
 model Memory {
-  id          String        @id @default(cuid())
+  id String @id @default(cuid())
 
   title       String
   description String?
@@ -587,22 +670,22 @@ model Memory {
   dateEthDay    Int
   dateGregorian DateTime @db.Date
 
-  status      MemoryStatus  @default(PENDING_REVIEW)
+  status          MemoryStatus @default(PENDING_REVIEW)
   rejectionReason String?
-  publishedAt DateTime?
+  publishedAt     DateTime?
 
   submittedByUserId String?
   submittedBy       User?   @relation("SubmittedMemories", fields: [submittedByUserId], references: [id], onDelete: SetNull)
 
-  reviewedByUserId  String?
-  reviewedBy        User?   @relation("ReviewedMemories", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  reviewedAt        DateTime?
+  reviewedByUserId String?
+  reviewedBy       User?     @relation("ReviewedMemories", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt       DateTime?
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  deletedAt   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  media       MemoryMedia[]
+  media MemoryMedia[]
 
   @@index([status, dateGregorian])
   @@index([dateGregorian])
@@ -611,18 +694,18 @@ model Memory {
 }
 
 model MemoryMedia {
-  id        String          @id @default(cuid())
+  id String @id @default(cuid())
 
-  memoryId  String
-  memory    Memory          @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+  memoryId String
+  memory   Memory @relation(fields: [memoryId], references: [id], onDelete: Cascade)
 
-  type      MemoryMediaType
+  type MemoryMediaType
 
   storageUrl      String?
   storagePublicId String?
   youtubeUrl      String?
 
-  createdAt DateTime        @default(now())
+  createdAt DateTime @default(now())
 
   @@index([memoryId])
   @@map("memory_media")
@@ -638,28 +721,28 @@ enum DailyQuoteStatus {
 }
 
 model DailyQuote {
-  id                String            @id @default(cuid())
+  id String @id @default(cuid())
 
   // E.C. day + Gregorian mirror for unique lookup
-  dateEthYear       Int
-  dateEthMonth      Int
-  dateEthDay        Int
-  dateGregorian     DateTime          @db.Date
+  dateEthYear   Int
+  dateEthMonth  Int
+  dateEthDay    Int
+  dateGregorian DateTime @db.Date
 
-  quoteText         String
-  source            String
+  quoteText String
+  source    String
 
-  youtubeUrl        String?
-  audioUrl          String?
-  audioPublicId     String?
+  youtubeUrl    String?
+  audioUrl      String?
+  audioPublicId String?
 
-  status            DailyQuoteStatus  @default(PUBLISHED)
+  status DailyQuoteStatus @default(PUBLISHED)
 
   submittedByUserId String?
-  submittedBy       User?             @relation("SubmittedQuotes", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  submittedBy       User?   @relation("SubmittedQuotes", fields: [submittedByUserId], references: [id], onDelete: SetNull)
 
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([dateGregorian])
   @@index([dateGregorian])
@@ -671,12 +754,12 @@ model DailyQuote {
 // ------------------------------------------------------------
 
 model PushToken {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  token      String   @unique
-  platform   String
+  token       String  @unique
+  platform    String
   deviceLabel String?
 
   createdAt  DateTime @default(now())
@@ -691,21 +774,21 @@ model PushToken {
 // ------------------------------------------------------------
 
 model NotificationPreference {
-  id                       String   @id @default(cuid())
-  userId                   String   @unique
-  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  announcementsEnabled     Boolean  @default(true)
-  eventRemindersEnabled    Boolean  @default(true)
-  chatMessagesEnabled      Boolean  @default(true)
-  birthdaysEnabled         Boolean  @default(true)
-  newSongEnabled           Boolean  @default(true)
-  newMemoryEnabled         Boolean  @default(true)
-  dailyQuoteEnabled        Boolean  @default(true)
-  fundingReminderEnabled   Boolean  @default(true)   // NEW
-  fundingCampaignEnabled   Boolean  @default(true)   // NEW
+  announcementsEnabled   Boolean @default(true)
+  eventRemindersEnabled  Boolean @default(true)
+  chatMessagesEnabled    Boolean @default(true)
+  birthdaysEnabled       Boolean @default(true)
+  newSongEnabled         Boolean @default(true)
+  newMemoryEnabled       Boolean @default(true)
+  dailyQuoteEnabled      Boolean @default(true)
+  fundingReminderEnabled Boolean @default(true)
+  fundingCampaignEnabled Boolean @default(true)
 
-  updatedAt                DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 
   @@map("notification_preferences")
 }
@@ -715,12 +798,12 @@ model NotificationPreference {
 // ------------------------------------------------------------
 
 model BirthdayPost {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  userId      String
-  user        User     @relation("BirthdayPosts", fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation("BirthdayPosts", fields: [userId], references: [id], onDelete: Cascade)
 
-  year        Int
+  year Int
 
   // E.C. birthday date + mirror
   birthdayEthYear   Int
@@ -728,10 +811,10 @@ model BirthdayPost {
   birthdayEthDay    Int
   birthdayGregorian DateTime @db.Date
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  comments    BirthdayComment[]
-  reactions   BirthdayReaction[]
+  comments  BirthdayComment[]
+  reactions BirthdayReaction[]
 
   @@unique([userId, year])
   @@index([birthdayGregorian])
@@ -739,23 +822,23 @@ model BirthdayPost {
 }
 
 model BirthdayComment {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  postId          String
-  post            BirthdayPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String
+  post   BirthdayPost @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  authorId        String
-  author          User     @relation("BirthdayComments", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation("BirthdayComments", fields: [authorId], references: [id], onDelete: Cascade)
 
   parentCommentId String?
   parentComment   BirthdayComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
   replies         BirthdayComment[] @relation("CommentReplies")
 
-  text            String
-  createdAt       DateTime @default(now())
-  deletedAt       DateTime?
+  text      String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 
-  likes           BirthdayCommentLike[]
+  likes BirthdayCommentLike[]
 
   @@index([postId])
   @@index([parentCommentId])
@@ -763,15 +846,15 @@ model BirthdayComment {
 }
 
 model BirthdayCommentLike {
-  id         String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  commentId  String
-  comment    BirthdayComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  commentId String
+  comment   BirthdayComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
-  userId     String
-  user       User     @relation("BirthdayCommentLikes", fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation("BirthdayCommentLikes", fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([commentId, userId])
   @@index([commentId])
@@ -779,17 +862,17 @@ model BirthdayCommentLike {
 }
 
 model BirthdayReaction {
-  id         String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  postId     String
-  post       BirthdayPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String
+  post   BirthdayPost @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  userId     String
-  user       User     @relation("BirthdayReactions", fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation("BirthdayReactions", fields: [userId], references: [id], onDelete: Cascade)
 
-  emoji      String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  emoji     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([postId, userId])
   @@index([postId])
@@ -824,36 +907,36 @@ enum MessageReportResolution {
 }
 
 model ChatConversation {
-  id             String           @id @default(cuid())
-  type           ConversationType
+  id   String           @id @default(cuid())
+  type ConversationType
 
-  directKey      String?          @unique
+  directKey String? @unique
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  lastMessageAt  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastMessageAt DateTime?
 
-  members        ConversationMember[]
-  messages       ChatMessage[]
-  pins           MessagePin[]
-  readStates     ChatReadState[]
-  group          ChatGroup?
+  members    ConversationMember[]
+  messages   ChatMessage[]
+  pins       MessagePin[]
+  readStates ChatReadState[]
+  group      ChatGroup?
 
   @@index([type, lastMessageAt])
   @@map("chat_conversations")
 }
 
 model ConversationMember {
-  id             String            @id @default(cuid())
+  id String @id @default(cuid())
 
   conversationId String
-  conversation   ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  userId         String
-  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  joinedAt       DateTime          @default(now())
-  leftAt         DateTime?
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
 
   @@unique([conversationId, userId])
   @@index([userId, leftAt])
@@ -861,54 +944,54 @@ model ConversationMember {
 }
 
 model ChatGroup {
-  id              String            @id @default(cuid())
+  id String @id @default(cuid())
 
-  conversationId  String            @unique
-  conversation    ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String           @unique
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  name            String            @unique
+  name String @unique
 
-  photoUrl        String?
-  photoPublicId   String?
+  photoUrl      String?
+  photoPublicId String?
 
-  managerId       String
-  manager         User              @relation("GroupManager", fields: [managerId], references: [id], onDelete: Restrict)
+  managerId String
+  manager   User   @relation("GroupManager", fields: [managerId], references: [id], onDelete: Restrict)
 
   createdByUserId String?
-  createdBy       User?             @relation("GroupCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdBy       User?   @relation("GroupCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("chat_groups")
 }
 
 model ChatMessage {
-  id             String            @id @default(cuid())
+  id String @id @default(cuid())
 
   conversationId String
-  conversation   ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  senderId       String
-  sender         User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
-  type           ChatMessageType   @default(TEXT)
+  type ChatMessageType @default(TEXT)
 
-  text           String?
-  clientId       String?
+  text     String?
+  clientId String?
 
-  replyToId      String?
-  replyTo        ChatMessage?      @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies        ChatMessage[]     @relation("MessageReplies")
+  replyToId String?
+  replyTo   ChatMessage?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   ChatMessage[] @relation("MessageReplies")
 
-  createdAt      DateTime          @default(now())
-  editedAt       DateTime?
-  deletedAt      DateTime?
+  createdAt DateTime  @default(now())
+  editedAt  DateTime?
+  deletedAt DateTime?
 
-  media          ChatMedia[]
-  reactions      MessageReaction[]
-  pins           MessagePin[]
-  reports        MessageReport[]
+  media     ChatMedia[]
+  reactions MessageReaction[]
+  pins      MessagePin[]
+  reports   MessageReport[]
 
   @@unique([senderId, clientId])
   @@index([conversationId, createdAt])
@@ -920,12 +1003,12 @@ model ChatMessage {
 }
 
 model ChatMedia {
-  id              String          @id @default(cuid())
+  id String @id @default(cuid())
 
-  messageId       String
-  message         ChatMessage     @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
-  type            ChatMediaType
+  type ChatMediaType
 
   storageUrl      String
   storagePublicId String
@@ -933,7 +1016,7 @@ model ChatMedia {
   durationSeconds Int?
   retentionUntil  DateTime
 
-  createdAt       DateTime        @default(now())
+  createdAt DateTime @default(now())
 
   @@index([messageId])
   @@index([retentionUntil])
@@ -941,16 +1024,16 @@ model ChatMedia {
 }
 
 model MessageReaction {
-  id         String       @id @default(cuid())
+  id String @id @default(cuid())
 
-  messageId  String
-  message    ChatMessage  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
-  userId     String
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  emoji      String
-  createdAt  DateTime     @default(now())
+  emoji     String
+  createdAt DateTime @default(now())
 
   @@unique([messageId, userId, emoji])
   @@index([messageId])
@@ -959,18 +1042,18 @@ model MessageReaction {
 }
 
 model MessagePin {
-  id              String            @id @default(cuid())
+  id String @id @default(cuid())
 
-  conversationId  String
-  conversation    ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  messageId       String
-  message         ChatMessage       @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
-  pinnedByUserId  String
-  pinnedBy        User              @relation(fields: [pinnedByUserId], references: [id], onDelete: Cascade)
+  pinnedByUserId String
+  pinnedBy       User   @relation(fields: [pinnedByUserId], references: [id], onDelete: Cascade)
 
-  pinnedAt        DateTime          @default(now())
+  pinnedAt DateTime @default(now())
 
   @@unique([conversationId, messageId])
   @@index([conversationId])
@@ -978,22 +1061,22 @@ model MessagePin {
 }
 
 model MessageReport {
-  id                String                    @id @default(cuid())
+  id String @id @default(cuid())
 
-  messageId         String
-  message           ChatMessage               @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
-  reporterId        String
-  reporter          User                      @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+  reporterId String
+  reporter   User   @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
 
-  createdAt         DateTime                  @default(now())
+  createdAt DateTime @default(now())
 
-  resolution        MessageReportResolution?
-  resolvedAt        DateTime?
-  resolvedByUserId  String?
-  resolvedBy        User?                     @relation("ReportsResolved", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  resolution       MessageReportResolution?
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+  resolvedBy       User?                    @relation("ReportsResolved", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
 
-  retainUntil       DateTime
+  retainUntil DateTime
 
   @@unique([messageId, reporterId])
   @@index([messageId])
@@ -1003,16 +1086,16 @@ model MessageReport {
 }
 
 model ChatReadState {
-  id                 String            @id @default(cuid())
+  id String @id @default(cuid())
 
-  conversationId     String
-  conversation       ChatConversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  userId             String
-  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  lastReadAt         DateTime          @default(now())
-  lastReadMessageId  String?
+  lastReadAt        DateTime @default(now())
+  lastReadMessageId String?
 
   @@unique([conversationId, userId])
   @@index([conversationId])
@@ -1069,58 +1152,58 @@ enum PaymentMethod {
 }
 
 model AnnualFundingConfiguration {
-  id                    String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  contributionYear      Int      @unique        // E.C. year
-  amountMinor           Int                      // santim
+  contributionYear Int @unique // E.C. year
+  amountMinor      Int // santim
 
-  includeMembers        Boolean  @default(true)
-  includeLeaders        Boolean  @default(true)
+  includeMembers Boolean @default(true)
+  includeLeaders Boolean @default(true)
 
   // E.C. expiry (source of truth) + mirror
-  expiryEthYear         Int
-  expiryEthMonth        Int
-  expiryEthDay          Int
-  expiryGregorian       DateTime @db.Date
+  expiryEthYear   Int
+  expiryEthMonth  Int
+  expiryEthDay    Int
+  expiryGregorian DateTime @db.Date
 
   // E.C. deadline (source of truth) + mirror
-  deadlineEthYear       Int
-  deadlineEthMonth      Int
-  deadlineEthDay        Int
-  deadlineGregorian     DateTime @db.Date
+  deadlineEthYear   Int
+  deadlineEthMonth  Int
+  deadlineEthDay    Int
+  deadlineGregorian DateTime @db.Date
 
-  monthlyReminderEnabled Boolean @default(true)
-  monthlyReminderEthDay  Int     @default(1)
-  preDeadlineReminderDays Int    @default(7)
+  monthlyReminderEnabled  Boolean @default(true)
+  monthlyReminderEthDay   Int     @default(1)
+  preDeadlineReminderDays Int     @default(7)
 
-  receiptUploadsEnabled Boolean  @default(false)
-  referenceEnabled      Boolean  @default(true)
+  receiptUploadsEnabled Boolean @default(false)
+  referenceEnabled      Boolean @default(true)
 
-  active                Boolean  @default(true)
+  active Boolean @default(true)
 
-  createdByUserId       String?
-  createdBy             User?    @relation("FundingConfigCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedByUserId       String?
-  updatedBy             User?    @relation("FundingConfigUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdByUserId String?
+  createdBy       User?    @relation("FundingConfigCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUserId String?
+  updatedBy       User?    @relation("FundingConfigUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  records               AnnualContributionRecord[]
+  records AnnualContributionRecord[]
 
   @@map("annual_funding_configurations")
 }
 
 model AnnualContributionRecord {
-  id               String        @id @default(cuid())
+  id String @id @default(cuid())
 
-  configId         String
-  config           AnnualFundingConfiguration @relation(fields: [configId], references: [id], onDelete: Restrict)
+  configId String
+  config   AnnualFundingConfiguration @relation(fields: [configId], references: [id], onDelete: Restrict)
 
-  participantId    String
-  participant      User          @relation("AnnualParticipant", fields: [participantId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   User   @relation("AnnualParticipant", fields: [participantId], references: [id], onDelete: Cascade)
 
   contributionYear Int
-  amountDueMinor   Int           // snapshot at creation
+  amountDueMinor   Int // snapshot at creation
   status           FundingStatus @default(UNPAID)
   paidMinor        Int           @default(0)
 
@@ -1128,12 +1211,12 @@ model AnnualContributionRecord {
   verifiedAt       DateTime?
   rejectionReason  String?
 
-  version          Int           @default(0)
+  version Int @default(0)
 
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  declarations     FundingDeclaration[]
+  declarations FundingDeclaration[]
 
   @@unique([participantId, contributionYear])
   @@index([contributionYear, status])
@@ -1142,73 +1225,73 @@ model AnnualContributionRecord {
 }
 
 model SpecialDonationCampaign {
-  id                   String         @id @default(cuid())
+  id String @id @default(cuid())
 
-  title                String
-  description          String
-  donationType         DonationType
+  title        String
+  description  String
+  donationType DonationType
 
   requestedAmountMinor Int?
   targetAmountMinor    Int?
 
   // Optional start (E.C. + mirror)
-  startEthYear         Int?
-  startEthMonth        Int?
-  startEthDay          Int?
-  startGregorian       DateTime?      @db.Date
+  startEthYear   Int?
+  startEthMonth  Int?
+  startEthDay    Int?
+  startGregorian DateTime? @db.Date
 
   // Required deadline (E.C. + mirror)
-  deadlineEthYear      Int
-  deadlineEthMonth     Int
-  deadlineEthDay       Int
-  deadlineGregorian    DateTime       @db.Date
+  deadlineEthYear   Int
+  deadlineEthMonth  Int
+  deadlineEthDay    Int
+  deadlineGregorian DateTime @db.Date
 
-  imageUrl             String?
-  imagePublicId        String?
+  imageUrl      String?
+  imagePublicId String?
 
-  status               CampaignStatus @default(DRAFT)
+  status CampaignStatus @default(DRAFT)
 
   // NEW: per-campaign receipt toggle (falls back to global config when null)
   receiptUploadsEnabled Boolean?
   referenceEnabled      Boolean?
 
-  createdByUserId      String?
-  createdBy            User?          @relation("CampaignCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUserId String?
+  createdBy       User?   @relation("CampaignCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
-  publishedAt          DateTime?
-  closedAt             DateTime?
-  cancelledAt          DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+  closedAt    DateTime?
+  cancelledAt DateTime?
 
-  payments             SpecialDonationPayment[]
+  payments SpecialDonationPayment[]
 
   @@index([status, deadlineGregorian])
   @@map("special_donation_campaigns")
 }
 
 model SpecialDonationPayment {
-  id               String        @id @default(cuid())
+  id String @id @default(cuid())
 
-  campaignId       String
-  campaign         SpecialDonationCampaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  campaignId String
+  campaign   SpecialDonationCampaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
 
-  participantId    String
-  participant      User          @relation("DonationParticipant", fields: [participantId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   User   @relation("DonationParticipant", fields: [participantId], references: [id], onDelete: Cascade)
 
-  amountMinor      Int
-  status           FundingStatus @default(UNPAID)
-  paidMinor        Int           @default(0)
+  amountMinor Int
+  status      FundingStatus @default(UNPAID)
+  paidMinor   Int           @default(0)
 
   verifiedByUserId String?
   verifiedAt       DateTime?
   rejectionReason  String?
-  version          Int           @default(0)
+  version          Int       @default(0)
 
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  declarations     FundingDeclaration[]
+  declarations FundingDeclaration[]
 
   @@unique([campaignId, participantId])
   @@index([campaignId, status])
@@ -1216,37 +1299,37 @@ model SpecialDonationPayment {
 }
 
 model FundingDeclaration {
-  id                String            @id @default(cuid())
+  id String @id @default(cuid())
 
   annualRecordId    String?
   annualRecord      AnnualContributionRecord? @relation(fields: [annualRecordId], references: [id], onDelete: Cascade)
   donationPaymentId String?
   donationPayment   SpecialDonationPayment?   @relation(fields: [donationPaymentId], references: [id], onDelete: Cascade)
 
-  participantId     String
-  participant       User              @relation("DeclarationParticipant", fields: [participantId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   User   @relation("DeclarationParticipant", fields: [participantId], references: [id], onDelete: Cascade)
 
-  amountMinor       Int
+  amountMinor Int
 
   // v2.0 SRS: Payment method is REQUIRED on every declaration.
-  paymentMethod     PaymentMethod
+  paymentMethod PaymentMethod
 
-  reference         String?
-  receiptUrl        String?
-  receiptPublicId   String?
+  reference       String?
+  receiptUrl      String?
+  receiptPublicId String?
 
-  clientId          String?
+  clientId String?
 
-  status            DeclarationStatus @default(PENDING)
-  declaredAt        DateTime          @default(now())
+  status     DeclarationStatus @default(PENDING)
+  declaredAt DateTime          @default(now())
 
-  decidedByUserId   String?
-  decidedBy         User?             @relation("DeclarationDecidedBy", fields: [decidedByUserId], references: [id], onDelete: SetNull)
-  decidedAt         DateTime?
-  rejectionReason   String?
+  decidedByUserId String?
+  decidedBy       User?     @relation("DeclarationDecidedBy", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  decidedAt       DateTime?
+  rejectionReason String?
 
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([participantId, clientId])
   @@index([annualRecordId, declaredAt])
@@ -1256,21 +1339,21 @@ model FundingDeclaration {
 }
 
 model FundingAuditLog {
-  id                String            @id @default(cuid())
+  id String @id @default(cuid())
 
-  actorId           String?
-  actor             User?             @relation("FundingAuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorId String?
+  actor   User?   @relation("FundingAuditActor", fields: [actorId], references: [id], onDelete: SetNull)
 
-  action            String
-  recordType        FundingRecordType
-  recordId          String
+  action     String
+  recordType FundingRecordType
+  recordId   String
 
-  previousStatus    String?
-  newStatus         String?
-  reason            String?
-  details           Json?
+  previousStatus String?
+  newStatus      String?
+  reason         String?
+  details        Json?
 
-  createdAt         DateTime          @default(now())
+  createdAt DateTime @default(now())
 
   @@index([recordType, recordId])
   @@index([actorId])
@@ -1279,7 +1362,7 @@ model FundingAuditLog {
 }
 
 model PaymentInstructions {
-  id                String        @id @default(cuid())
+  id String @id @default(cuid())
 
   method            PaymentMethod
   providerName      String
@@ -1288,10 +1371,10 @@ model PaymentInstructions {
   note              String?
   active            Boolean       @default(true)
 
-  updatedByUserId   String?
-  updatedBy         User?         @relation("PaymentInstructionsUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  updatedByUserId String?
+  updatedBy       User?    @relation("PaymentInstructionsUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // One row per (method, provider, identifier). Add/modify = new row or update in place.
   @@unique([method, providerName, accountIdentifier])
@@ -1300,13 +1383,13 @@ model PaymentInstructions {
 }
 
 model FundingReminderLog {
-  id         String   @id @default(cuid())
+  id          String            @id @default(cuid())
   recipientId String
-  recordType FundingRecordType
-  recordId   String
-  kind       String
-  periodKey  String
-  sentAt     DateTime @default(now())
+  recordType  FundingRecordType
+  recordId    String
+  kind        String
+  periodKey   String
+  sentAt      DateTime          @default(now())
 
   @@unique([recipientId, recordType, recordId, kind, periodKey])
   @@map("funding_reminder_logs")
@@ -1323,33 +1406,33 @@ enum HelpFeedback {
 }
 
 model HelpEntry {
-  id                 String         @id @default(cuid())
-  slug               String         @unique
-  category           String
+  id       String @id @default(cuid())
+  slug     String @unique
+  category String
 
   intentsEn          String[]
   intentsAm          String[]
   questionVariantsEn String[]
   questionVariantsAm String[]
   answerEn           String
-  answerAm           String         @default("")
+  answerAm           String   @default("")
 
   // Semantic key: HOME | SONGS | MEMORIES | CHAT | PROFILE | FUNDING
-  deepLink           String?
+  deepLink String?
 
   // Who can see this entry. Uses the existing UserRole enum.
-  visibleToRoles     UserRole[]
+  visibleToRoles UserRole[]
 
   // React Navigation route names to boost, e.g. ["Profile", "Funding"]
-  screenHints        String[]
+  screenHints String[]
 
-  active             Boolean        @default(true)
-  sortOrder          Int            @default(0)
+  active    Boolean @default(true)
+  sortOrder Int     @default(0)
 
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  queryLogs          HelpQueryLog[] @relation("HelpMatchedEntry")
+  queryLogs HelpQueryLog[] @relation("HelpMatchedEntry")
 
   @@index([category])
   @@index([active])
@@ -1357,23 +1440,23 @@ model HelpEntry {
 }
 
 model HelpQueryLog {
-  id             String        @id @default(cuid())
+  id String @id @default(cuid())
 
-  userId         String?
-  user           User?         @relation("HelpQueryLogUser", fields: [userId], references: [id], onDelete: SetNull)
+  userId String?
+  user   User?   @relation("HelpQueryLogUser", fields: [userId], references: [id], onDelete: SetNull)
 
   roleAtQuery    UserRole?
   screen         String?
   language       String
-  rawQuery       String?       // PII-redacted by the service before insert
+  rawQuery       String? // PII-redacted by the service before insert
   matchedEntryId String?
-  matchedEntry   HelpEntry?    @relation("HelpMatchedEntry", fields: [matchedEntryId], references: [id], onDelete: SetNull)
+  matchedEntry   HelpEntry? @relation("HelpMatchedEntry", fields: [matchedEntryId], references: [id], onDelete: SetNull)
   matchScore     Float?
 
-  feedback       HelpFeedback  @default(NONE)
-  feedbackNote   String?
+  feedback     HelpFeedback @default(NONE)
+  feedbackNote String?
 
-  createdAt      DateTime      @default(now())
+  createdAt DateTime @default(now())
 
   @@index([createdAt])
   @@index([matchedEntryId])

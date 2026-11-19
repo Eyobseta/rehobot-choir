@@ -21,6 +21,8 @@ import LeaderMemoriesScreen from '../features/memories/LeaderMemoriesScreen';
 import MemoryReviewDetailScreen from '../features/memories/MemoryReviewDetailScreen';
 import MemoryVideoScreen from '../features/memories/MemoryVideoScreen';
 import SongVideoScreen from '../features/songs/SongVideoScreen';
+// 🟢 NEW IMPORT
+import LeaderAssignmentsScreen from '../features/leader/LeaderAssignmentsScreen';
 
 export type LeaderStackParamList = {
   ApprovalsList: undefined;
@@ -42,6 +44,8 @@ export type LeaderStackParamList = {
   MemoryReviewDetail: { id: string };
   MemoryVideo: { youtubeUrl: string; memoryTitle?: string };
   SongVideo: { youtubeUrl: string; title: string };
+  // 🟢 NEW ROUTE TYPE
+  LeaderAssignments: undefined;
 };
 
 const Stack = createNativeStackNavigator<LeaderStackParamList>();
@@ -159,8 +163,13 @@ export default function LeaderStack() {
         component={SongVideoScreen}
         options={{ headerShown: false, animation: 'slide_from_right' }}
       />
-      
-    
+
+      {/* 🟢 NEW SCREEN REGISTERED */}
+      <Stack.Screen
+        name="LeaderAssignments"
+        component={LeaderAssignmentsScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }

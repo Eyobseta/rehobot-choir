@@ -44,7 +44,17 @@
     "justNow": "Just now",
     "minAgo": "{{count}}m ago",
     "hrAgo": "{{count}}h ago",
-    "dayAgo": "{{count}}d ago"
+    "dayAgo": "{{count}}d ago",
+        "assignmentsTitle": "Upcoming Service",
+    "prayerLeader": "Prayer Leader",
+    "worshipLeader": "Worship Leader",
+    "assignedBy": "Assigned by {{name}}",
+    "noUpcomingAssignments": "No upcoming service assignments.",
+    "contactLeader": "Contact Leader",
+    "specialEvent": "Special Event",
+    "tuesdayZema": "Tuesday Zema",
+    "thursdayChoir": "Thursday Choir",
+    "saturdayChoir": "Saturday Choir"
   },
   "test": {
     "greeting": "Hello, welcome to Rehobot Choir",
@@ -864,5 +874,30 @@
     "terms": "Terms of Service",
     "termsBody": "By using this app you agree to respect choir members, keep their information private, and only post content you have the right to share.",
     "footer": "Made with ♥ by {{nick}} ({{name}})\n© {{year}} Rehobot Choir"
+  },
+    "leaderAssignments": {
+    "title": "Assign Program",
+    "newAssignment": "New Assignment",
+    "gatheringType": "Gathering Type",
+    "customName": "Custom Event Name",
+    "date": "Date",
+    "role": "Role",
+    "prayerLeader": "Prayer Leader",
+    "worshipLeader": "Worship Leader",
+    "selectMember": "Select Member",
+    "assign": "Assign Member",
+    "assignSuccess": "Member assigned successfully.",
+    "assignError": "Failed to assign member.",
+    "pendingRequests": "Reassignment Requests",
+    "requestsEmpty": "No pending requests.",
+    "approveRequest": "Approve",
+    "rejectRequest": "Reject",
+    "reason": "Reason: {{reason}}",
+    "requestApproved": "Request approved and assignment cancelled.",
+    "requestRejected": "Request rejected.",
+    "tabAssignments": "Assignments",
+    "tabRequests": "Requests",
+    "deleteAssignment": "Cancel Assignment",
+    "deleteConfirm": "Are you sure you want to cancel this assignment?"
   }
 }

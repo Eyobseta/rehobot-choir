@@ -1,14 +1,14 @@
 # REHOBOT CHOIR MOBILE APP
 ## DATA MODEL — SOFTWARE REQUIREMENTS SPECIFICATION (SRS)
 
-**Version:** 1.0 (Final Model Layer — aligned to deployed Prisma schema)  
+**Version:** 1.1 (Added Service Assignments & Reassignment Requests)  
 **Currency:** Ethiopian Birr (ETB)  
 **User-facing calendar:** Ethiopian Calendar  
 
 ---
 
 ## DOCUMENT STATUS
-**Final v1.0** — verified directly against `schema.prisma` (V1.0 schema freeze).
+**Final v1.1** — verified directly against `schema.prisma`.
 **Authority:** This document describes the physical data model, enums, relations, constraints, and retention policies.
 
 ---
@@ -234,6 +234,37 @@
 - `submittedByUserId` (String?, FK)
 
 **Constraints:** `@@unique([dateGregorian])`
+
+### 3.15 ServiceAssignment (Table: `service_assignments`)
+**Purpose:** Assigns a member to a specific role (Prayer/Worship) for a gathering.
+**Fields:**
+- `id` (String, PK)
+- `gatheringType` (GatheringType)
+- `customGatheringName` (String?) // Used if gatheringType is SPECIAL_EVENT
+- `dateEthYear`, `Month`, `Day` (Int) + `dateGregorian` (@db.Date)
+- `role` (AssignmentRole) // PRAYER_LEADER, WORSHIP_LEADER
+- `assignedUserId` (String, FK) // The member doing the service
+- `assignedByUserId` (String, FK) // The leader who assigned it
+- `status` (AssignmentStatus) // SCHEDULED, CANCELLED
+- `createdAt`, `updatedAt` (DateTime)
+
+**Constraints:**
+- `@@unique([gatheringType, dateGregorian, role])` 
+- `onDelete: Cascade` (from assignedUser), `Restrict` (from assignedByUser)
+
+### 3.16 ReassignmentRequest (Table: `reassignment_requests`)
+**Purpose:** Allows members to request a reassignment due to conflicts.
+**Fields:**
+- `id` (String, PK)
+- `assignmentId` (String, FK)
+- `requesterId` (String, FK)
+- `reason` (String) // Required reason (e.g., "Out of city")
+- `status` (ReassignmentStatus) // PENDING, APPROVED, REJECTED
+- `resolvedByUserId` (String?, FK)
+- `resolvedAt` (DateTime?)
+- `createdAt`, `updatedAt` (DateTime)
+
+**Constraints:** `onDelete: Cascade` (from assignment).
 
 ---
 
@@ -474,10 +505,13 @@
 - **ApplicationStatus:** `PENDING`, `APPROVED`, `REJECTED`
 - **EventStatus:** `DRAFT`, `PUBLISHED`, `DELETED`
 - **RsvpResponse:** `GOING`, `MAYBE`, `NOT_GOING`
-- **GatheringType:** `TUESDAY_ZEMA`, `THURSDAY_CHOIR`, `SATURDAY_CHOIR`
+- **GatheringType:** `TUESDAY_ZEMA`, `THURSDAY_CHOIR`, `SATURDAY_CHOIR`, `SPECIAL_EVENT`
 - **AttendanceStatus:** `PRESENT`, `ABSENT`
+- **AssignmentRole:** `PRAYER_LEADER`, `WORSHIP_LEADER`
+- **AssignmentStatus:** `SCHEDULED`, `CANCELLED`
+- **ReassignmentStatus:** `PENDING`, `APPROVED`, `REJECTED`
 - **AnnouncementStatus:** `DRAFT`, `SCHEDULED`, `PUBLISHED`, `DELETED`
-- **NotificationType:** `ANNOUNCEMENT`, `EVENT_REMINDER`, `CHAT_MESSAGE`, `BIRTHDAY`, `SONG_PUBLISHED`, `MEMORY_PUBLISHED`, `LEADERSHIP_CHANGE`, `DAILY_QUOTE`, `FUNDING_REMINDER`, `FUNDING_VERIFICATION_NEEDED`, `FUNDING_RESULT`, `FUNDING_CAMPAIGN`
+- **NotificationType:** `ANNOUNCEMENT`, `EVENT_REMINDER`, `CHAT_MESSAGE`, `BIRTHDAY`, `SONG_PUBLISHED`, `MEMORY_PUBLISHED`, `LEADERSHIP_CHANGE`, `DAILY_QUOTE`, `FUNDING_REMINDER`, `FUNDING_VERIFICATION_NEEDED`, `FUNDING_RESULT`, `FUNDING_CAMPAIGN`, `SERVICE_ASSIGNMENT`, `REASSIGNMENT_UPDATE`
 - **SongStatus:** `DRAFT`, `PENDING_REVIEW`, `PUBLISHED`, `RETURNED`, `UNPUBLISHED`, `DELETED`
 - **SubmissionStatus:** `DRAFT`, `PENDING_REVIEW`, `APPROVED`, `RETURNED`
 - **MemoryStatus:** `PENDING_REVIEW`, `PUBLISHED`, `REJECTED`, `DELETED`
@@ -500,7 +534,7 @@
 ## 9. RETENTION & CASCADE DELETION RULES
 
 - **User Soft Delete:** `deletedAt` timestamp. MemberProfile and User data are retained, but the User status is changed and personal identifiers anonymized in the service layer.
-- **Cascade Deletes:** `onDelete: Cascade` is applied to dependent records where the parent's deletion makes the child irrelevant (e.g., deleting a User removes their Sessions, PushTokens, and ChatMessages).
+- **Cascade Deletes:** `onDelete: Cascade` is applied to dependent records where the parent's deletion makes the child irrelevant (e.g., deleting a User removes their Sessions, PushTokens, and ChatMessages). For `ServiceAssignment`, if a member is deleted, their assignment cascades, but the assigning leader reference is restricted.
 - **Funding Records:** `onDelete: Restrict` for Configurations and Campaigns. This ensures financial audit history cannot be accidentally deleted if a configuration or campaign is deleted.
 - **Chat Media:** Hard deletion scheduled based on `retentionUntil` (1 year).
 - **Message Reports:** Hard deletion scheduled based on `retainUntil` (30 days).
@@ -520,6 +554,7 @@ The database schema is built incrementally via Prisma Migrations:
 - `20261018..._chat_schema` / `chat_production` / `chat_sync_indexes`
 - `20261024..._add_funding`
 - `20261025..._fundingadedndefin...` / `funding_v2_partial_p...` / `funding_constraints`
+- `20261119..._add_service_assignments` (Pending)
 
 ---
-*END OF MODEL SRS v1.0*
+*END OF MODEL SRS v1.1*

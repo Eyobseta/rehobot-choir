@@ -34,6 +34,9 @@ import donationRoutes from './funding/donation.routes';
 import fundingAdminRoutes from './funding/funding-admin.routes';
 import helpRoutes from './help/help.routes';
 
+// 🟢 NEW IMPORTS FOR SERVICE ASSIGNMENTS
+import assignmentRoutes from './assignments/assignments.routes';
+import leaderAssignmentRoutes from './assignments/leader-assignments.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -96,6 +99,11 @@ export function createApp(): Application {
   api.use('/funding', donationRoutes);
   api.use('/admin/funding', fundingAdminRoutes);
   api.use('/help', helpRoutes);
+
+  // 🟢 SERVICE ASSIGNMENTS ROUTES
+  api.use('/assignments', assignmentRoutes);
+  api.use('/leaders/assignments', leaderAssignmentRoutes);
+
   app.set('trust proxy', 1);
 
   app.use('/api/v1', api);

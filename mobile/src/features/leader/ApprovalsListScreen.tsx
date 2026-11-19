@@ -45,6 +45,8 @@ const TOOLS: {
   { key: 'member', icon: 'person-circle', labelKey: 'leaderTools.manageMember', route: 'ManageMember', gradient: ['#5B4AA8', '#7B5FC7'] },
   { key: 'songs', icon: 'musical-notes', labelKey: 'leaderSongs.title', route: 'LeaderSongs', gradient: ['#3B7F8C', '#1D4550'] },
   { key: 'memories', icon: 'images', labelKey: 'memories.title', route: 'LeaderMemories', gradient: ['#7B5FC7', '#9B84E0'] },
+  // 🟢 NEW TOOL ADDED HERE
+  { key: 'assignments', icon: 'mic', labelKey: 'leaderAssignments.title', route: 'LeaderAssignments', gradient: ['#D97706', '#F59E0B'] },
 ];
 
 export default function ApprovalsListScreen({ navigation }: Props) {

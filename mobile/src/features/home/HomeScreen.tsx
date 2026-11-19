@@ -28,6 +28,7 @@ import {
   useUpcomingEventQuery,
 } from './useHomeData';
 import { useHomeUnreadSync } from './useHomeUnreadSync';
+import AssignmentsCard from './AssignmentsCard';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -444,12 +445,19 @@ export default function HomeScreen({ navigation }: any) {
             </View>
           </Reveal>
 
+          {/* 🟢 =============== NEW ASSIGNMENTS CARD =============== */}
+          <Reveal index={1}>
+            <View style={{ marginTop: spacing.lg }}>
+              <AssignmentsCard navigation={navigation} />
+            </View>
+          </Reveal>
+
           {/* =============== FIRST-LOAD SKELETON =============== */}
           {firstLoad && <HomeSkeleton />}
 
           {/* =============== UPCOMING EVENT =============== */}
           {upcoming && (
-            <Reveal index={1}>
+            <Reveal index={2}>
               <View style={{ marginBottom: spacing.lg }}>
                 <SectionHeader
                   icon="sparkles"
@@ -564,7 +572,7 @@ export default function HomeScreen({ navigation }: any) {
           )}
 
           {/* =============== QUICK ACCESS =============== */}
-          <Reveal index={2}>
+          <Reveal index={3}>
             <View>
               <SectionHeader
                 icon="compass"
@@ -610,7 +618,7 @@ export default function HomeScreen({ navigation }: any) {
 
           {/* =============== BIRTHDAY STORIES =============== */}
           {hasBirthdays && (
-            <Reveal index={3}>
+            <Reveal index={4}>
               <View style={{ marginBottom: spacing.lg }}>
                 <SectionHeader
                   icon="gift"
@@ -670,7 +678,7 @@ export default function HomeScreen({ navigation }: any) {
 
           {/* =============== NOTIFICATIONS =============== */}
           {notifications.length > 0 && (
-            <Reveal index={4}>
+            <Reveal index={5}>
               <View style={{ marginBottom: spacing.lg }}>
                 <SectionHeader
                   icon="notifications"
@@ -757,7 +765,7 @@ export default function HomeScreen({ navigation }: any) {
           )}
 
           {/* =============== ANNOUNCEMENTS TIMELINE =============== */}
-          <Reveal index={5}>
+          <Reveal index={6}>
             <View style={{ marginBottom: spacing.lg }}>
               <SectionHeader
                 icon="megaphone"
@@ -881,7 +889,7 @@ export default function HomeScreen({ navigation }: any) {
           </Reveal>
 
           {/* =============== BIBLE STUDY =============== */}
-          <Reveal index={6}>
+          <Reveal index={7}>
             <LinearGradient
               colors={[withAlpha(BRAND.lavender, 0.5), withAlpha(BRAND.lime, 0.28)]}
               start={{ x: 0, y: 0 }}
