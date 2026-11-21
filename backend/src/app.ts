@@ -42,6 +42,10 @@ export function createApp(): Application {
   const app = express();
 
   app.use(helmet());
+    // Lightweight keep-alive route: no DB, no logging
+  app.get('/ping', (_req, res) => {
+    res.status(200).send('ok');
+  });
 
   const corsOrigin =
     env.corsOrigin === '*'
