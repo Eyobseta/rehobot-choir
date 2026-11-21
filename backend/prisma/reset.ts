@@ -4,6 +4,11 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+if (process.env.ALLOW_DEV_SEED !== 'true') {
+  console.error('Refusing to run: set ALLOW_DEV_SEED=true (dev DB only).');
+  process.exit(1);
+}
+
 async function main() {
   console.log('[reset] Truncating all tables...');
 

@@ -31,6 +31,10 @@ import { ethFields } from '../src/utils/eth-fields';
 import { seedHelpEntries } from './help.seed';
 
 const prisma = new PrismaClient();
+if (process.env.ALLOW_DEV_SEED !== 'true') {
+  console.error('Refusing to run: set ALLOW_DEV_SEED=true (dev DB only).');
+  process.exit(1);
+}
 
 const ARGON2_OPTIONS: Parameters<typeof argon2.hash>[1] = {
   type: argon2.argon2id,
