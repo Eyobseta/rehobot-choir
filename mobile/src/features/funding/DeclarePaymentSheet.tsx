@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, Modal, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Modal, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
-import { AuthField, PrimaryButton, ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
+import { AuthField, PrimaryButton, ErrorBanner } from '../auth/Auth_UI';
 import { makeClientId, PaymentMethod } from '../../services/funding';
 import { parseEtbToMinor, formatEtb } from '../../utils/money';
-import { errorText, minorToInput, Notice } from './fundingKit';
+import { errorText, minorToInput, Notice, SheetSurface, SheetTitle, ChoiceCards, ActionBtn, FieldLabel } from './fundingKit';
 
 export type DeclareBody = {
   clientId: string;
@@ -83,46 +83,33 @@ export default function DeclarePaymentSheet(p: Props) {
 
   return (
     <Modal visible={p.visible} transparent animationType="slide" onRequestClose={() => !busy && p.onClose()}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.backdrop}>
-        <View style={[s.sheet, { backgroundColor: colors.surface }]}>
-          <Text style={{ color: colors.text, fontWeight: '800', fontSize: 20, marginBottom: 4 }}>{p.title}</Text>
-          <Text style={{ color: colors.textSecondary, marginBottom: 16 }}>
-            {t('funding.partialHint', { defaultValue: 'Enter exactly what you transferred. Partial payments are fine.' })}
-          </Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[s.backdrop, { backgroundColor: colors.overlay }]}>
+        <SheetSurface>
+          <SheetTitle
+            icon="cash-outline"
+            title={p.title}
+            subtitle={t('funding.partialHint', { defaultValue: 'Enter exactly what you transferred. Partial payments are fine.' })}
+          />
 
           {p.methods.length === 0 ? (
             <Notice tone="error" text={t('funding.paymentsMissing', { defaultValue: 'Payment details are not available yet. Please contact a leader.' })} />
           ) : (
             <>
-              <Text style={{ color: colors.textSecondary, fontWeight: '700', marginBottom: 8 }}>
-                {t('funding.pickMethod', { defaultValue: 'Payment method used' })}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-                {p.methods.map((m) => {
-                  const on = method === m;
-                  return (
-                    <Pressable
-                      key={m}
-                      onPress={() => { setMethod(m); touch(); }}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: on }}
-                      style={{
-                        flex: 1, padding: 12, borderWidth: 1, borderRadius: 12,
-                        borderColor: on ? BRAND.violet : colors.border,
-                        backgroundColor: on ? withAlpha(BRAND.violet, 0.1) : 'transparent',
-                      }}
-                    >
-                      <Text style={{ textAlign: 'center', fontWeight: '800', color: on ? BRAND.violet : colors.text }}>
-                        {m === 'TELEBIRR' ? 'Telebirr' : t('funding.bank', { defaultValue: 'Bank' })}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <FieldLabel text={t('funding.pickMethod', { defaultValue: 'Payment method used' })} />
+              <ChoiceCards
+                style={{ marginBottom: 16 }}
+                value={method}
+                onChange={(m) => { setMethod(m); touch(); }}
+                options={p.methods.map((m) => ({
+                  key: m,
+                  label: m === 'TELEBIRR' ? 'Telebirr' : t('funding.bank', { defaultValue: 'Bank' }),
+                  icon: m === 'TELEBIRR' ? 'phone-portrait-outline' as const : 'business-outline' as const,
+                }))}
+              />
 
               <AuthField
                 label={`${t('funding.amountLabel')} (ETB)`}
-                iconNode={<Ionicons name="cash-outline" size={18} color={BRAND.violet} />}
+                iconNode={<Ionicons name="cash-outline" size={18} color={colors.accent} />}
                 value={amount}
                 onChangeText={(v: string) => { setAmount(v); touch(); }}
                 keyboardType="phone-pad"
@@ -131,7 +118,7 @@ export default function DeclarePaymentSheet(p: Props) {
                 <View style={{ marginTop: spacing.md }}>
                   <AuthField
                     label={t('funding.referenceLabel')}
-                    iconNode={<Ionicons name="receipt-outline" size={18} color={BRAND.violet} />}
+                    iconNode={<Ionicons name="receipt-outline" size={18} color={colors.accent} />}
                     value={reference}
                     onChangeText={(v: string) => { setReference(v.slice(0, 64)); touch(); }}
                     autoCapitalize="none"
@@ -145,17 +132,14 @@ export default function DeclarePaymentSheet(p: Props) {
 
           <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
             {p.methods.length > 0 && <PrimaryButton label={t('funding.confirmBtn')} onPress={submit} busy={busy} />}
-            <Pressable onPress={() => !busy && p.onClose()} style={{ paddingVertical: 14, alignItems: 'center' }}>
-              <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>{t('common.cancel')}</Text>
-            </Pressable>
+            <ActionBtn variant="ghost" label={t('common.cancel')} onPress={() => !busy && p.onClose()} />
           </View>
-        </View>
+        </SheetSurface>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  backdrop: { flex: 1, justifyContent: 'flex-end' },
 });

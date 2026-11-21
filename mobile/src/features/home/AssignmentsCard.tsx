@@ -5,62 +5,48 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
-import { useMyAssignmentsQuery, useRequestReassignmentMutation } from '../assignments/useAssignments';
+import { useChoirAssignmentsQuery, useRequestReassignmentMutation } from '../assignments/useAssignments';
 import { formatEthDate } from '../../utils/ethiopianCalendar';
-import { Assignment } from '../../services/assignments';
+import { ChoirAssignment } from '../../services/assignments';
+import { useMe } from '../chat/chatSession';
 
 export default function AssignmentsCard({ navigation }: { navigation: any }) {
   const { t, i18n } = useTranslation();
   const lang = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
   const { theme } = useTheme();
   const { colors, typography } = theme;
+  const me = useMe();
 
-  const { data: assignments, isLoading, isError } = useMyAssignmentsQuery();
-  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const { data: assignments, isLoading } = useChoirAssignmentsQuery();
+  const [selectedAssignment, setSelectedAssignment] = useState<ChoirAssignment | null>(null);
   const [reassignReason, setReassignReason] = useState('');
   
   const reassignMut = useRequestReassignmentMutation();
 
-  // 🟢 DEBUG: Show loading state
-  if (isLoading) {
-    return (
-      <View style={{ padding: 20, alignItems: 'center' }}>
-        <ActivityIndicator color={BRAND.teal} />
-        <Text style={{ marginTop: 8, color: colors.textSecondary }}>Loading assignments...</Text>
-      </View>
-    );
-  }
+  // 🟢 Strictly return null if loading or no assignments
+  if (isLoading || !assignments || assignments.length === 0) return null;
 
-  // 🟢 DEBUG: Show error state
-  if (isError) {
-    return (
-      <View style={{ padding: 20, backgroundColor: withAlpha(colors.error, 0.1), borderRadius: 12, marginBottom: 16 }}>
-        <Text style={{ color: colors.error, textAlign: 'center' }}>Failed to load assignments. Check your internet.</Text>
-      </View>
-    );
-  }
+  // Get the nearest upcoming date
+  const nextDate = assignments[0].date;
+  
+  // Filter for that date
+  const dateAssignments = assignments.filter(a => 
+    a.date.year === nextDate.year && 
+    a.date.month === nextDate.month && 
+    a.date.day === nextDate.day
+  );
 
-  // 🟢 DEBUG: Show empty state instead of returning null
-  if (!assignments || assignments.length === 0) {
-    return (
-      <LinearGradient
-        colors={[withAlpha(BRAND.teal, 0.1), withAlpha(BRAND.teal, 0.05)]}
-        style={{ borderRadius: 24, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: withAlpha(BRAND.teal, 0.2), alignItems: 'center' }}
-      >
-        <Ionicons name="mic-off-outline" size={24} color={colors.textSecondary} />
-        <Text style={{ color: colors.textSecondary, marginTop: 8, fontWeight: '600' }}>No upcoming service assignments</Text>
-      </LinearGradient>
-    );
-  }
+  if (dateAssignments.length === 0) return null;
 
-  const nextAssignment = assignments[0]; 
+  const gatheringType = dateAssignments[0].gatheringType;
+  const gatheringLabel = dateAssignments[0].customGatheringName || 
+    t(`home.${gatheringType.toLowerCase().replace('_zema', 'Zema').replace('_choir', 'Choir')}` as any, { defaultValue: gatheringType });
 
-  const handleContactLeader = () => {
-    navigation.navigate('Chat', { 
-      screen: 'NewChat', 
-      params: { initialUserId: nextAssignment.assignedById } 
-    });
-  };
+  const prayerLeader = dateAssignments.find(a => a.role === 'PRAYER_LEADER');
+  const worshipLeader = dateAssignments.find(a => a.role === 'WORSHIP_LEADER');
+
+  // Am I assigned?
+  const myAssignment = dateAssignments.find(a => a.assignedUserId === me?.id);
 
   const submitReassignment = () => {
     if (!selectedAssignment) return;
@@ -83,11 +69,6 @@ export default function AssignmentsCard({ navigation }: { navigation: any }) {
     );
   };
 
-  const roleLabel = nextAssignment.role === 'PRAYER_LEADER' ? t('home.prayerLeader') : t('home.worshipLeader');
-  const gatheringLabel = nextAssignment.gatheringType === 'SPECIAL_EVENT' 
-    ? nextAssignment.customGatheringName 
-    : t(`home.${nextAssignment.gatheringType.toLowerCase().replace('_zema', 'Zema').replace('_choir', 'Choir')}` as any, { defaultValue: nextAssignment.gatheringType });
-
   return (
     <>
       <LinearGradient
@@ -104,35 +85,42 @@ export default function AssignmentsCard({ navigation }: { navigation: any }) {
             <Text style={[typography.h3, { color: '#FFF', fontWeight: '800' }]}>{t('home.assignmentsTitle')}</Text>
           </View>
           <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '700' }}>
-            {formatEthDate(nextAssignment.date, lang)}
+            {formatEthDate(nextDate, lang)}
           </Text>
         </View>
 
         <View style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 16, padding: 12 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <Text style={{ color: BRAND.lime, fontWeight: '800', fontSize: 14 }}>{gatheringLabel}</Text>
-            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.15)' }}>
-              <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '800' }}>{roleLabel}</Text>
-            </View>
-          </View>
+          <Text style={{ color: BRAND.lime, fontWeight: '800', fontSize: 14, marginBottom: 8 }}>{gatheringLabel}</Text>
           
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="person" size={12} color="rgba(255,255,255,0.7)" />
-            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>
-              {t('home.assignedBy', { name: nextAssignment.assignedBy })}
-            </Text>
-          </View>
+          {prayerLeader && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.7)', width: 70, fontSize: 12 }}>Prayer:</Text>
+              <Text style={{ color: '#FFF', fontWeight: '700' }}>{prayerLeader.assignedUserName}</Text>
+            </View>
+          )}
+          {worshipLeader && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.7)', width: 70, fontSize: 12 }}>Worship:</Text>
+              <Text style={{ color: '#FFF', fontWeight: '700' }}>{worshipLeader.assignedUserName}</Text>
+            </View>
+          )}
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-          <Pressable onPress={() => setSelectedAssignment(nextAssignment)} style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: 10, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}>
+        {/* If I am assigned, show Request Change button */}
+        {myAssignment && !myAssignment.hasPendingRequest && (
+          <Pressable 
+            onPress={() => setSelectedAssignment(myAssignment)}
+            style={{ marginTop: 12, backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: 10, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
+          >
             <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 13 }}>Request Change</Text>
           </Pressable>
-          <Pressable onPress={handleContactLeader} style={{ flex: 1, backgroundColor: BRAND.lime, paddingVertical: 10, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <Ionicons name="chatbubble-ellipses" size={16} color={BRAND.deep} />
-            <Text style={{ color: BRAND.deep, fontWeight: '800', fontSize: 13 }}>{t('home.contactLeader')}</Text>
-          </Pressable>
-        </View>
+        )}
+
+        {myAssignment && myAssignment.hasPendingRequest && (
+          <View style={{ marginTop: 12, backgroundColor: withAlpha('#E8A65D', 0.2), paddingVertical: 10, borderRadius: 12, alignItems: 'center' }}>
+            <Text style={{ color: '#E8A65D', fontWeight: '700', fontSize: 13 }}>Reassignment Pending...</Text>
+          </View>
+        )}
       </LinearGradient>
 
       <Modal visible={!!selectedAssignment} transparent animationType="fade" onRequestClose={() => setSelectedAssignment(null)}>

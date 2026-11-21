@@ -1,15 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Animated } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { AuthField, PrimaryButton, ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
+import { AuthField, PrimaryButton, ErrorBanner, withAlpha } from '../auth/Auth_UI';
 import { PaymentInstruction, PaymentMethod, makeClientId } from '../../services/funding';
 import { parseEtbToMinor, formatEtb } from '../../utils/money';
-import { Card, DetailHeader, Notice, ErrorState, errorText, minorToInput } from './fundingKit';
+import {
+  DetailHeader, Notice, ErrorState, errorText, minorToInput, InstructionCard, ChoiceCards, Card, FadeUp, LoadingInline,
+} from './fundingKit';
 import { usePaymentInstructionsQuery, useDeclareAnnualMutation, useDeclareCampaignMutation } from './useMemberFunding';
 
 export type PayFlowParams = {
@@ -40,7 +42,7 @@ export default function PayFlowScreen() {
 
   const items = instQ.data?.items ?? p.instructions ?? [];
   const itemsLoading = instQ.isPending && !p.instructions;
-  
+
   const [step, setStep] = useState<Step>(0);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -92,9 +94,9 @@ export default function PayFlowScreen() {
       {step < 2 && <StepBar step={step} labels={[t('funding.stepTransfer'), t('funding.stepConfirm')]} />}
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: spacing.xl, paddingBottom: insets.bottom + 48 }}>
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + 48 }}>
           {step === 0 && (
-            itemsLoading ? <ActivityIndicator size="large" color={BRAND.violet} style={{ marginTop: 40 }} />
+            itemsLoading ? <LoadingInline />
             : instQ.isError && items.length === 0 ? <ErrorState message={errorText(instQ.error)} onRetry={() => instQ.refetch()} />
             : (
               <>
@@ -102,31 +104,10 @@ export default function PayFlowScreen() {
                 {items.length === 0 && <Notice tone="error" text={t('funding.paymentsMissing')} />}
 
                 <View style={{ marginTop: 16 }}>
-                  {items.map((ins) => (
-                    <Card key={ins.id} style={{ marginBottom: 14 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                        <View style={{ backgroundColor: withAlpha(BRAND.violet, 0.14), padding: 12, borderRadius: 12 }}>
-                          <Ionicons name={ins.method === 'BANK' ? 'business' : 'phone-portrait'} size={22} color={BRAND.violet} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontWeight: '800', color: colors.text, fontSize: 16 }}>{ins.providerName}</Text>
-                          <Text style={{ color: colors.textSecondary, marginTop: 2 }}>{ins.method === 'BANK' ? t('funding.bank') : 'Telebirr'}</Text>
-                        </View>
-                      </View>
-
-                      <Text style={{ color: colors.textSecondary, fontWeight: '700', marginTop: 16 }}>{t('funding.holder')}</Text>
-                      <Text selectable style={{ color: colors.text, fontWeight: '600', fontSize: 16, marginTop: 2 }}>{ins.accountHolderName}</Text>
-
-                      <Text style={{ color: colors.textSecondary, fontWeight: '700', marginTop: 12 }}>{t('funding.account')}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 10 }}>
-                        <Text selectable style={{ color: colors.text, fontSize: 20, fontWeight: '800', flex: 1 }}>{ins.accountIdentifier}</Text>
-                        <Pressable onPress={() => copy(ins)} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('funding.copy')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: withAlpha(BRAND.violet, 0.14), paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, minHeight: 44 }}>
-                          <Ionicons name={copiedId === ins.id ? 'checkmark' : 'copy-outline'} size={16} color={BRAND.violet} />
-                          <Text style={{ color: BRAND.violet, fontWeight: '800' }}>{copiedId === ins.id ? t('funding.copied') : t('funding.copy')}</Text>
-                        </Pressable>
-                      </View>
-                      {!!ins.note && <Text style={{ color: colors.textSecondary, marginTop: 12, fontStyle: 'italic' }}>{ins.note}</Text>}
-                    </Card>
+                  {items.map((ins, i) => (
+                    <FadeUp key={ins.id} index={i} style={{ marginBottom: 14 }}>
+                      <InstructionCard ins={ins} copied={copiedId === ins.id} onCopy={() => copy(ins)} />
+                    </FadeUp>
                   ))}
                 </View>
 
@@ -142,36 +123,38 @@ export default function PayFlowScreen() {
 
           {step === 1 && (
             <>
-              <Text style={{ color: colors.textSecondary, marginBottom: 16 }}>{t('funding.partialHint')}</Text>
+              <Text style={{ color: colors.textSecondary, marginBottom: 18, lineHeight: 20 }}>{t('funding.partialHint')}</Text>
 
-              <Text style={{ color: colors.textSecondary, fontWeight: '700', marginBottom: 8 }}>{t('funding.pickMethod')}</Text>
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-                {methods.map((m) => {
-                  const on = method === m;
-                  return (
-                    <Pressable key={m} onPress={() => { setMethod(m); touch(); }} accessibilityRole="radio" accessibilityState={{ selected: on }}
-                      style={{ flex: 1, padding: 14, borderWidth: 1.5, borderRadius: 14, borderColor: on ? BRAND.violet : colors.border, backgroundColor: on ? withAlpha(BRAND.violet, 0.1) : colors.surface, minHeight: 44 }}>
-                      <Text style={{ textAlign: 'center', fontWeight: '800', color: on ? BRAND.violet : colors.text }}>{m === 'TELEBIRR' ? 'Telebirr' : t('funding.bank')}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <Text style={{ color: colors.textSecondary, fontWeight: '800', fontSize: 12, marginBottom: 8 }}>{t('funding.pickMethod')}</Text>
+              <ChoiceCards
+                style={{ marginBottom: 18 }}
+                value={method}
+                onChange={(m) => { setMethod(m); touch(); }}
+                options={methods.map((m) => ({
+                  key: m,
+                  label: m === 'TELEBIRR' ? 'Telebirr' : t('funding.bank'),
+                  icon: m === 'TELEBIRR' ? 'phone-portrait-outline' as const : 'business-outline' as const,
+                }))}
+              />
 
               {!!p.maxAmountMinor && (
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>{t('funding.remaining')}: {formatEtb(p.maxAmountMinor)}</Text>
-                  <Pressable onPress={() => { setAmount(minorToInput(p.maxAmountMinor!)); touch(); }} hitSlop={8} accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }}>
-                    <Text style={{ color: BRAND.violet, fontWeight: '800' }}>{t('funding.payFull')}</Text>
+                <View style={{
+                  flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10,
+                  paddingLeft: 14, paddingRight: 4, borderRadius: 16, backgroundColor: colors.surfaceAlt,
+                }}>
+                  <Text style={{ color: colors.text, fontWeight: '700', flex: 1 }}>{t('funding.remaining')}: {formatEtb(p.maxAmountMinor)}</Text>
+                  <Pressable onPress={() => { setAmount(minorToInput(p.maxAmountMinor!)); touch(); }} hitSlop={8} accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 }}>
+                    <Text style={{ color: colors.accent, fontWeight: '800' }}>{t('funding.payFull')}</Text>
                   </Pressable>
                 </View>
               )}
 
               {method ? (
                 <>
-                  <AuthField label={`${t('funding.amountLabel')}`} iconNode={<Ionicons name="cash-outline" size={18} color={BRAND.violet} />} value={amount} onChangeText={(v: string) => { setAmount(v); touch(); }} keyboardType="phone-pad" />
+                  <AuthField label={`${t('funding.amountLabel')}`} iconNode={<Ionicons name="cash-outline" size={18} color={colors.accent} />} value={amount} onChangeText={(v: string) => { setAmount(v); touch(); }} keyboardType="phone-pad" />
                   {p.showReference !== false && (
                     <View style={{ marginTop: spacing.md }}>
-                      <AuthField label={t('funding.referenceLabel')} iconNode={<Ionicons name="receipt-outline" size={18} color={BRAND.violet} />} value={reference} onChangeText={(v: string) => { setReference(v.slice(0, 64)); touch(); }} autoCapitalize="none" />
+                      <AuthField label={t('funding.referenceLabel')} iconNode={<Ionicons name="receipt-outline" size={18} color={colors.accent} />} value={reference} onChangeText={(v: string) => { setReference(v.slice(0, 64)); touch(); }} autoCapitalize="none" />
                     </View>
                   )}
 
@@ -184,7 +167,7 @@ export default function PayFlowScreen() {
                 </>
               ) : (
                 <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-                  <ActivityIndicator color={BRAND.violet} />
+                  <ActivityIndicator color={colors.primary} />
                   <Text style={{ color: colors.textSecondary, marginTop: 12 }}>{t('common.loading')}</Text>
                 </View>
               )}
@@ -193,11 +176,9 @@ export default function PayFlowScreen() {
 
           {step === 2 && (
             <View style={{ alignItems: 'center', paddingTop: 24 }}>
-              <View style={{ width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center', backgroundColor: withAlpha('#F59E0B', 0.16) }}>
-                <Ionicons name="time" size={42} color="#F59E0B" />
-              </View>
-              <Text accessibilityRole="header" style={{ color: colors.text, fontWeight: '800', fontSize: 22, marginTop: 20, textAlign: 'center' }}>{t('funding.submittedTitle')}</Text>
-              <Text style={{ color: colors.textSecondary, marginTop: 8, textAlign: 'center' }}>{t('funding.submittedBodyMulti')}</Text>
+              <SuccessBurst />
+              <Text accessibilityRole="header" style={{ color: colors.text, fontWeight: '800', fontSize: 24, marginTop: 24, textAlign: 'center' }}>{t('funding.submittedTitle')}</Text>
+              <Text style={{ color: colors.textSecondary, marginTop: 8, textAlign: 'center', lineHeight: 21 }}>{t('funding.submittedBodyMulti')}</Text>
               <View style={{ alignSelf: 'stretch', marginTop: 32 }}>
                 <PrimaryButton label={t('funding.done')} onPress={() => navigation.goBack()} />
               </View>
@@ -209,19 +190,52 @@ export default function PayFlowScreen() {
   );
 }
 
+/** Pending-verification confirmation: amber ring that pops in. */
+function SuccessBurst() {
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const s = useRef(new Animated.Value(0.4)).current;
+  const o = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(s, { toValue: 1, speed: 12, bounciness: 12, useNativeDriver: true }),
+      Animated.timing(o, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, [s, o]);
+  return (
+    <Animated.View style={{ opacity: o, transform: [{ scale: s }], alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: 132, height: 132, borderRadius: 66, alignItems: 'center', justifyContent: 'center', backgroundColor: withAlpha(colors.warning, 0.12) }}>
+        <View style={{ width: 92, height: 92, borderRadius: 46, alignItems: 'center', justifyContent: 'center', backgroundColor: withAlpha(colors.warning, 0.22) }}>
+          <Ionicons name="time" size={46} color={colors.warning} />
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
 function StepBar({ step, labels }: { step: Step; labels: string[] }) {
   const { theme } = useTheme();
   const { colors } = theme;
   return (
-    <View style={{ flexDirection: 'row', paddingHorizontal: 24, paddingTop: 16, gap: 10 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 18, gap: 10 }}>
       {labels.map((l, i) => {
         const done = i < step; const on = i === step;
-        const c = done || on ? BRAND.violet : colors.border;
+        const active = done || on;
         return (
-          <View key={l} style={{ flex: 1 }} accessibilityState={{ selected: on }}>
-            <View style={{ height: 4, borderRadius: 2, backgroundColor: c }} />
-            <Text style={{ marginTop: 6, fontSize: 12, fontWeight: '800', color: on ? BRAND.violet : colors.textSecondary }}>{i + 1}. {l}</Text>
-          </View>
+          <React.Fragment key={l}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }} accessibilityState={{ selected: on }}>
+              <View style={{
+                width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center',
+                backgroundColor: active ? colors.primary : 'transparent', borderWidth: active ? 0 : 1.5, borderColor: colors.border,
+              }}>
+                {done
+                  ? <Ionicons name="checkmark" size={14} color={colors.primaryText} />
+                  : <Text style={{ fontSize: 12, fontWeight: '800', color: active ? colors.primaryText : colors.textSecondary }}>{i + 1}</Text>}
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: '800', color: on ? colors.text : colors.textSecondary }}>{l}</Text>
+            </View>
+            {i < labels.length - 1 && <View style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: done ? colors.primary : colors.border }} />}
+          </React.Fragment>
         );
       })}
     </View>

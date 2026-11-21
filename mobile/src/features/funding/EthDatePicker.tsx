@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Modal, View, Text, Pressable, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { BRAND, PrimaryButton } from '../auth/Auth_UI';
+import { PrimaryButton } from '../auth/Auth_UI';
 import {
   EthDate, ETH_MONTHS_EN, ETH_MONTHS_AM, daysInEthMonth, formatEthDate, ethTodayFromInstant,
 } from '../../utils/ethiopianCalendar';
+import { ActionBtn, FieldLabel } from './fundingKit';
 
 type Props = {
   visible: boolean; title: string; value: EthDate;
@@ -74,24 +76,30 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
 
   const chip = (on: boolean, width: number) => ({
     width,
-    paddingVertical: 10,
-    borderRadius: 12,
+    height: 44,
+    justifyContent: 'center' as const,
+    borderRadius: 14,
     marginRight: GAP,
-    backgroundColor: on ? BRAND.violet : colors.background,
+    backgroundColor: on ? colors.primary : colors.surfaceAlt,
     alignItems: 'center' as const,
   });
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-        <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: insets.bottom + 20, maxHeight: '85%' }}>
-          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{title}</Text>
+      <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' }}>
+        <View style={{
+          backgroundColor: colors.surface, borderTopLeftRadius: 30, borderTopRightRadius: 30,
+          paddingHorizontal: 20, paddingTop: 10, paddingBottom: insets.bottom + 20, maxHeight: '88%',
+          borderTopWidth: 1, borderColor: colors.border,
+        }}>
+          <View style={{ alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.border, marginBottom: 14 }} />
+          <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 20, fontWeight: '800' }}>{title}</Text>
           <Text style={{ color: colors.textSecondary, marginTop: 2, marginBottom: 14 }}>
             {t('funding.ethCalendar', { defaultValue: 'Ethiopian calendar' })}
           </Text>
 
-          <ScrollView>
-            <Text style={{ color: colors.textSecondary, fontWeight: '700', marginBottom: 8 }}>{t('funding.yearLabel')}</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <FieldLabel text={t('funding.yearLabel')} />
 
             <ScrollView
               ref={yearScrollRef}
@@ -101,13 +109,13 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
               onContentSizeChange={scrollToSelected}
             >
               {years.map((y) => (
-                <Pressable key={y} onPress={() => set({ year: y })} style={chip(d.year === y, YEAR_W)}>
-                  <Text style={{ color: d.year === y ? '#FFF' : colors.text, fontWeight: '700' }}>{y}</Text>
+                <Pressable key={y} onPress={() => set({ year: y })} accessibilityRole="button" accessibilityState={{ selected: d.year === y }} style={chip(d.year === y, YEAR_W)}>
+                  <Text style={{ color: d.year === y ? colors.primaryText : colors.text, fontWeight: '800' }}>{y}</Text>
                 </Pressable>
               ))}
             </ScrollView>
 
-            <Text style={{ color: colors.textSecondary, fontWeight: '700', marginBottom: 8 }}>{t('funding.monthLabel')}</Text>
+            <FieldLabel text={t('funding.monthLabel')} />
 
             <ScrollView
               ref={monthScrollRef}
@@ -117,28 +125,32 @@ export default function EthDatePicker({ visible, title, value, onClose, onConfir
               onContentSizeChange={scrollToSelected}
             >
               {months.map((m, i) => (
-                <Pressable key={m} onPress={() => set({ month: i + 1 })} style={chip(d.month === i + 1, MONTH_W)}>
-                  <Text style={{ color: d.month === i + 1 ? '#FFF' : colors.text, fontWeight: '700' }}>{m}</Text>
+                <Pressable key={m} onPress={() => set({ month: i + 1 })} accessibilityRole="button" accessibilityState={{ selected: d.month === i + 1 }} style={chip(d.month === i + 1, MONTH_W)}>
+                  <Text style={{ color: d.month === i + 1 ? colors.primaryText : colors.text, fontWeight: '800' }}>{m}</Text>
                 </Pressable>
               ))}
             </ScrollView>
 
-            <Text style={{ color: colors.textSecondary, fontWeight: '700', marginBottom: 8 }}>{t('funding.dayLabel')}</Text>
+            <FieldLabel text={t('funding.dayLabel')} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {Array.from({ length: daysInEthMonth(d.year, d.month) }, (_, i) => i + 1).map((day) => (
-                <Pressable key={day} onPress={() => set({ day })}
-                  style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: d.day === day ? BRAND.violet : colors.background }}>
-                  <Text style={{ color: d.day === day ? '#FFF' : colors.text, fontWeight: '700' }}>{day}</Text>
+                <Pressable key={day} onPress={() => set({ day })} accessibilityRole="button" accessibilityState={{ selected: d.day === day }}
+                  style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 22, backgroundColor: d.day === day ? colors.primary : colors.surfaceAlt }}>
+                  <Text style={{ color: d.day === day ? colors.primaryText : colors.text, fontWeight: '800' }}>{day}</Text>
                 </Pressable>
               ))}
             </View>
           </ScrollView>
 
-          <Text style={{ color: colors.text, fontWeight: '800', textAlign: 'center', marginVertical: 14 }}>{formatEthDate(d, lang)}</Text>
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            marginVertical: 14, paddingVertical: 12, borderRadius: 16, backgroundColor: colors.surfaceAlt,
+          }}>
+            <Ionicons name="calendar" size={16} color={colors.accent} />
+            <Text style={{ color: colors.text, fontWeight: '800' }}>{formatEthDate(d, lang)}</Text>
+          </View>
           <PrimaryButton label={t('funding.done')} onPress={() => { onConfirm(d); onClose(); }} />
-          <Pressable onPress={onClose} style={{ paddingVertical: 12, alignItems: 'center' }}>
-            <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>{t('common.cancel')}</Text>
-          </Pressable>
+          <ActionBtn variant="ghost" label={t('common.cancel')} onPress={onClose} style={{ marginTop: 4 }} />
         </View>
       </View>
     </Modal>

@@ -13,26 +13,22 @@ import {
 // MEMBER SERVICES
 // ==========================================
 
-export async function getMyAssignments(userId: string) {
-  const todayEth = ethTodayFromInstant(new Date());
-  const todayUtc = ethToUtcDate(todayEth);
+// 🟢 Fetch all upcoming assignments for the whole choir
+export async function getChoirAssignments() {
+  const todayUtc = ethToUtcDate(ethTodayFromInstant(new Date()));
 
   const assignments = await prisma.serviceAssignment.findMany({
     where: {
-      assignedUserId: userId,
       dateGregorian: { gte: todayUtc },
       status: AssignmentStatus.SCHEDULED,
     },
     orderBy: { dateGregorian: 'asc' },
     include: {
-      assignedByUser: {
-        select: {
-          memberProfile: { select: { fullName: true, profilePhotoUrl: true } },
-        },
-      },
+      assignedUser: { select: { id: true, memberProfile: { select: { fullName: true } } } },
+      assignedByUser: { select: { memberProfile: { select: { fullName: true } } } },
       reassignmentRequests: {
         where: { status: ReassignmentStatus.PENDING },
-        select: { id: true, status: true, reason: true },
+        select: { id: true },
       },
     },
   });
@@ -43,10 +39,11 @@ export async function getMyAssignments(userId: string) {
     customGatheringName: a.customGatheringName,
     date: { year: a.dateEthYear, month: a.dateEthMonth, day: a.dateEthDay },
     role: a.role,
-    status: a.status,
+    assignedUserId: a.assignedUserId,
+    assignedUserName: a.assignedUser.memberProfile?.fullName ?? 'Member',
     assignedBy: a.assignedByUser.memberProfile?.fullName ?? 'Leader',
     assignedById: a.assignedByUserId,
-    pendingRequest: a.reassignmentRequests[0] || null,
+    hasPendingRequest: a.reassignmentRequests.length > 0,
   }));
 }
 
@@ -61,15 +58,11 @@ export async function requestReassignment(
 
   const assignment = await prisma.serviceAssignment.findUnique({
     where: { id: assignmentId },
-    include: { assignedByUser: true },
   });
 
   if (!assignment) throw ApiError.notFound('Assignment not found.');
   if (assignment.assignedUserId !== userId) {
     throw ApiError.forbidden('You can only request reassignment for your own assignments.');
-  }
-  if (assignment.status === AssignmentStatus.CANCELLED) {
-    throw ApiError.badRequest('This assignment has already been cancelled.');
   }
 
   const todayUtc = ethToUtcDate(ethTodayFromInstant(new Date()));
@@ -81,10 +74,10 @@ export async function requestReassignment(
     where: { assignmentId, status: ReassignmentStatus.PENDING },
   });
   if (existing) {
-    throw ApiError.conflict('You already have a pending reassignment request for this assignment.');
+    throw ApiError.conflict('You already have a pending reassignment request.');
   }
 
-  const request = await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     const newRequest = await tx.reassignmentRequest.create({
       data: {
         assignmentId,
@@ -99,17 +92,14 @@ export async function requestReassignment(
         recipientId: assignment.assignedByUserId,
         type: 'REASSIGNMENT_UPDATE',
         title: 'New Reassignment Request',
-        body: `A member requested reassignment for ${assignment.role} on ${assignment.dateEthMonth}/${assignment.dateEthDay}.`,
+        body: `A member requested reassignment for ${assignment.role.replace('_', ' ')}.`,
         relatedEntityType: 'ReassignmentRequest',
         relatedEntityId: newRequest.id,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },
     });
 
     return newRequest;
   });
-
-  return request;
 }
 
 // ==========================================
@@ -130,9 +120,7 @@ export async function createAssignment(
     throw ApiError.badRequest('Custom gathering name is required for SPECIAL_EVENT.');
   }
 
-  const targetUser = await prisma.user.findUnique({
-    where: { id: data.assignedUserId },
-  });
+  const targetUser = await prisma.user.findUnique({ where: { id: data.assignedUserId } });
   if (!targetUser || targetUser.status !== 'APPROVED' || targetUser.deletedAt) {
     throw ApiError.badRequest('Assigned user must be an approved, active member.');
   }
@@ -140,7 +128,7 @@ export async function createAssignment(
   const dateGregorian = ethToUtcDate(data.date);
 
   try {
-    const assignment = await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx) => {
       const newAssignment = await tx.serviceAssignment.create({
         data: {
           gatheringType: data.gatheringType,
@@ -152,7 +140,6 @@ export async function createAssignment(
         },
       });
 
-      // 🟢 BROADCAST NOTIFICATION TO EVERYONE
       const allActiveUsers = await tx.user.findMany({
         where: { status: 'APPROVED', deletedAt: null },
         select: { id: true },
@@ -163,20 +150,17 @@ export async function createAssignment(
           recipientId: u.id,
           type: 'SERVICE_ASSIGNMENT',
           title: 'New Service Assignment',
-          body: `A new assignment has been scheduled for ${data.gatheringType.replace('_', ' ')} on ${data.date.month}/${data.date.day}.`,
+          body: `A new assignment has been scheduled for ${data.gatheringType.replace('_', ' ')}.`,
           relatedEntityType: 'ServiceAssignment',
           relatedEntityId: newAssignment.id,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         })),
       });
 
       return newAssignment;
     });
-
-    return assignment;
   } catch (err: any) {
     if (err.code === 'P2002') {
-      throw ApiError.conflict(`Another member is already assigned as ${data.role.replace('_', ' ')} for this gathering and date.`);
+      throw ApiError.conflict(`Another member is already assigned as ${data.role.replace('_', ' ')} for this gathering.`);
     }
     throw err;
   }
@@ -184,8 +168,6 @@ export async function createAssignment(
 
 export async function getLeaderAssignments() {
   const todayEth = ethTodayFromInstant(new Date());
-  
-  // Calculate 2 months ago for history
   const twoMonthsAgoEth = { ...todayEth };
   twoMonthsAgoEth.month -= 2;
   if (twoMonthsAgoEth.month <= 0) {
@@ -194,17 +176,11 @@ export async function getLeaderAssignments() {
   }
   const twoMonthsAgoUtc = ethToUtcDate(twoMonthsAgoEth);
 
-  // Get assignments from the last 2 months (including upcoming)
   const assignments = await prisma.serviceAssignment.findMany({
     where: { dateGregorian: { gte: twoMonthsAgoUtc } },
-    orderBy: { dateGregorian: 'desc' }, // Most recent/upcoming first
+    orderBy: { dateGregorian: 'desc' },
     include: {
-      assignedUser: {
-        select: { id: true, memberProfile: { select: { fullName: true, profilePhotoUrl: true } } },
-      },
-      assignedByUser: {
-         select: { memberProfile: { select: { fullName: true } } }
-      }
+      assignedUser: { select: { id: true, memberProfile: { select: { fullName: true } } } },
     },
   });
 
@@ -218,6 +194,72 @@ export async function getLeaderAssignments() {
   });
 
   return { assignments, requests };
+}
+
+// 🟢 Reassign to another member directly
+export async function reassignAssignment(
+  leaderId: string,
+  requestId: string,
+  newUserId: string
+) {
+  const request = await prisma.reassignmentRequest.findUnique({
+    where: { id: requestId },
+    include: { assignment: true },
+  });
+
+  if (!request || request.status !== ReassignmentStatus.PENDING) {
+    throw ApiError.badRequest('Request not found or already resolved.');
+  }
+
+  const newUser = await prisma.user.findUnique({ 
+    where: { id: newUserId },
+    include: { memberProfile: true }
+  });
+  if (!newUser || newUser.status !== 'APPROVED') {
+    throw ApiError.badRequest('New member must be active.');
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Update the assignment to the new user
+    const updatedAssignment = await tx.serviceAssignment.update({
+      where: { id: request.assignmentId },
+      data: { assignedUserId: newUserId },
+    });
+
+    // 2. Mark request as Approved
+    await tx.reassignmentRequest.update({
+      where: { id: requestId },
+      data: {
+        status: ReassignmentStatus.APPROVED,
+        resolvedByUserId: leaderId,
+        resolvedAt: new Date(),
+      },
+    });
+
+    // 3. Notify the old member
+    await tx.notification.create({
+      data: {
+        recipientId: request.requesterId,
+        type: 'REASSIGNMENT_UPDATE',
+        title: 'Reassignment Approved',
+        body: `Your request was approved. ${newUser.memberProfile?.fullName || 'Another member'} will take your place.`,
+      },
+    });
+
+    // 4. Notify the new member
+    await tx.notification.create({
+      data: {
+        recipientId: newUserId,
+        type: 'SERVICE_ASSIGNMENT',
+        title: 'New Service Assignment',
+        body: `You have been assigned as ${request.assignment.role.replace('_', ' ')} on ${request.assignment.dateEthMonth}/${request.assignment.dateEthDay}.`,
+        relatedEntityType: 'ServiceAssignment',
+        relatedEntityId: updatedAssignment.id,
+      },
+    });
+
+    return updatedAssignment;
+  });
 }
 
 export async function resolveReassignment(
@@ -262,7 +304,6 @@ export async function resolveReassignment(
           : `Your request to be reassigned from ${request.assignment.role} was rejected.`,
         relatedEntityType: 'ServiceAssignment',
         relatedEntityId: request.assignmentId,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },
     });
 
@@ -272,6 +313,7 @@ export async function resolveReassignment(
   return result;
 }
 
+// 🟢 Cancel assignment (restored)
 export async function cancelAssignment(leaderId: string, assignmentId: string) {
   const assignment = await prisma.serviceAssignment.findUnique({
     where: { id: assignmentId },

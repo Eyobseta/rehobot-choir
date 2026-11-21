@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Alert, RefreshControl } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
-import { PrimaryButton, BRAND, withAlpha } from '../auth/Auth_UI';
+import { PrimaryButton } from '../auth/Auth_UI';
+import { withAlpha } from '../auth/Auth_UI';
 import {
   leaderCloseCampaign, leaderCancelCampaign, leaderPublishCampaign,
   approveDonation, rejectDonation,
 } from '../../services/funding';
 import {
   Card, StatusChip, useDateLabel, useInstantLabel, errorText, SectionLabel, DetailHeader, ProgressBar, Notice,
-  ErrorState, DeclarationHistory, ReasonModal, Pill, NumberTick,
+  ErrorState, DeclarationHistory, ReasonModal, Pill, NumberTick, ActionBtn, PendingStrip, LoadingState, FadeUp,
 } from './fundingKit';
 import { getRole } from '../../services/role';
 import type { PayFlowParams } from './Payflowscreen';
@@ -39,9 +40,7 @@ export default function CampaignDetailScreen() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  if (firstLoad) {
-    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>;
-  }
+  if (firstLoad) return <LoadingState />;
   if (!c && error) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -97,7 +96,8 @@ export default function CampaignDetailScreen() {
       <DetailHeader title={c.title} subtitle={dateLabel(c.deadline)} onBack={() => navigation.goBack()} />
 
       <ScrollView
-        contentContainerStyle={{ padding: spacing.xl, paddingBottom: 64 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 64 }}
         refreshControl={<RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} />}
       >
         {error && <Notice tone="error" text={error} />}
@@ -108,88 +108,87 @@ export default function CampaignDetailScreen() {
         {published && c.deadlinePassed && <Notice tone="warn" text={t('funding.campDeadlinePassed')} />}
         {actionError && <Notice tone="error" text={actionError} />}
 
-        <Card style={{ marginTop: 12 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Pill
-              text={c.donationType === 'REQUIRED' ? t('funding.required') : t('funding.voluntary')}
-              color={c.donationType === 'REQUIRED' ? colors.error : BRAND.violet}
-            />
-            {!draft && <StatusChip status={my.status} />}
-          </View>
-
-          <Text style={{ color: colors.textSecondary, marginTop: 12 }}>{c.description}</Text>
-
-          {!draft && (
-            <>
-              <Text style={{ color: colors.textSecondary, fontWeight: '700', marginTop: 18 }}>{t('funding.yourContribution')}</Text>
-              <NumberTick value={mine.paid.label} style={{ color: colors.text, fontWeight: '800', fontSize: 30 }} />
-              {c.requestedAmount && (
-                <Text style={{ color: colors.textSecondary }}>{t('funding.yourShare')}: {c.requestedAmount.label}</Text>
-              )}
-              {mine.target && (
-                <View style={{ marginTop: 10 }}>
-                  <ProgressBar percent={mine.percent} color={colors.success} />
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-                    <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>{mine.percent ?? 0}%</Text>
-                    <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>{t('funding.remaining')}: {mine.remaining?.label}</Text>
-                  </View>
-                </View>
-              )}
-              {pendingMinor > 0 && (
-                <View style={{ marginTop: 10, padding: 10, borderRadius: 12, backgroundColor: withAlpha('#F59E0B', 0.12) }}>
-                  <Text style={{ color: colors.text, fontWeight: '700' }}>
-                    {t('funding.pendingTotal', { defaultValue: 'Awaiting verification' })}: {my.pendingAmount?.label}
-                  </Text>
-                  {(my.pendingCount ?? 0) > 1 && (
-                    <Text style={{ color: colors.textSecondary, marginTop: 2 }}>
-                      {t('funding.pendingCount', { count: my.pendingCount, defaultValue: '{{count}} declarations in review' })}
-                    </Text>
-                  )}
-                </View>
-              )}
-            </>
-          )}
-
-          {total && (
-            <View style={{ marginTop: 18 }}>
-              <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>
-                {t('funding.campaignTotal')}: {total.paid.label} / {total.target!.label}
-              </Text>
-              <View style={{ marginTop: 8 }}><ProgressBar percent={total.percent} /></View>
-              {total.remaining && (
-                <Text style={{ color: colors.textSecondary, marginTop: 6 }}>{t('funding.remaining')}: {total.remaining.label}</Text>
-              )}
-            </View>
-          )}
-
-          {my.status === 'REJECTED' && !!my.rejectionReason && (
-            <Notice tone="error" text={`${t('funding.rejectedWhy')}: ${my.rejectionReason}`} />
-          )}
-          {published && c.paymentInstructionsMissing && <Notice tone="error" text={t('funding.paymentsMissing')} />}
-
-          {my.canDeclare && (maxNewMinor === undefined || maxNewMinor > 0) && (
-            <View style={{ marginTop: 20 }}>
-              <PrimaryButton
-                label={my.status === 'REJECTED' ? t('funding.resubmit') : t('funding.payNow')}
-                onPress={startPay}
+        <FadeUp index={0}>
+          <Card style={{ marginTop: 12, padding: 18 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Pill
+                text={c.donationType === 'REQUIRED' ? t('funding.required') : t('funding.voluntary')}
+                color={c.donationType === 'REQUIRED' ? colors.error : colors.accent}
               />
+              {!draft && <StatusChip status={my.status} />}
             </View>
-          )}
-          {my.canDeclare && maxNewMinor !== undefined && maxNewMinor <= 0 && (
-            <Notice tone="info" text={t('funding.pendingCoversBalance', { defaultValue: 'Your pending declarations already cover the full balance. Wait for verification.' })} />
-          )}
-        </Card>
+
+            <Text style={{ color: colors.textSecondary, marginTop: 14, lineHeight: 21 }}>{c.description}</Text>
+
+            {!draft && (
+              <View style={{ marginTop: 18, padding: 16, borderRadius: 20, backgroundColor: colors.surfaceAlt }}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '700', fontSize: 12 }}>{t('funding.yourContribution')}</Text>
+                <NumberTick value={mine.paid.label} style={{ color: colors.text, fontWeight: '800', fontSize: 32, marginTop: 2 }} />
+                {c.requestedAmount && (
+                  <Text style={{ color: colors.textSecondary }}>{t('funding.yourShare')}: {c.requestedAmount.label}</Text>
+                )}
+                {mine.target && (
+                  <View style={{ marginTop: 12 }}>
+                    <ProgressBar percent={mine.percent} color={colors.success} />
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                      <Text style={{ color: colors.text, fontWeight: '800' }}>{mine.percent ?? 0}%</Text>
+                      <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>{t('funding.remaining')}: {mine.remaining?.label}</Text>
+                    </View>
+                  </View>
+                )}
+                {pendingMinor > 0 && (
+                  <PendingStrip
+                    style={{ marginTop: 12 }}
+                    text={`${t('funding.pendingTotal', { defaultValue: 'Awaiting verification' })}: ${my.pendingAmount?.label}`}
+                    sub={(my.pendingCount ?? 0) > 1
+                      ? t('funding.pendingCount', { count: my.pendingCount, defaultValue: '{{count}} declarations in review' })
+                      : undefined}
+                  />
+                )}
+              </View>
+            )}
+
+            {total && (
+              <View style={{ marginTop: 18 }}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>
+                  {t('funding.campaignTotal')}: <Text style={{ color: colors.text, fontWeight: '800' }}>{total.paid.label} / {total.target!.label}</Text>
+                </Text>
+                <View style={{ marginTop: 8 }}><ProgressBar percent={total.percent} /></View>
+                {total.remaining && (
+                  <Text style={{ color: colors.textSecondary, marginTop: 6 }}>{t('funding.remaining')}: {total.remaining.label}</Text>
+                )}
+              </View>
+            )}
+
+            {my.status === 'REJECTED' && !!my.rejectionReason && (
+              <Notice tone="error" text={`${t('funding.rejectedWhy')}: ${my.rejectionReason}`} />
+            )}
+            {published && c.paymentInstructionsMissing && <Notice tone="error" text={t('funding.paymentsMissing')} />}
+
+            {my.canDeclare && (maxNewMinor === undefined || maxNewMinor > 0) && (
+              <View style={{ marginTop: 20 }}>
+                <PrimaryButton
+                  label={my.status === 'REJECTED' ? t('funding.resubmit') : t('funding.payNow')}
+                  onPress={startPay}
+                />
+              </View>
+            )}
+            {my.canDeclare && maxNewMinor !== undefined && maxNewMinor <= 0 && (
+              <Notice tone="info" text={t('funding.pendingCoversBalance', { defaultValue: 'Your pending declarations already cover the full balance. Wait for verification.' })} />
+            )}
+          </Card>
+        </FadeUp>
 
         {!draft && (
-          <>
-            <SectionLabel text={t('funding.history')} color={BRAND.gold} />
+          <FadeUp index={1}>
+            <SectionLabel icon="receipt" text={t('funding.history')} color={colors.accent} />
             <DeclarationHistory items={c.history} />
-          </>
+          </FadeUp>
         )}
 
         {isLeader && c.leader && (
-          <>
-            <SectionLabel text={t('funding.verifyQueue')} color={BRAND.magenta} />
+          <FadeUp index={2}>
+            <SectionLabel icon="shield-checkmark" text={t('funding.verifyQueue')} color={colors.accent} />
             <Text style={{ color: colors.textSecondary, marginBottom: 10 }}>
               {t('funding.received')}: <Text style={{ color: colors.success, fontWeight: '800' }}>{c.leader.received.label}</Text>
             </Text>
@@ -200,12 +199,15 @@ export default function CampaignDetailScreen() {
                 const d = p.latestDeclaration;
                 const needsAction = p.status === 'PENDING_VERIFICATION' && d?.status === 'PENDING';
                 return (
-                  <Card key={p.id} style={{ marginBottom: 10, padding: 14, borderRadius: 16 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={{ color: colors.text, fontWeight: '800', flex: 1 }}>{p.participantName}</Text>
+                  <Card key={p.id} style={{ marginBottom: 10, padding: 14, borderRadius: 20 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: withAlpha(colors.accent, 0.18) }}>
+                        <Text style={{ color: colors.accent, fontWeight: '800', fontSize: 16 }}>{(p.participantName || '?').trim().charAt(0).toUpperCase()}</Text>
+                      </View>
+                      <Text style={{ color: colors.text, fontWeight: '800', flex: 1 }} numberOfLines={1}>{p.participantName}</Text>
                       <StatusChip status={p.status} />
                     </View>
-                    <Text style={{ color: colors.text, marginTop: 6, fontWeight: '700' }}>
+                    <Text style={{ color: colors.text, marginTop: 10, fontWeight: '800', fontSize: 16 }}>
                       {needsAction && d ? `${t('funding.declared')} ${d.amount.label}` : `${t('funding.colPaid')}: ${p.paid.label}`}
                     </Text>
                     {!!d && (
@@ -216,29 +218,34 @@ export default function CampaignDetailScreen() {
                       </Text>
                     )}
                     {(p.pendingCount ?? 0) > 1 && (
-                      <Text style={{ color: '#B7791F', marginTop: 4, fontWeight: '700' }}>
+                      <Text style={{ color: colors.warning, marginTop: 4, fontWeight: '700' }}>
                         + {p.pendingCount! - 1} {t('funding.morePending', { defaultValue: 'more pending' })}
                       </Text>
                     )}
                     {needsAction && (
                       <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
-                        <Pressable
+                        <ActionBtn
+                          style={{ flex: 1 }}
+                          variant="success"
+                          icon="checkmark"
+                          compact
+                          label={t('funding.approve')}
                           disabled={!!busyId}
+                          busy={busyId === p.id}
                           onPress={() => Alert.alert(t('funding.approve'), t('funding.approveConfirm'), [
                             { text: t('common.cancel'), style: 'cancel' },
                             { text: t('funding.approve'), onPress: () => run(() => approveDonation(p.id, d!.id), p.id) },
                           ])}
-                          style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', backgroundColor: colors.success, opacity: busyId ? 0.5 : 1, minHeight: 44 }}
-                        >
-                          {busyId === p.id ? <ActivityIndicator color="#FFF" /> : <Text style={{ color: '#FFF', fontWeight: '800' }}>{t('funding.approve')}</Text>}
-                        </Pressable>
-                        <Pressable
+                        />
+                        <ActionBtn
+                          style={{ flex: 1 }}
+                          variant="dangerSoft"
+                          icon="close"
+                          compact
+                          label={t('funding.reject')}
                           disabled={!!busyId}
                           onPress={() => { setRejectId(p.id); setRejectDeclId(d!.id); }}
-                          style={{ flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: colors.error, opacity: busyId ? 0.5 : 1, minHeight: 44 }}
-                        >
-                          <Text style={{ color: colors.error, fontWeight: '800' }}>{t('funding.reject')}</Text>
-                        </Pressable>
+                        />
                       </View>
                     )}
                   </Card>
@@ -257,32 +264,28 @@ export default function CampaignDetailScreen() {
                     ])}
                   />
                 )}
-                <Pressable
+                <ActionBtn
+                  variant="outline"
+                  icon="create-outline"
+                  label={t('funding.editCampaign')}
                   onPress={() => navigation.navigate('CreateCampaign', { id: c.id })}
-                  accessibilityRole="button"
-                  style={{ borderWidth: 1, borderColor: BRAND.violet, paddingVertical: 14, borderRadius: 14, alignItems: 'center', minHeight: 44 }}
-                >
-                  <Text style={{ color: BRAND.violet, fontWeight: '800', fontSize: 16 }}>{t('funding.editCampaign')}</Text>
-                </Pressable>
+                />
                 {published && (
-                  <Pressable
+                  <ActionBtn
+                    variant="dangerSoft"
+                    icon="lock-closed-outline"
+                    label={t('funding.closeBtn')}
                     disabled={!!busyId}
                     onPress={() => Alert.alert(t('funding.closeTitle'), t('funding.closeBody'), [
                       { text: t('common.cancel'), style: 'cancel' },
                       { text: t('funding.closeBtn'), style: 'destructive', onPress: () => run(() => leaderCloseCampaign(c.id), 'close') },
                     ])}
-                    accessibilityRole="button"
-                    style={{ backgroundColor: withAlpha(colors.error, 0.1), borderWidth: 1, borderColor: colors.error, paddingVertical: 14, borderRadius: 14, alignItems: 'center', minHeight: 44 }}
-                  >
-                    <Text style={{ color: colors.error, fontWeight: '800', fontSize: 16 }}>{t('funding.closeBtn')}</Text>
-                  </Pressable>
+                  />
                 )}
-                <Pressable onPress={() => setCancelOpen(true)} accessibilityRole="button" style={{ paddingVertical: 12, alignItems: 'center', minHeight: 44 }}>
-                  <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>{t('funding.cancelCampaign')}</Text>
-                </Pressable>
+                <ActionBtn variant="ghost" label={t('funding.cancelCampaign')} onPress={() => setCancelOpen(true)} />
               </View>
             )}
-          </>
+          </FadeUp>
         )}
       </ScrollView>
 

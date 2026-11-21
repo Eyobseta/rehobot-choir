@@ -1,30 +1,22 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, touchLastActive } from '../auth/middleware';
-import { getMyAssignments, requestReassignment } from './assignments.service';
+import { getChoirAssignments, requestReassignment } from './assignments.service';
 import { ApiError } from '../utils/ApiError';
 
 const router = Router();
 
 router.use(authenticate, touchLastActive);
 
-/**
- * GET /api/v1/assignments/me
- * Fetch upcoming assignments for the Home Screen
- */
-router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
+// 🟢 NEW: Fetch all upcoming choir assignments
+router.get('/choir', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    if (!req.auth) throw ApiError.unauthorized();
-    const items = await getMyAssignments(req.auth.userId);
+    const items = await getChoirAssignments();
     res.json({ items });
   } catch (err) {
     next(err);
   }
 });
 
-/**
- * POST /api/v1/assignments/:id/reassign-request
- * Body: { reason: string }
- */
 router.post('/:id/reassign-request', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.auth) throw ApiError.unauthorized();

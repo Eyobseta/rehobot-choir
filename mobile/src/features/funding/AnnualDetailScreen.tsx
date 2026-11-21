@@ -1,12 +1,15 @@
 import React from 'react';
-import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, RefreshControl } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
-import { PrimaryButton, BRAND, withAlpha } from '../auth/Auth_UI';
+import { brand } from '../../theme/colors';
+import { PrimaryButton } from '../auth/Auth_UI';
+import { IconTile } from '../profile/SettingsKit';
 import {
   Card, StatusChip, useDateLabel, SectionLabel, DetailHeader, ProgressBar, Notice,
-  ErrorState, DeclarationHistory, NumberTick,
+  ErrorState, DeclarationHistory, NumberTick, HeroCard, PendingStrip, LoadingState, FadeUp, ONDARK, statusTone,
 } from './fundingKit';
 import type { PayFlowParams } from './Payflowscreen';
 import { useMyFundingQuery } from './useMemberFunding';
@@ -23,9 +26,7 @@ export default function AnnualDetailScreen() {
   const firstLoad = q.isPending && q.data === undefined;
   const error = (q.error as { message?: string } | null)?.message ?? null;
 
-  if (firstLoad) {
-    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>;
-  }
+  if (firstLoad) return <LoadingState />;
   if (!data && error) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -77,43 +78,47 @@ export default function AnnualDetailScreen() {
       <DetailHeader title={t('funding.annualTitle')} subtitle={t('funding.yearOf', { year: record.contributionYear })} onBack={() => navigation.goBack()} />
 
       <ScrollView
-        contentContainerStyle={{ padding: spacing.xl, paddingBottom: 64 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 64 }}
         refreshControl={<RefreshControl refreshing={q.isRefetching && !firstLoad} onRefresh={() => q.refetch()} />}
       >
         {error && <Notice tone="error" text={error} />}
 
-        <Card>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontWeight: '800', fontSize: 16, color: colors.textSecondary }}>{t('funding.verifiedPaid')}</Text>
-            <StatusChip status={record.status} />
-          </View>
-          <NumberTick value={prog.paid.label} style={{ color: colors.text, fontWeight: '800', fontSize: 30, marginTop: 8 }} />
-          <Text style={{ color: colors.textSecondary, marginTop: 2 }}>{t('funding.target')}: {record.amountDue.label}</Text>
-
-          <View style={{ marginTop: 14 }}>
-            <ProgressBar percent={prog.percent} color={record.status === 'PAID' ? colors.success : BRAND.violet} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-              <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>{prog.percent ?? 0}%</Text>
-              <Text style={{ color: colors.textSecondary, fontWeight: '700' }}>{t('funding.remaining')}: {prog.remaining?.label ?? '0 ETB'}</Text>
+        <FadeUp index={0} style={{ marginTop: 6 }}>
+          <HeroCard>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontWeight: '800', fontSize: 14, color: ONDARK.textMuted }}>{t('funding.verifiedPaid')}</Text>
+              <StatusChip status={record.status} onDark />
             </View>
-          </View>
+            <NumberTick value={prog.paid.label} style={{ color: brand.lime, fontWeight: '800', fontSize: 38, marginTop: 8 }} />
+            <Text style={{ color: ONDARK.textMuted, marginTop: 2 }}>{t('funding.target')}: {record.amountDue.label}</Text>
 
-          {pendingMinor > 0 && (
-            <View style={{ marginTop: 10, padding: 10, borderRadius: 12, backgroundColor: withAlpha('#F59E0B', 0.12) }}>
-              <Text style={{ color: colors.text, fontWeight: '700' }}>
-                {t('funding.pendingTotal', { defaultValue: 'Awaiting verification' })}: {record.pendingAmount?.label}
-              </Text>
-              {record.pendingCount > 1 && (
-                <Text style={{ color: colors.textSecondary, marginTop: 2 }}>
-                  {t('funding.pendingCount', { count: record.pendingCount, defaultValue: '{{count}} declarations in review' })}
-                </Text>
-              )}
+            <View style={{ marginTop: 18 }}>
+              <ProgressBar percent={prog.percent} color={record.status === 'PAID' ? brand.mint : brand.lime} trackColor={ONDARK.track} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                <Text style={{ color: '#FFFFFF', fontWeight: '800' }}>{prog.percent ?? 0}%</Text>
+                <Text style={{ color: ONDARK.textMuted, fontWeight: '700' }}>{t('funding.remaining')}: {prog.remaining?.label ?? '0 ETB'}</Text>
+              </View>
             </View>
-          )}
 
-          <View style={{ marginTop: 14, padding: 12, backgroundColor: withAlpha(BRAND.violet, 0.1), borderRadius: 12 }}>
-            <Text style={{ color: colors.text, fontWeight: '700' }}>{t('funding.dueBy', { date: dateLabel(record.deadline) })}</Text>
-          </View>
+            {pendingMinor > 0 && (
+              <PendingStrip
+                onDark
+                style={{ marginTop: 16 }}
+                text={`${t('funding.pendingTotal', { defaultValue: 'Awaiting verification' })}: ${record.pendingAmount?.label}`}
+                sub={record.pendingCount > 1
+                  ? t('funding.pendingCount', { count: record.pendingCount, defaultValue: '{{count}} declarations in review' })
+                  : undefined}
+              />
+            )}
+          </HeroCard>
+        </FadeUp>
+
+        <FadeUp index={1}>
+          <Card style={{ marginTop: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <IconTile name="calendar-outline" tone="lavender" size={44} iconSize={22} radius={14} />
+            <Text style={{ flex: 1, color: colors.text, fontWeight: '800', fontSize: 15 }}>{t('funding.dueBy', { date: dateLabel(record.deadline) })}</Text>
+          </Card>
 
           {record.deadlinePassed && record.status !== 'PAID' && <Notice tone="warn" text={t('funding.annualLate')} />}
           {record.status === 'REJECTED' && !!record.rejectionReason && (
@@ -133,17 +138,20 @@ export default function AnnualDetailScreen() {
           {pending && !canDeclare && (
             <Notice tone="info" text={t('funding.pendingCoversBalance', { defaultValue: 'Your pending declarations already cover the full balance. Wait for verification.' })} />
           )}
-        </Card>
+        </FadeUp>
 
-        <SectionLabel text={t('funding.history')} color={BRAND.gold} />
-        <DeclarationHistory items={history} />
+        <FadeUp index={2}>
+          <SectionLabel icon="receipt" text={t('funding.history')} color={colors.accent} />
+          <DeclarationHistory items={history} />
+        </FadeUp>
 
         {pastYears.length > 0 && (
-          <>
-            <SectionLabel text={t('funding.pastYears')} color={BRAND.magenta} />
+          <FadeUp index={3}>
+            <SectionLabel icon="time" text={t('funding.pastYears')} color={colors.accent} />
             {pastYears.map((y) => (
-              <Card key={y.id} style={{ marginBottom: 10, padding: 14, borderRadius: 16 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Card key={y.id} style={{ marginBottom: 10, padding: 14, borderRadius: 20 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <IconTile name="calendar-outline" tone={statusTone(y.status)} size={42} iconSize={21} radius={14} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: colors.text, fontWeight: '800' }}>{t('funding.yearOf', { year: y.contributionYear })}</Text>
                     <Text style={{ color: colors.textSecondary, marginTop: 2 }}>{y.progress.paid.label} / {y.amountDue.label}</Text>
@@ -152,7 +160,7 @@ export default function AnnualDetailScreen() {
                 </View>
               </Card>
             ))}
-          </>
+          </FadeUp>
         )}
       </ScrollView>
     </View>

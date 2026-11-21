@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, authorize, touchLastActive } from '../auth/middleware';
-import { createAssignment, getLeaderAssignments, resolveReassignment, cancelAssignment } from './assignments.service';
+import { createAssignment, getLeaderAssignments, resolveReassignment, cancelAssignment, reassignAssignment } from './assignments.service';
 import { ApiError } from '../utils/ApiError';
 import { reqEthDate } from '../funding/funding.validation';
 import { GatheringType, AssignmentRole } from '@prisma/client';
@@ -9,7 +9,6 @@ const router = Router();
 
 router.use(authenticate, touchLastActive, authorize('LEADER', 'ADMIN'));
 
-// Validate enums from request body
 function parseGathering(v: unknown): GatheringType {
   if (v === 'TUESDAY_ZEMA' || v === 'THURSDAY_CHOIR' || v === 'SATURDAY_CHOIR' || v === 'SPECIAL_EVENT') {
     return v;
@@ -24,9 +23,6 @@ function parseRole(v: unknown): AssignmentRole {
   throw ApiError.badRequest('Invalid role.');
 }
 
-/**
- * GET /api/v1/leaders/assignments
- */
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = await getLeaderAssignments();
@@ -36,9 +32,6 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-/**
- * POST /api/v1/leaders/assignments
- */
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.auth) throw ApiError.unauthorized();
@@ -47,8 +40,6 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const role = parseRole(req.body?.role);
     const assignedUserId = String(req.body?.assignedUserId ?? '');
     const customGatheringName = req.body?.customGatheringName ? String(req.body.customGatheringName) : undefined;
-    
-    // Expecting JSON: { year: 2016, month: 1, day: 15 }
     const date = reqEthDate(req.body?.date, 'date');
 
     if (!assignedUserId) throw ApiError.badRequest('assignedUserId is required.');
@@ -67,10 +58,26 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-/**
- * PATCH /api/v1/leaders/assignments/requests/:requestId
- * Body: { status: "APPROVED" | "REJECTED" }
- */
+// 🟢 Reassign endpoint (Fixed TypeScript Error)
+router.patch('/requests/:requestId/reassign', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.auth) throw ApiError.unauthorized();
+    
+    // 👇 Added the type check here to fix the red squiggly line
+    const requestId = req.params.requestId;
+    if (typeof requestId !== 'string') throw ApiError.badRequest('Invalid ID.');
+    
+    const newUserId = String(req.body?.newUserId ?? '');
+
+    if (!newUserId) throw ApiError.badRequest('newUserId is required.');
+
+    const result = await reassignAssignment(req.auth.userId, requestId, newUserId);
+    res.json({ success: true, assignment: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.patch('/requests/:requestId', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.auth) throw ApiError.unauthorized();
@@ -90,10 +97,6 @@ router.patch('/requests/:requestId', async (req: Request, res: Response, next: N
   }
 });
 
-/**
- * DELETE /api/v1/leaders/assignments/:id
- * Cancels an assignment
- */
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.auth) throw ApiError.unauthorized();

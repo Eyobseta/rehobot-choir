@@ -7,10 +7,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { BRAND, withAlpha } from '../auth/Auth_UI';
 import GlassBackButton from '../../components/GlassBackButton';
-import { useLeaderAssignmentsQuery, useCreateAssignmentMutation, useResolveReassignmentMutation } from '../assignments/useAssignments';
+import { useLeaderAssignmentsQuery, useCreateAssignmentMutation, useResolveReassignmentMutation, useReassignToMemberMutation } from '../assignments/useAssignments';
 import { formatEthDate, ethTodayFromInstant } from '../../utils/ethiopianCalendar';
 import { GatheringType, AssignmentRole } from '../../services/assignments';
-import { loadAllMembers } from '../chat/chatStore'; 
+import { loadAllMembers } from '../chat/chatStore';
 
 export default function LeaderAssignmentsScreen({ navigation }: any) {
   const { t, i18n } = useTranslation();
@@ -25,8 +25,8 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
   const allAssignments = data?.assignments ?? [];
   const requests = data?.requests ?? [];
 
-  const todayUtc = ethTodayFromInstant(new Date()); // Helper to get today
-  // Filter for the main tab (upcoming or today)
+  const todayUtc = ethTodayFromInstant(new Date());
+  
   const upcomingAssignments = allAssignments.filter((a) => {
     const aDate = { year: a.dateEthYear, month: a.dateEthMonth, day: a.dateEthDay };
     return (aDate.year > todayUtc.year) || 
@@ -34,7 +34,6 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
            (aDate.year === todayUtc.year && aDate.month === todayUtc.month && aDate.day >= todayUtc.day);
   });
 
-  // Filter for history tab (past assignments)
   const historyAssignments = allAssignments.filter((a) => {
     const aDate = { year: a.dateEthYear, month: a.dateEthMonth, day: a.dateEthDay };
     return (aDate.year < todayUtc.year) || 
@@ -44,6 +43,7 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
 
   const resolveMut = useResolveReassignmentMutation();
   const createMut = useCreateAssignmentMutation();
+  const reassignMut = useReassignToMemberMutation();
 
   const [showForm, setShowForm] = useState(false);
   const [formGathering, setFormGathering] = useState<GatheringType>('THURSDAY_CHOIR');
@@ -54,12 +54,13 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
   const [showMemberPicker, setShowMemberPicker] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
   const [memberSearch, setMemberSearch] = useState('');
+  const [reassigningRequestId, setReassigningRequestId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (showForm && members.length === 0) {
+    if ((showForm || reassigningRequestId) && members.length === 0) {
       loadAllMembers(true).then(setMembers).catch(() => {});
     }
-  }, [showForm]);
+  }, [showForm, reassigningRequestId]);
 
   const handleResolve = (requestId: string, status: 'APPROVED' | 'REJECTED') => {
     Alert.alert(
@@ -72,10 +73,27 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
     );
   };
 
+  const openMemberPicker = (requestId: string | null = null) => {
+    setReassigningRequestId(requestId);
+    setShowMemberPicker(true);
+  };
+
+  const handleMemberSelect = (member: any) => {
+    setShowMemberPicker(false);
+    if (reassigningRequestId) {
+      reassignMut.mutate({ requestId: reassigningRequestId, newUserId: member.userId }, {
+        onSuccess: () => Alert.alert('Success', `${member.fullName} has been assigned.`),
+        onError: (err: any) => Alert.alert('Error', err.message || 'Failed to reassign.'),
+      });
+      setReassigningRequestId(null);
+    } else {
+      setSelectedMember(member);
+    }
+  };
+
   const handleCreate = () => {
     if (!selectedMember) return Alert.alert('Error', 'Please select a member first.');
     
-    // 🟢 Warning check
     const recentlyServed = historyAssignments.filter(h => h.assignedUser.id === selectedMember.userId).length;
     if (recentlyServed > 0) {
       Alert.alert(
@@ -156,7 +174,6 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
               
               {showForm && (
                 <View style={{ backgroundColor: colors.surface, padding: 16, borderRadius: 16, marginBottom: 20, borderWidth: 1, borderColor: colors.border }}>
-                  
                   <Text style={{ fontWeight: '700', color: colors.textSecondary, marginBottom: 8 }}>Role</Text>
                   <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
                     <Pressable onPress={() => setFormRole('PRAYER_LEADER')} style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: formRole === 'PRAYER_LEADER' ? withAlpha(colors.primary, 0.2) : colors.background, borderWidth: 1, borderColor: formRole === 'PRAYER_LEADER' ? colors.primary : colors.border }}>
@@ -168,7 +185,7 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
                   </View>
 
                   <Text style={{ fontWeight: '700', color: colors.textSecondary, marginBottom: 8 }}>Member</Text>
-                  <Pressable onPress={() => setShowMemberPicker(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background, borderRadius: 8, padding: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
+                  <Pressable onPress={() => openMemberPicker(null)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.background, borderRadius: 8, padding: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
                     <Text style={{ color: selectedMember ? colors.text : colors.textSecondary }}>
                       {selectedMember ? selectedMember.fullName : 'Select a member...'}
                     </Text>
@@ -229,8 +246,10 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
                       <Pressable onPress={() => handleResolve(req.id, 'REJECTED')} style={{ flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.error, alignItems: 'center' }}>
                         <Text style={{ color: colors.error, fontWeight: '700' }}>Reject</Text>
                       </Pressable>
-                      <Pressable onPress={() => handleResolve(req.id, 'APPROVED')} style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: colors.success, alignItems: 'center' }}>
-                        <Text style={{ color: '#FFF', fontWeight: '700' }}>Approve</Text>
+                      
+                      <Pressable onPress={() => openMemberPicker(req.id)} style={{ flex: 1.5, padding: 10, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+                        <Ionicons name="swap-horizontal" size={16} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontWeight: '700' }}>Reassign</Text>
                       </Pressable>
                     </View>
                   </View>
@@ -245,7 +264,9 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, height: '80%' }}>
             <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 12 }}>Select Member</Text>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text, marginBottom: 12 }}>
+                {reassigningRequestId ? 'Reassign to...' : 'Select Member'}
+              </Text>
               <TextInput
                 placeholder="Search members..."
                 placeholderTextColor={colors.textSecondary}
@@ -259,11 +280,12 @@ export default function LeaderAssignmentsScreen({ navigation }: any) {
               keyExtractor={(item) => item.userId}
               renderItem={({ item }) => (
                 <Pressable 
-                  onPress={() => { setSelectedMember(item); setShowMemberPicker(false); }}
+                  onPress={() => handleMemberSelect(item)}
                   style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
                 >
                   <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>{item.fullName}</Text>
-                  {selectedMember?.userId === item.userId && <Ionicons name="checkmark" size={20} color={colors.primary} />}
+                  {selectedMember?.userId === item.userId && !reassigningRequestId && <Ionicons name="checkmark" size={20} color={colors.primary} />}
+                  {reassigningRequestId && <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />}
                 </Pressable>
               )}
             />

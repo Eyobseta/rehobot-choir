@@ -3,6 +3,19 @@ import { apiGet, apiPost, http } from './api';
 export type AssignmentRole = 'PRAYER_LEADER' | 'WORSHIP_LEADER';
 export type GatheringType = 'TUESDAY_ZEMA' | 'THURSDAY_CHOIR' | 'SATURDAY_CHOIR' | 'SPECIAL_EVENT';
 
+export type ChoirAssignment = {
+  id: string;
+  gatheringType: GatheringType;
+  customGatheringName: string | null;
+  date: { year: number; month: number; day: number };
+  role: AssignmentRole;
+  assignedUserId: string;
+  assignedUserName: string;
+  assignedBy: string;
+  assignedById: string;
+  hasPendingRequest: boolean;
+};
+
 export type Assignment = {
   id: string;
   gatheringType: GatheringType;
@@ -46,9 +59,9 @@ export type ReassignmentRequest = {
   };
 };
 
-// --- MEMBER ---
-export async function getMyAssignments(): Promise<Assignment[]> {
-  const res = await apiGet<{ items: Assignment[] }>('/assignments/me');
+// Fetch all for Home Screen
+export async function getChoirAssignments(): Promise<ChoirAssignment[]> {
+  const res = await apiGet<{ items: ChoirAssignment[] }>('/assignments/choir');
   return res.items;
 }
 
@@ -56,7 +69,6 @@ export async function requestReassignment(assignmentId: string, reason: string) 
   return apiPost(`/assignments/${assignmentId}/reassign-request`, { reason });
 }
 
-// --- LEADER ---
 export async function getLeaderAssignments(): Promise<{
   assignments: LeaderAssignment[];
   requests: ReassignmentRequest[];
@@ -76,6 +88,10 @@ export async function createAssignment(data: {
 
 export async function resolveReassignment(requestId: string, status: 'APPROVED' | 'REJECTED') {
   return http.patch(`/leaders/assignments/requests/${requestId}`, { status });
+}
+
+export async function reassignToMember(requestId: string, newUserId: string) {
+  return http.patch(`/leaders/assignments/requests/${requestId}/reassign`, { newUserId });
 }
 
 export async function cancelAssignment(assignmentId: string) {

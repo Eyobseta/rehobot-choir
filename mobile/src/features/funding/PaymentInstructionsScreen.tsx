@@ -1,12 +1,11 @@
 import React from 'react';
-import { View, Text, ScrollView, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
-import { Card, DetailHeader, Notice, ErrorState, errorText } from './fundingKit';
-import { BRAND, withAlpha, PrimaryButton } from '../auth/Auth_UI';
+import { DetailHeader, Notice, ErrorState, errorText, InstructionCard, LoadingState, FadeUp } from './fundingKit';
+import { PrimaryButton } from '../auth/Auth_UI';
 import type { PayFlowParams } from './Payflowscreen';
 import { usePaymentInstructionsQuery } from './useMemberFunding';
 
@@ -47,11 +46,11 @@ export default function PaymentInstructionsScreen() {
       <DetailHeader title={t('funding.payHow')} subtitle={t('funding.selectInstruction')} onBack={() => navigation.goBack()} />
 
       {firstLoad ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>
+        <LoadingState />
       ) : error && items.length === 0 ? (
         <ErrorState message={error} onRetry={() => q.refetch()} />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: 48 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: spacing.lg, paddingBottom: 48 }}>
           <Notice tone="warn" text={t('funding.payWarning')} />
 
           {items.length === 0 && (
@@ -59,32 +58,10 @@ export default function PaymentInstructionsScreen() {
           )}
 
           <View style={{ marginTop: 16 }}>
-            {items.map((ins) => (
-              <Card key={ins.id} style={{ marginBottom: 16 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <View style={{ backgroundColor: withAlpha(BRAND.violet, 0.14), padding: 12, borderRadius: 12 }}>
-                    <Ionicons name={ins.method === 'BANK' ? 'business' : 'phone-portrait'} size={24} color={BRAND.violet} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '800', color: colors.text, fontSize: 16 }}>{ins.providerName}</Text>
-                    <Text style={{ color: colors.textSecondary, marginTop: 2 }}>
-                      {ins.method === 'BANK' ? t('funding.bank') : 'Telebirr'}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text style={{ color: colors.textSecondary, fontWeight: '700', marginTop: 16 }}>{t('funding.holder')}</Text>
-                <Text selectable style={{ color: colors.text, fontWeight: '600', fontSize: 16 }}>{ins.accountHolderName}</Text>
-
-                <Text style={{ color: colors.textSecondary, fontWeight: '700', marginTop: 12 }}>{t('funding.account')}</Text>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                  <Text selectable style={{ color: colors.text, fontSize: 20, fontWeight: '800', flex: 1 }}>{ins.accountIdentifier}</Text>
-                  <Pressable onPress={() => copy(ins.accountIdentifier)} accessibilityRole="button" hitSlop={8} style={{ backgroundColor: withAlpha(BRAND.violet, 0.14), padding: 10, borderRadius: 10 }}>
-                    <Ionicons name="copy-outline" size={18} color={BRAND.violet} />
-                  </Pressable>
-                </View>
-                {!!ins.note && <Text style={{ color: colors.textSecondary, marginTop: 12, fontStyle: 'italic' }}>{ins.note}</Text>}
-              </Card>
+            {items.map((ins, i) => (
+              <FadeUp key={ins.id} index={i} style={{ marginBottom: 16 }}>
+                <InstructionCard ins={ins} onCopy={() => copy(ins.accountIdentifier)} />
+              </FadeUp>
             ))}
           </View>
 

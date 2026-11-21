@@ -1,26 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, Pressable, Switch, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
-import { AuthField, PrimaryButton, ErrorBanner, BRAND, withAlpha } from '../auth/Auth_UI';
+import { AuthField, PrimaryButton, ErrorBanner } from '../auth/Auth_UI';
 import { ScreenHero } from '../profile/SettingsKit';
 import { parseEtbToMinor } from '../../utils/money';
-import { errorText, Card, Notice, minorToInput } from './fundingKit';
+import {
+  errorText, Card, minorToInput, Lockable, FormSection, PickerField, ToggleRow, LoadingState, FadeUp,
+} from './fundingKit';
 import { EthDate, formatEthDate, ethTodayFromInstant, addEthDays } from '../../utils/ethiopianCalendar';
 import EthDatePicker from './EthDatePicker';
 import { useLeaderAnnualConfigQuery, useSaveAnnualConfigMutation } from './useLeaderFunding';
 import { leaderPreviewDeadline, DeadlinePreview } from '../../services/funding';
 
-function Lockable({ locked, children, style }: { locked: boolean; children: React.ReactNode; style?: object }) {
-  return <View pointerEvents={locked ? 'none' : 'auto'} style={[{ opacity: locked ? 0.55 : 1 }, style]}>{children}</View>;
-}
-
 export default function AdminFundingSetupScreen() {
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
-  const { colors, spacing, typography } = theme;
+  const { colors, spacing } = theme;
   const navigation = useNavigation<any>();
   const lang = (i18n.language || 'en').startsWith('am') ? 'am' : 'en';
 
@@ -101,72 +99,72 @@ export default function AdminFundingSetupScreen() {
     }
   };
 
-  if (configQ.isPending && configQ.data === undefined) {
-    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color={BRAND.violet} /></View>;
-  }
+  if (configQ.isPending && configQ.data === undefined) return <LoadingState />;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenHero icon="settings" title={t('funding.setupTitle')} subtitle={t('funding.setupSubtitle')} onBack={() => navigation.goBack()} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: spacing.xl, paddingBottom: 64 }}>
-          {error && <ErrorBanner message={error} />}
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: spacing.lg, paddingBottom: 64 }}>
+          {error && <View style={{ marginBottom: spacing.md }}><ErrorBanner message={error} /></View>}
 
-          <Lockable locked={busy}>
-            <AuthField label={t('funding.contributionYear')} iconNode={<Ionicons name="calendar" size={18} color={BRAND.violet} />} value={year} onChangeText={setYear} keyboardType="phone-pad" />
-            <View style={{ marginTop: spacing.md }}>
-              <AuthField label={`${t('funding.amountDue')} (ETB)`} iconNode={<Ionicons name="cash" size={18} color={BRAND.violet} />} value={amountStr} onChangeText={setAmountStr} keyboardType="phone-pad" />
-            </View>
-          </Lockable>
-
-          <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '800', marginTop: spacing.lg, marginBottom: 8 }]}>
-            {t('funding.expiryDate')} · {t('funding.ethCalendar')}
-          </Text>
-          <Pressable onPress={() => { if (!busy) setPickerOpen(true); }} accessibilityRole="button"
-            style={{ padding: 16, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 52, opacity: busy ? 0.55 : 1 }}>
-            <Text style={{ color: colors.text, fontSize: 16 }}>{formatEthDate(expiry, lang)}</Text>
-            <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
-          </Pressable>
-
-          <Card style={{ marginTop: spacing.lg }}>
-            <Text style={{ color: colors.textSecondary, fontWeight: '800' }}>{t('funding.deadlineCalc')}</Text>
-            {previewing ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 }}>
-                <ActivityIndicator color={BRAND.violet} />
-                <Text style={{ color: colors.textSecondary }}>{t('common.loading')}</Text>
-              </View>
-            ) : preview ? (
-              <View style={{ marginTop: 8 }}>
-                <Text style={{ color: colors.text, fontWeight: '800', fontSize: 20 }}>
-                  {lang === 'am' ? preview.deadline.labelAm : preview.deadline.labelEn}
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                  <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                  <Text style={{ color: colors.success, fontWeight: '700', fontSize: 12 }}>{t('funding.reviewed')}</Text>
+          <FadeUp index={0}>
+            <FormSection title={t('funding.contributionYear')} icon="calendar-outline">
+              <Lockable locked={busy}>
+                <AuthField label={t('funding.contributionYear')} iconNode={<Ionicons name="calendar" size={18} color={colors.accent} />} value={year} onChangeText={setYear} keyboardType="phone-pad" />
+                <View style={{ marginTop: spacing.md }}>
+                  <AuthField label={`${t('funding.amountDue')} (ETB)`} iconNode={<Ionicons name="cash" size={18} color={colors.accent} />} value={amountStr} onChangeText={setAmountStr} keyboardType="phone-pad" />
                 </View>
+              </Lockable>
+            </FormSection>
+          </FadeUp>
+
+          <FadeUp index={1}>
+            <FormSection title={t('funding.deadlineCalc')} icon="time-outline" tone="mint">
+              <PickerField
+                label={`${t('funding.expiryDate')} · ${t('funding.ethCalendar')}`}
+                value={formatEthDate(expiry, lang)}
+                disabled={busy}
+                onPress={() => { if (!busy) setPickerOpen(true); }}
+              />
+
+              <View style={{ marginTop: spacing.md, padding: 16, borderRadius: 18, backgroundColor: colors.surfaceAlt }}>
+                {previewing ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <ActivityIndicator color={colors.primary} />
+                    <Text style={{ color: colors.textSecondary }}>{t('common.loading')}</Text>
+                  </View>
+                ) : preview ? (
+                  <View>
+                    <Text style={{ color: colors.text, fontWeight: '800', fontSize: 22 }}>
+                      {lang === 'am' ? preview.deadline.labelAm : preview.deadline.labelEn}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                      <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                      <Text style={{ color: colors.success, fontWeight: '800', fontSize: 12 }}>{t('funding.reviewed')}</Text>
+                    </View>
+                  </View>
+                ) : previewErr ? (
+                  <Text style={{ color: colors.error }}>{previewErr}</Text>
+                ) : (
+                  <Text style={{ color: colors.textSecondary }}>{t('funding.selectDateHint')}</Text>
+                )}
               </View>
-            ) : previewErr ? (
-              <Text style={{ color: colors.error, marginTop: 8 }}>{previewErr}</Text>
-            ) : (
-              <Text style={{ color: colors.textSecondary, marginTop: 8 }}>{t('funding.selectDateHint')}</Text>
-            )}
-          </Card>
+            </FormSection>
+          </FadeUp>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg, padding: 12, borderRadius: 12, backgroundColor: withAlpha(active ? colors.success : colors.textSecondary, 0.08) }}>
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={{ color: colors.text, fontWeight: '800' }}>{t('funding.activeYear')}</Text>
+          <FadeUp index={2}>
+            <ToggleRow title={t('funding.activeYear')} value={active} onValueChange={setActive} disabled={busy} positive />
+
+            <Lockable locked={busy} style={{ marginTop: spacing.md }}>
+              <AuthField label={hasExisting ? t('funding.reasonChange') : t('funding.reasonOptional')} iconNode={<Ionicons name="chatbox-ellipses-outline" size={18} color={colors.accent} />} value={reason} onChangeText={setReason} multiline />
+            </Lockable>
+
+            <View style={{ marginTop: spacing.xl }}>
+              <PrimaryButton label={t('common.save')} onPress={onSave} busy={busy} />
             </View>
-            <Switch value={active} onValueChange={setActive} disabled={busy} trackColor={{ true: BRAND.violet }} />
-          </View>
-
-          <Lockable locked={busy} style={{ marginTop: spacing.md }}>
-            <AuthField label={hasExisting ? t('funding.reasonChange') : t('funding.reasonOptional')} iconNode={<Ionicons name="chatbox-ellipses-outline" size={18} color={BRAND.violet} />} value={reason} onChangeText={setReason} multiline />
-          </Lockable>
-
-          <View style={{ marginTop: spacing.xl }}>
-            <PrimaryButton label={t('common.save')} onPress={onSave} busy={busy} />
-          </View>
+          </FadeUp>
         </ScrollView>
       </KeyboardAvoidingView>
 
