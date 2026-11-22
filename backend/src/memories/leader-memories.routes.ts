@@ -1,5 +1,4 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import multer from 'multer';
 import { authenticate, authorize, touchLastActive } from '../auth/middleware';
 import {
   leaderListPendingMemories,
@@ -11,13 +10,9 @@ import {
 } from './memories.service';
 import { ApiError } from '../utils/ApiError';
 import { reqEthDate } from '../funding/funding.validation';
+import { memoryMediaUpload } from '../utils/uploadLimits';
 
 const router = Router();
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
-});
 
 router.use(authenticate, touchLastActive, authorize('LEADER', 'ADMIN'));
 
@@ -68,10 +63,7 @@ router.post('/:id/reject', async (req, res, next) => {
 
 router.patch(
   '/:id',
-  upload.fields([
-    { name: 'photos', maxCount: 20 },
-    { name: 'audio', maxCount: 1 },
-  ]),
+  memoryMediaUpload(8, 20), // up to 20 photos + 1 audio, max 8 MB per file
   async (req, res, next) => {
     try {
       if (!req.auth) throw ApiError.unauthorized();

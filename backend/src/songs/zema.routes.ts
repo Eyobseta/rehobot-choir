@@ -1,5 +1,4 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import multer from 'multer';
 import { authenticate, touchLastActive } from '../auth/middleware';
 import {
   isZemaMember,
@@ -9,12 +8,9 @@ import {
 } from './songs.service';
 import { ocrUpload, scanLyricsHandler } from './ocr.service';
 import { ApiError } from '../utils/ApiError';
+import { singleAudioUpload } from '../utils/uploadLimits';
 
 const router = Router();
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
-});
 
 router.use(authenticate, touchLastActive);
 
@@ -39,7 +35,7 @@ router.get('/submissions/me', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.post('/submissions', upload.single('audio'), async (req, res, next) => {
+router.post('/submissions', singleAudioUpload(10), async (req, res, next) => {
   try {
     if (!req.auth) throw ApiError.unauthorized();
     const { submissionId, title, lyrics, youtubeUrl, categoryId } = req.body ?? {};

@@ -1,5 +1,4 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import multer from 'multer';
 import { authenticate, touchLastActive } from '../auth/middleware';
 import {
   getTodayQuote,
@@ -8,13 +7,9 @@ import {
   publishTodayQuote,
 } from './quotes.service';
 import { ApiError } from '../utils/ApiError';
+import { singleAudioUpload } from '../utils/uploadLimits';
 
 const router = Router();
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB
-});
 
 router.use(authenticate, touchLastActive);
 
@@ -59,11 +54,11 @@ router.get('/mine/count', async (req, res, next) => {
 /**
  * POST /api/v1/quotes
  * multipart/form-data:
- *   quoteText, source, youtubeUrl?, audio? (file)
+ *   quoteText, source, youtubeUrl?, audio? (file, max 8 MB)
  */
 router.post(
   '/',
-  upload.single('audio'),
+  singleAudioUpload(8),
   async (req, res, next) => {
     try {
       if (!req.auth) throw ApiError.unauthorized();

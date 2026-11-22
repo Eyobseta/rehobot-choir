@@ -1,5 +1,4 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import multer from 'multer';
 import { authenticate, authorize, touchLastActive } from '../auth/middleware';
 import {
   listCategories,
@@ -20,12 +19,9 @@ import {
 } from './songs.service';
 import { ocrUpload, scanLyricsHandler } from './ocr.service';
 import { ApiError } from '../utils/ApiError';
+import { singleAudioUpload } from '../utils/uploadLimits';
 
 const router = Router();
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB for audio
-});
 
 router.use(authenticate, touchLastActive, authorize('LEADER', 'ADMIN'));
 
@@ -69,7 +65,7 @@ router.get('/songs', async (_req, res, next) => {
 
 router.post(
   '/songs',
-  upload.single('audio'),
+  singleAudioUpload(10), // audio max 10 MB
   async (req, res, next) => {
     try {
       if (!req.auth) throw ApiError.unauthorized();
@@ -107,7 +103,7 @@ router.get('/songs/:id', async (req, res, next) => {
 
 router.patch(
   '/songs/:id',
-  upload.single('audio'),
+  singleAudioUpload(10), // audio max 10 MB
   async (req, res, next) => {
     try {
       const id = req.params.id;
