@@ -1,0 +1,44 @@
+# .github/workflows/db-backup.yml
+# Weekly encrypted backup of the Neon database.
+# Keep this repository PRIVATE: the dump contains member data.
+
+name: Weekly DB backup
+
+on:
+  schedule:
+    - cron: '0 2 * * 0' # every Sunday 02:00 UTC
+  workflow_dispatch: # lets you run it manually from the Actions tab
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump database
+        env:
+          DB_URL: ${{ secrets.NEON_DIRECT_URL }}
+        run: |
+          set -euo pipefail
+          # pg_dump version must be >= your Neon Postgres version.
+          # If you get a "server version mismatch" error, change 17 to the
+          # version shown in your Neon dashboard.
+          docker run --rm -e DB_URL postgres:17 \
+            sh -c 'pg_dump "$DB_URL" --no-owner --no-acl -Fc' > rehobot.dump
+          ls -lh rehobot.dump
+
+      - name: Encrypt dump
+        env:
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          gpg --batch --yes --pinentry-mode loopback \
+              --passphrase "$PASSPHRASE" \
+              --symmetric --cipher-algo AES256 \
+              -o "rehobot-$(date +%F).dump.gpg" rehobot.dump
+          rm rehobot.dump
+
+      - name: Upload backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: rehobot-db-backup
+          path: rehobot-*.dump.gpg
+          retention-days: 30
